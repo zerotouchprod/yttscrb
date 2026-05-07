@@ -1,0 +1,158 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Infrastructure\Adapters\Input\Web;
+
+use App\Application\UseCases\TranscribeVideoHandler;
+use App\Domain\Entities\MediaTask;
+use App\Domain\ValueObjects\TranscriptionStatus;
+use App\Domain\ValueObjects\YouTubeUrl;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use InvalidArgumentException;
+use Ramsey\Uuid\Uuid;
+use Symfony\Component\HttpFoundation\Response;
+
+final class TranscribeVideoController extends Controller
+{
+    public function __construct(
+        private readonly TranscribeVideoHandler $handler,
+    ) {
+    }
+
+    public function create(Request $request): JsonResponse
+    {
+        $youtubeUrl = $request->input('youtube_url');
+
+        if (! is_string($youtubeUrl) || $youtubeUrl === '') {
+            return $this->errorResponse(
+                'INVALID_YOUTUBE_URL',
+                'The provided URL is not a valid YouTube video URL.',
+                ['field' => 'youtube_url', 'constraint' => 'format'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        try {
+            $url = new YouTubeUrl($youtubeUrl);
+        } catch (InvalidArgumentException) {
+            return $this->errorResponse(
+                'INVALID_YOUTUBE_URL',
+                'The provided URL is not a valid YouTube video URL.',
+                ['field' => 'youtube_url', 'constraint' => 'format'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $taskId = Uuid::uuid4()->toString();
+        $task = MediaTask::create($taskId, $url);
+
+        $storedTask = $this->handler->handle($task);
+
+        if ($storedTask->id() !== $task->id()) {
+            return new JsonResponse([
+                'task_id' => $storedTask->id(),
+                'status' => $storedTask->status()->value,
+                'message' => 'This video has already been transcribed.',
+                '_links' => [
+                    'download' => "/api/transcribe/{$storedTask->id()}/download",
+                ],
+            ], Response::HTTP_OK);
+        }
+
+        return new JsonResponse([
+            'task_id' => $storedTask->id(),
+            'status' => $storedTask->status()->value,
+            'youtube_url' => $storedTask->youtubeUrl()->value(),
+            'created_at' => $storedTask->createdAt()->format('c'),
+            '_links' => [
+                'status' => "/api/transcribe/{$storedTask->id()}",
+            ],
+        ], Response::HTTP_ACCEPTED);
+    }
+
+    public function status(string $id): JsonResponse
+    {
+        $task = $this->handler->findTask($id);
+
+        if ($task === null) {
+            return $this->errorResponse(
+                'TASK_NOT_FOUND',
+                'Task not found.',
+                [],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        $response = [
+            'task_id' => $task->id(),
+            'status' => $task->status()->value,
+            'youtube_url' => $task->youtubeUrl()->value(),
+            'video_id' => $task->youtubeUrl()->videoId()->value(),
+            'created_at' => $task->createdAt()->format('c'),
+            '_links' => [
+                'self' => "/api/transcribe/{$task->id()}",
+            ],
+        ];
+
+        if ($task->status() === TranscriptionStatus::Completed) {
+            $response['duration_sec'] = $task->durationSec();
+            $response['result'] = [
+                'transcript' => $task->resultText()?->value(),
+                'summary' => $task->summary(),
+                'word_count' => $task->resultText()?->wordCount(),
+            ];
+            $response['completed_at'] = $task->completedAt()?->format('c');
+            $response['_links']['download_txt'] = "/api/transcribe/{$task->id()}/download";
+        }
+
+        if ($task->status() === TranscriptionStatus::Processing) {
+            $response['estimated_completion_sec'] = 90;
+        }
+
+        if ($task->status() === TranscriptionStatus::Failed) {
+            $response['error_message'] = $task->errorMessage();
+            $response['failed_at'] = $task->failedAt()?->format('c');
+        }
+
+        return new JsonResponse($response);
+    }
+
+    public function download(string $id): Response
+    {
+        $task = $this->handler->findTask($id);
+
+        if ($task === null || $task->status() !== TranscriptionStatus::Completed) {
+            return $this->errorResponse(
+                'TASK_NOT_FOUND',
+                'Task not found or not completed.',
+                [],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        $transcript = $task->resultText()?->value() ?? '';
+        $videoId = $task->youtubeUrl()->videoId()->value();
+
+        return response($transcript, 200, [
+            'Content-Type' => 'text/plain; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"transcript-{$videoId}.txt\"",
+        ]);
+    }
+
+    /**
+     * @param array<string, string> $details
+     */
+    private function errorResponse(string $code, string $message, array $details, int $status): JsonResponse
+    {
+        return new JsonResponse([
+            'error' => [
+                'code' => $code,
+                'message' => $message,
+                'details' => $details,
+            ],
+        ], $status);
+    }
+}

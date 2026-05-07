@@ -14,9 +14,9 @@ This file is mandatory for all AI agents working on this repository (Cline, Curs
 - Backend: Laravel 13.x, PHP 8.5.
 - Database: PostgreSQL 16+.
 - Queue: Redis 7+ with Laravel Horizon.
-- Long-running workflows: Temporal via `durable-workflow/workflow`.
-- Temporal UI: `durable-workflow/waterline`.
-- Local development: Docker Compose.
+- Long-running workflows: `durable-workflow/workflow` (standalone PHP workflow engine, **not** a separate Temporal cluster; uses Redis as backend via `WORKFLOW_CONNECTION=redis`).
+- Workflow UI: `durable-workflow/waterline` (embedded as a Laravel library, **no separate Docker service** required).
+- Local development: Docker Compose (services: app, postgres, redis, horizon, worker).
 - Production: Kubernetes with Helm charts.
 - Fast transcription provider for v1: Groq Whisper API.
 - Zero-cost first step: `yt-dlp --write-auto-sub --skip-download`.
@@ -40,11 +40,11 @@ Application → Infrastructure is forbidden.
 
 Rules:
 
-1. Domain must not know Laravel, Eloquent, Redis, Temporal, HTTP clients, filesystem, or external APIs.
+1. Domain must not know Laravel, Eloquent, Redis, HTTP clients, filesystem, or external APIs.
 2. Application layer defines use cases and ports.
-3. Infrastructure implements adapters for persistence, external providers, HTTP controllers, queue workers, and Temporal activities.
+3. Infrastructure implements adapters for persistence, external providers, HTTP controllers, queue workers, and workflow activities.
 4. External services must be hidden behind interfaces.
-5. Do not call Groq, OpenAI, yt-dlp, Redis, Temporal, or PostgreSQL directly from Domain or Use Case code unless a PRD-approved port allows it.
+5. Do not call Groq, OpenAI, yt-dlp, Redis, or PostgreSQL directly from Domain or Use Case code unless a PRD-approved port allows it.
 
 Required ports include:
 
@@ -116,7 +116,7 @@ Testing rules:
 2. Use cases require unit tests for every scenario.
 3. Controllers require feature tests for critical paths: 202, 400, 401, 404, 409, 429.
 4. External providers require contract tests with mocked clients.
-5. Temporal workflow must have at least one full-cycle workflow test with mocked adapters.
+5. The full transcription workflow must have at least one full-cycle test with mocked activity adapters.
 6. Do not rely on real Groq/OpenAI/YouTube calls in normal CI.
 
 ## 7. Workflow and Transcription Rules
@@ -130,6 +130,8 @@ The transcription workflow must follow the approved cascade:
 5. Step 4: Generate summary with `AiSummaryActivity`.
 6. Step 5: Persist result with `PersistResultActivity`.
 7. Always cleanup temporary audio with `CleanupActivity`.
+
+The workflow engine is `durable-workflow/workflow` running on Redis (`WORKFLOW_CONNECTION=redis`). Worker process command: `php artisan workflow:work`. There is **no separate Temporal server**.
 
 Workflow code rules:
 
@@ -176,16 +178,19 @@ Rules:
 Local development:
 
 1. Must run through Docker Compose.
-2. Required services: app, postgres, redis, temporal, temporal-ui/waterline, horizon, temporal-worker.
-3. Do not require host-installed PostgreSQL, Redis, or Temporal.
+2. Required services: **app**, **postgres**, **redis**, **horizon**, **worker** (workflow engine process, runs `php artisan workflow:work`).
+3. `waterline` UI is embedded in the app — **no separate Docker service** needed.
+4. Do **not** add a standalone Temporal server (`temporalio/auto-setup`) — the project uses `durable-workflow/workflow` directly on Redis.
+5. Do not require host-installed PostgreSQL, Redis, or a Temporal cluster.
 
 Production:
 
 1. Deploy through Kubernetes.
-2. Helm charts are required for app, horizon, temporal-worker, ingress, configmap, HPA, PDB.
-3. PostgreSQL, Redis, and Temporal must be represented as Kubernetes-managed services/subcharts or documented external managed services.
-4. Secrets must be Kubernetes Secrets, not ConfigMaps.
-5. App, Horizon, and Temporal workers must be independently scalable.
+2. Helm charts are required for app, horizon, workflow-worker, ingress, configmap, HPA, PDB.
+3. PostgreSQL and Redis must be represented as Kubernetes-managed services/subcharts or documented external managed services.
+4. The workflow engine worker (`php artisan workflow:work`) is a separate Kubernetes Deployment — not a Temporal cluster.
+5. Secrets must be Kubernetes Secrets, not ConfigMaps.
+6. App, Horizon, and workflow workers must be independently scalable.
 
 ## 11. Provider Rules
 
@@ -200,7 +205,7 @@ Rules:
 1. `TRANSCRIPTION_PROVIDER=groq` must work out of the box.
 2. Provider-specific code belongs in Infrastructure adapters only.
 3. Do not hardcode Deepgram as default.
-4. Do not add v1.1+ providers to runtime code unless explicitly requested.
+4. Do not add v1.1+ providers to runtime code unless explicitly requested. The DI `match` example in `Prd.md` section 2.1 shows **architectural reference** — in v1.0 only the `groq` branch must be implemented; v1.1+ branches (`whisper_api`, `runpod_whisper`, `assemblyai`) are stubs that throw `InvalidProviderException` until explicitly requested.
 5. `whisper.cpp` on Phenom II X4 840 must be built without AVX/AVX2:
 
 ```bash

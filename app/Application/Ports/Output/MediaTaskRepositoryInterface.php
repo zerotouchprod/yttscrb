@@ -13,5 +13,5 @@ interface MediaTaskRepositoryInterface
 
     public function findById(string $id): ?MediaTask;
 
-    public function findCompletedByVideoIdForUser(VideoId $videoId, string $userId): ?MediaTask;
+    public function findCompletedByVideoId(VideoId $videoId): ?MediaTask;
 }

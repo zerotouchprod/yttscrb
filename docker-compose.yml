@@ -10,6 +10,7 @@ services:
       - "8080:80"
     environment:
       APP_ENV: local
+      APP_KEY: ${APP_KEY}
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
@@ -18,34 +19,18 @@ services:
       DB_PASSWORD: secret
       REDIS_HOST: redis
       QUEUE_CONNECTION: redis
+      WORKFLOW_CONNECTION: redis
       TRANSCRIPTION_PROVIDER: groq
       SUMMARY_PROVIDER: openai
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     depends_on:
-      - postgres
-      - redis
-      - temporal
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  horizon:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    command: php artisan horizon
-    volumes:
-      - .:/var/www/html
-    environment:
-      DB_CONNECTION: pgsql
-      DB_HOST: postgres
-      DB_DATABASE: yttscrb
-      DB_USERNAME: yttscrb
-      DB_PASSWORD: secret
-      REDIS_HOST: redis
-      QUEUE_CONNECTION: redis
-    depends_on:
-      - app
-      - postgres
-      - redis
-
-  temporal-worker:
+  worker:
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -53,6 +38,8 @@ services:
     volumes:
       - .:/var/www/html
     environment:
+      APP_ENV: local
+      APP_KEY: ${APP_KEY}
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_DATABASE: yttscrb
@@ -61,11 +48,15 @@ services:
       REDIS_HOST: redis
       QUEUE_CONNECTION: redis
       WORKFLOW_CONNECTION: redis
+      TRANSCRIPTION_PROVIDER: groq
+      SUMMARY_PROVIDER: openai
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     depends_on:
-      - app
-      - postgres
-      - redis
-      - temporal
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   postgres:
     image: postgres:16-alpine
@@ -77,6 +68,11 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yttscrb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -84,29 +80,11 @@ services:
       - "6379:6379"
     volumes:
       - redisdata:/data
-
-  temporal:
-    image: temporalio/auto-setup:1.26
-    environment:
-      DB: postgresql
-      DB_PORT: 5432
-      POSTGRES_USER: yttscrb
-      POSTGRES_PWD: secret
-      POSTGRES_SEEDS: postgres
-    ports:
-      - "7233:7233"
-    depends_on:
-      - postgres
-
-  temporal-ui:
-    image: temporalio/ui:2.36.0
-    environment:
-      TEMPORAL_ADDRESS: temporal:7233
-      TEMPORAL_CORS_ORIGINS: http://localhost:8080
-    ports:
-      - "8233:8080"
-    depends_on:
-      - temporal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   pgdata:

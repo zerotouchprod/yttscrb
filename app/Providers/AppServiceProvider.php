@@ -1,22 +1,32 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers;
 
+use App\Application\Ports\Output\MediaTaskRepositoryInterface;
+use App\Application\Ports\Output\SubtitleProviderInterface;
+use App\Application\Ports\Output\SummaryProviderInterface;
+use App\Application\Ports\Output\TranscriptionProviderInterface;
+use App\Application\Ports\Output\WorkflowDispatcherInterface;
+use App\Infrastructure\Adapters\Output\Persistence\MediaTaskEloquentRepository;
+use App\Infrastructure\Adapters\Output\Summary\OpenAiSummaryAdapter;
+use App\Infrastructure\Adapters\Output\Transcription\GroqWhisperAdapter;
+use App\Infrastructure\Adapters\Output\Transcription\SubtitleExtractorAdapter;
+use App\Infrastructure\Adapters\Output\Workflow\WorkflowDispatcher;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
-        //
+        $this->app->bind(MediaTaskRepositoryInterface::class, MediaTaskEloquentRepository::class);
+        $this->app->bind(SubtitleProviderInterface::class, SubtitleExtractorAdapter::class);
+        $this->app->bind(TranscriptionProviderInterface::class, GroqWhisperAdapter::class);
+        $this->app->bind(SummaryProviderInterface::class, OpenAiSummaryAdapter::class);
+        $this->app->bind(WorkflowDispatcherInterface::class, WorkflowDispatcher::class);
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
         //
