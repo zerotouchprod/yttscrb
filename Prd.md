@@ -548,21 +548,22 @@ CREATE TABLE api_tokens (
 
 | Правило | Значение | Примечание |
 |---|---|---|
-| Лимит free tier | 10 транскрипций/месяц | Сбрасывается первого числа каждого месяца |
+| Лимит гостевого доступа (v1.0) | 10 транскрипций/день с IP | Сбрасывается каждые 24 часа |
 | Что считается использованием | Успешное завершение транскрипции (status=completed) | Failed/processing не учитываются |
-| Что НЕ считается использованием | Повторная обработка того же `video_id` | Deduplication по `video_id + user_id` |
+| Что НЕ считается использованием | Повторная обработка того же `video_id` | Deduplication по `video_id` |
 | HTTP-код при превышении | 429 Too Many Requests | + заголовок `Retry-After` |
 
 #### Deduplication
 
-- Повторная отправка одного и того же `youtube_url` одним пользователем: возвращается существующий `task_id`, если задача уже была успешно завершена.
+- Повторная отправка одного и того же `youtube_url`: возвращается существующий `task_id`, если задача уже была успешно завершена.
 - Повторная отправка для failed-задачи: создаётся новая задача.
-- `video_id` извлекается из URL и проверяется уникальный partial index `media_tasks(video_id, user_id) WHERE status = 'completed'`.
+- `video_id` извлекается из URL и проверяется уникальный partial index `media_tasks(video_id) WHERE status = 'completed'`.
 
 #### Анонимные пользователи
 
-- v1.0 не поддерживает анонимный доступ. Все запросы требуют аутентификации (API-ключ).
-- Регистрация через email (пока без OAuth).
+- v1.0 полностью публичный — все запросы без аутентификации.
+- Регистрация и API-ключи запланированы на v1.1+.
+- Гостевой лимит: 10 транскрипций в месяц с одного IP-адреса.
 
 #### Retention Policy
 
@@ -681,15 +682,15 @@ class TranscribeVideoWorkflowImpl implements TranscribeVideoWorkflow
 
 | Method | Path | Controller | Описание | Auth |
 |---|---|---|---|---|
-| `POST` | `/api/transcribe` | `TranscribeVideoController` | Создать задачу транскрипции | ✅ |
-| `GET` | `/api/transcribe/{id}` | `TranscribeVideoController` | Статус задачи | ✅ |
-| `GET` | `/api/transcribe/{id}/download` | `ExportController` | Скачать TXT | ✅ |
-| `GET` | `/api/transcribe/{id}/download/pdf` | `ExportController` | Скачать PDF (v1.1) | ✅ |
-| `POST` | `/api/auth/register` | `AuthController` | Регистрация пользователя (email) — возвращает `api_key` | ❌ |
-| `GET` | `/api/history` | `HistoryController` | История пользователя (пагинация, sorted by `created_at DESC`) | ✅ |
-| `GET` | `/api/history/latest` | `HistoryController` | Последняя выполненная транскрипция пользователя | ✅ |
+| `POST` | `/api/transcribe` | `TranscribeVideoController` | Создать задачу транскрипции | ❌ |
+| `GET` | `/api/transcribe/{id}` | `TranscribeVideoController` | Статус задачи | ❌ |
+| `GET` | `/api/transcribe/{id}/download` | `ExportController` | Скачать TXT | ❌ |
+| `GET` | `/api/transcribe/{id}/download/pdf` | `ExportController` | Скачать PDF (v1.1) | ❌ |
+| `POST` | `/api/auth/register` | `AuthController` | Регистрация пользователя (email) — возвращает `api_key` **(v1.1+)** | ❌ |
+| `GET` | `/api/history` | `TranscribeVideoController` | История (пагинация, sorted by `created_at DESC`) | ❌ |
+| `GET` | `/api/history/latest` | `TranscribeVideoController` | Последняя выполненная транскрипция | ❌ |
 
-> **Аутентификация (v1.0):** Все endpoint'ы защищены. Аутентификация через API-ключ в header `X-API-Key`. Ключ выдаётся при регистрации. `GET /api/history` и `GET /api/history/latest` возвращают только задачи текущего пользователя.
+> **Аутентификация (v1.0):** В первой версии все endpoint'ы публичные, без аутентификации. Аутентификация через API-ключ в header `X-API-Key` запланирована на v1.1+.
 
 ### 7.1 Создание задачи
 

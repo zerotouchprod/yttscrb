@@ -142,6 +142,78 @@ final class TranscribeVideoController extends Controller
         ]);
     }
 
+    public function history(Request $request): JsonResponse
+    {
+        $page = max(1, (int) $request->query('page', '1'));
+        $perPage = min(50, max(1, (int) $request->query('per_page', '15')));
+        $rawStatus = $request->query('status');
+        $status = is_string($rawStatus) && $rawStatus !== '' ? $rawStatus : null;
+
+        $paginator = $this->handler->listHistory($status, $perPage, $page);
+
+        /** @var list<array{task_id: string, youtube_url: string, title: string|null, status: string, duration_sec: int|null, created_at: string|null, completed_at: string|null}> $data */
+        $data = [];
+        foreach ($paginator->getCollection() as $task) {
+            /** @var \App\Domain\Entities\MediaTask $task */
+            $data[] = [
+                'task_id' => $task->id(),
+                'youtube_url' => $task->youtubeUrl()->value(),
+                'title' => null,
+                'status' => $task->status()->value,
+                'duration_sec' => $task->durationSec(),
+                'created_at' => $task->createdAt()->format('c'),
+                'completed_at' => $task->completedAt()?->format('c'),
+            ];
+        }
+
+        return new JsonResponse([
+            'data' => $data,
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+            '_links' => [
+                'first' => '/api/history?page=1',
+                'prev' => $paginator->previousPageUrl(),
+                'next' => $paginator->nextPageUrl(),
+                'last' => '/api/history?page=' . $paginator->lastPage(),
+            ],
+        ]);
+    }
+
+    public function latest(): JsonResponse
+    {
+        $task = $this->handler->findLatestCompleted();
+
+        if ($task === null) {
+            return new JsonResponse([
+                'task_id' => null,
+                'status' => null,
+                'message' => 'No completed transcriptions yet.',
+            ]);
+        }
+
+        return new JsonResponse([
+            'task_id' => $task->id(),
+            'youtube_url' => $task->youtubeUrl()->value(),
+            'title' => null,
+            'status' => $task->status()->value,
+            'duration_sec' => $task->durationSec(),
+            'result' => [
+                'transcript' => $task->resultText()?->value(),
+                'summary' => $task->summary(),
+                'word_count' => $task->resultText()?->wordCount(),
+            ],
+            'created_at' => $task->createdAt()->format('c'),
+            'completed_at' => $task->completedAt()?->format('c'),
+            '_links' => [
+                'download_txt' => "/api/transcribe/{$task->id()}/download",
+            ],
+        ]);
+    }
+
     /**
      * @param array<string, string> $details
      */

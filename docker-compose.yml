@@ -34,7 +34,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    command: php artisan workflow:work
+    command: php artisan queue:work redis --queue=default --sleep=1 --tries=3 --timeout=0
     volumes:
       - .:/var/www/html
     environment:
@@ -42,6 +42,36 @@ services:
       APP_KEY: ${APP_KEY}
       DB_CONNECTION: pgsql
       DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: yttscrb
+      DB_USERNAME: yttscrb
+      DB_PASSWORD: secret
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: redis
+      WORKFLOW_CONNECTION: redis
+      TRANSCRIPTION_PROVIDER: groq
+      SUMMARY_PROVIDER: openai
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  horizon:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: php artisan horizon
+    volumes:
+      - .:/var/www/html
+    environment:
+      APP_ENV: local
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
       DB_DATABASE: yttscrb
       DB_USERNAME: yttscrb
       DB_PASSWORD: secret

@@ -10,6 +10,7 @@ use App\Application\UseCases\TranscribeVideoHandler;
 use App\Domain\Entities\MediaTask;
 use App\Domain\ValueObjects\VideoId;
 use App\Domain\ValueObjects\YouTubeUrl;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Tests\TestCase;
 
 final class TranscribeVideoHandlerTest extends TestCase
@@ -45,6 +46,16 @@ final class TranscribeVideoHandlerTest extends TestCase
                 return $videoId->value() === $this->existingTask->youtubeUrl()->videoId()->value()
                     ? $this->existingTask
                     : null;
+            }
+
+            public function findAllPaginated(?string $status, int $perPage, int $page): LengthAwarePaginator
+            {
+                return new LengthAwarePaginator(collect(), 0, $perPage, $page);
+            }
+
+            public function findLatestCompleted(): ?MediaTask
+            {
+                return null;
             }
         };
 
@@ -86,6 +97,16 @@ final class TranscribeVideoHandlerTest extends TestCase
             }
 
             public function findCompletedByVideoId(VideoId $videoId): ?MediaTask
+            {
+                return null;
+            }
+
+            public function findAllPaginated(?string $status, int $perPage, int $page): LengthAwarePaginator
+            {
+                return new LengthAwarePaginator(collect(), 0, $perPage, $page);
+            }
+
+            public function findLatestCompleted(): ?MediaTask
             {
                 return null;
             }

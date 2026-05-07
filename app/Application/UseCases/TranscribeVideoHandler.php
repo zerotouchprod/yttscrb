@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Application\UseCases;
 
-use App\Application\Ports\Output\WorkflowDispatcherInterface;
 use App\Application\Ports\Output\MediaTaskRepositoryInterface;
+use App\Application\Ports\Output\WorkflowDispatcherInterface;
 use App\Domain\Entities\MediaTask;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 final class TranscribeVideoHandler
 {
@@ -33,5 +34,18 @@ final class TranscribeVideoHandler
     public function findTask(string $id): ?MediaTask
     {
         return $this->repository->findById($id);
+    }
+
+    /**
+     * @return LengthAwarePaginator<int, MediaTask>
+     */
+    public function listHistory(?string $status, int $perPage, int $page): LengthAwarePaginator
+    {
+        return $this->repository->findAllPaginated($status, $perPage, $page);
+    }
+
+    public function findLatestCompleted(): ?MediaTask
+    {
+        return $this->repository->findLatestCompleted();
     }
 }

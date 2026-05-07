@@ -11,6 +11,7 @@ use App\Domain\ValueObjects\TranscriptionText;
 use App\Domain\ValueObjects\VideoId;
 use App\Domain\ValueObjects\YouTubeUrl;
 use DateTimeImmutable;
+use Illuminate\Pagination\LengthAwarePaginator;
 use ReflectionProperty;
 
 final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
@@ -34,6 +35,48 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
     {
         $model = MediaTaskModel::query()->where('video_id', $videoId->value())
             ->where('status', 'completed')
+            ->first();
+
+        return $model ? $this->toEntity($model) : null;
+    }
+
+    /**
+     * @return LengthAwarePaginator<int, MediaTask>
+     */
+    public function findAllPaginated(?string $status, int $perPage, int $page): LengthAwarePaginator
+    {
+        $query = MediaTaskModel::query()->orderByDesc('created_at');
+
+        if ($status !== null && $status !== '') {
+            $query->where('status', $status);
+        }
+
+        /** @var \Illuminate\Pagination\LengthAwarePaginator<int, MediaTaskModel> $paginator */
+        $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+
+        /** @var \Illuminate\Support\Collection<int, MediaTask> $entities */
+        $entities = $paginator->getCollection()->map(function (mixed $item): MediaTask {
+            /** @var MediaTaskModel $model */
+            $model = $item;
+
+            return $this->toEntity($model);
+        });
+
+        /** @var LengthAwarePaginator<int, MediaTask> */
+        return new LengthAwarePaginator(
+            $entities,
+            $paginator->total(),
+            $paginator->perPage(),
+            $paginator->currentPage(),
+        );
+    }
+
+    public function findLatestCompleted(): ?MediaTask
+    {
+        /** @var MediaTaskModel|null $model */
+        $model = MediaTaskModel::query()
+            ->where('status', TranscriptionStatus::Completed->value)
+            ->orderByDesc('created_at')
             ->first();
 
         return $model ? $this->toEntity($model) : null;

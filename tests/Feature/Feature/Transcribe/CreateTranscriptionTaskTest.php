@@ -82,4 +82,51 @@ final class CreateTranscriptionTaskTest extends TestCase
             ->assertJsonPath('task_id', '550e8400-e29b-41d4-a716-446655440000')
             ->assertJsonPath('status', 'completed');
     }
+
+    public function testReturnsHistoryWithoutRegistration(): void
+    {
+        MediaTaskModel::query()->create([
+            'id' => '11111111-e29b-41d4-a716-446655440000',
+            'youtube_url' => 'https://www.youtube.com/watch?v=aaaaaaaaaaa',
+            'video_id' => 'aaaaaaaaaaa',
+            'status' => 'pending',
+        ]);
+
+        MediaTaskModel::query()->create([
+            'id' => '22222222-e29b-41d4-a716-446655440000',
+            'youtube_url' => 'https://www.youtube.com/watch?v=bbbbbbbbbbb',
+            'video_id' => 'bbbbbbbbbbb',
+            'status' => 'completed',
+            'result_text' => 'Transcript',
+            'summary' => 'Summary',
+            'duration_sec' => 5,
+            'completed_at' => now(),
+        ]);
+
+        $response = $this->getJson('/api/history');
+
+        $response->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('meta.total', 2);
+    }
+
+    public function testReturnsLatestCompletedTaskWithoutRegistration(): void
+    {
+        MediaTaskModel::query()->create([
+            'id' => '33333333-e29b-41d4-a716-446655440000',
+            'youtube_url' => 'https://www.youtube.com/watch?v=ccccccccccc',
+            'video_id' => 'ccccccccccc',
+            'status' => 'completed',
+            'result_text' => 'Latest transcript',
+            'summary' => 'Latest summary',
+            'duration_sec' => 7,
+            'completed_at' => now(),
+        ]);
+
+        $response = $this->getJson('/api/history/latest');
+
+        $response->assertOk()
+            ->assertJsonPath('task_id', '33333333-e29b-41d4-a716-446655440000')
+            ->assertJsonPath('status', 'completed');
+    }
 }

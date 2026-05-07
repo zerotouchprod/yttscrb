@@ -131,7 +131,7 @@ The transcription workflow must follow the approved cascade:
 6. Step 5: Persist result with `PersistResultActivity`.
 7. Always cleanup temporary audio with `CleanupActivity`.
 
-The workflow engine is `durable-workflow/workflow` running on Redis (`WORKFLOW_CONNECTION=redis`). Worker process command: `php artisan workflow:work`. There is **no separate Temporal server**.
+The workflow engine is `durable-workflow/workflow` running on Redis (`WORKFLOW_CONNECTION=redis`). For this repository's local v1 setup, background processing runs through Redis workers (`php artisan queue:work redis --queue=default`) and Horizon. There is **no separate Temporal server**.
 
 Workflow code rules:
 
@@ -146,7 +146,6 @@ Workflow code rules:
 
 Follow the API contract in [`Prd.md`](Prd.md), especially:
 
-- `POST /api/auth/register`
 - `POST /api/transcribe`
 - `GET /api/transcribe/{id}`
 - `GET /api/transcribe/{id}/download`
@@ -155,19 +154,19 @@ Follow the API contract in [`Prd.md`](Prd.md), especially:
 
 Rules:
 
-1. All endpoints except registration require `X-API-Key`.
+1. v1.0 is public: endpoints do not require registration or `X-API-Key`.
 2. Responses must use the documented JSON shapes.
 3. Error responses must use `{ "error": { "code", "message", "details" } }`.
 4. Do not change status names without updating PRD and tests.
 5. History must support latest video display.
-6. Deduplication must use `video_id + user_id` for completed tasks.
+6. Deduplication for public v1 must use completed `video_id`.
 
 ## 9. Data and Business Rules
 
 1. Free tier limit: 10 completed transcriptions/month.
 2. Only `completed` tasks consume monthly quota.
 3. Failed/processing tasks do not consume quota.
-4. Same completed `video_id + user_id` returns existing result.
+4. Same completed `video_id` returns existing result in public v1.
 5. Failed tasks can be retried.
 6. Temporary audio files must be deleted after workflow completion/failure.
 7. Transcript and summary retention follows PRD retention policy.
@@ -178,7 +177,7 @@ Rules:
 Local development:
 
 1. Must run through Docker Compose.
-2. Required services: **app**, **postgres**, **redis**, **horizon**, **worker** (workflow engine process, runs `php artisan workflow:work`).
+2. Required services: **app**, **postgres**, **redis**, **horizon**, **worker** (background queue worker, runs `php artisan queue:work redis --queue=default`).
 3. `waterline` UI is embedded in the app — **no separate Docker service** needed.
 4. Do **not** add a standalone Temporal server (`temporalio/auto-setup`) — the project uses `durable-workflow/workflow` directly on Redis.
 5. Do not require host-installed PostgreSQL, Redis, or a Temporal cluster.
