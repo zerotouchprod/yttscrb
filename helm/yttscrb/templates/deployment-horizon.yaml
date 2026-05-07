@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yttscrb.fullname" . }}-horizon
+spec:
+  replicas: {{ .Values.horizon.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "yttscrb.fullname" . }}-horizon
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "yttscrb.fullname" . }}-horizon
+    spec:
+      containers:
+        - name: horizon
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["php", "artisan", "horizon"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "yttscrb.fullname" . }}-config
+            - secretRef:
+                name: {{ .Values.app.secrets.existingSecret }}

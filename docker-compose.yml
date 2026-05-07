@@ -1,0 +1,113 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: php artisan serve --host=0.0.0.0 --port=80
+    volumes:
+      - .:/var/www/html
+    ports:
+      - "8080:80"
+    environment:
+      APP_ENV: local
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: yttscrb
+      DB_USERNAME: yttscrb
+      DB_PASSWORD: secret
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: redis
+      TRANSCRIPTION_PROVIDER: groq
+      SUMMARY_PROVIDER: openai
+    depends_on:
+      - postgres
+      - redis
+      - temporal
+
+  horizon:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: php artisan horizon
+    volumes:
+      - .:/var/www/html
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_DATABASE: yttscrb
+      DB_USERNAME: yttscrb
+      DB_PASSWORD: secret
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: redis
+    depends_on:
+      - app
+      - postgres
+      - redis
+
+  temporal-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: php artisan workflow:work
+    volumes:
+      - .:/var/www/html
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_DATABASE: yttscrb
+      DB_USERNAME: yttscrb
+      DB_PASSWORD: secret
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: redis
+      WORKFLOW_CONNECTION: redis
+    depends_on:
+      - app
+      - postgres
+      - redis
+      - temporal
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: yttscrb
+      POSTGRES_USER: yttscrb
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+
+  temporal:
+    image: temporalio/auto-setup:1.26
+    environment:
+      DB: postgresql
+      DB_PORT: 5432
+      POSTGRES_USER: yttscrb
+      POSTGRES_PWD: secret
+      POSTGRES_SEEDS: postgres
+    ports:
+      - "7233:7233"
+    depends_on:
+      - postgres
+
+  temporal-ui:
+    image: temporalio/ui:2.36.0
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:8080
+    ports:
+      - "8233:8080"
+    depends_on:
+      - temporal
+
+volumes:
+  pgdata:
+  redisdata:
