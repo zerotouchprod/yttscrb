@@ -1,5 +1,5 @@
 image:
-  repository: registry.example.com/yttscrb/app
+  repository: ghcr.io/zerotouchprod/yttscrb
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -7,17 +7,28 @@ app:
   replicas: 2
   env:
     APP_ENV: production
+    APP_URL: http://ytt.aividup.com
     DB_CONNECTION: pgsql
+    DB_HOST: yttscrb-postgresql
+    DB_PORT: "5432"
+    REDIS_HOST: yttscrb-redis-master
+    REDIS_PORT: "6379"
     QUEUE_CONNECTION: redis
+    CACHE_STORE: redis
+    SESSION_DRIVER: redis
+    WORKFLOW_CONNECTION: redis
     TRANSCRIPTION_PROVIDER: groq
     SUMMARY_PROVIDER: openai
   secrets:
     existingSecret: yttscrb-secrets
 
+imagePullSecrets:
+  - name: ghcr-creds
+
 horizon:
   replicas: 1
 
-temporalWorker:
+worker:
   replicas: 1
 
 service:
@@ -25,18 +36,21 @@ service:
 
 ingress:
   enabled: true
-  className: nginx
-  host: yttscrb.example.com
-  tlsSecretName: yttscrb-tls
+  className: traefik
+  host: ytt.aividup.com
+  tlsSecretName: ""
 
 postgresql:
   enabled: true
   auth:
     database: yttscrb
     username: yttscrb
+    password: secret
 
 redis:
   enabled: true
+  auth:
+    enabled: false
 
 hpa:
   enabled: true

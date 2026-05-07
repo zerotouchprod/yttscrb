@@ -1,21 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "yttscrb.fullname" . }}-temporal-worker
+  name: {{ include "yttscrb.fullname" . }}-worker
 spec:
-  replicas: {{ .Values.temporalWorker.replicas }}
+  replicas: {{ .Values.worker.replicas }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "yttscrb.fullname" . }}-temporal-worker
+      app.kubernetes.io/name: {{ include "yttscrb.fullname" . }}-worker
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ include "yttscrb.fullname" . }}-temporal-worker
+        app.kubernetes.io/name: {{ include "yttscrb.fullname" . }}-worker
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
-        - name: temporal-worker
+        - name: worker
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          command: ["php", "artisan", "workflow:work"]
+          command: ["php", "artisan", "queue:work", "redis", "--queue=default", "--sleep=1", "--tries=3", "--timeout=0"]
           envFrom:
             - configMapRef:
                 name: {{ include "yttscrb.fullname" . }}-config

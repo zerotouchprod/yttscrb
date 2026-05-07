@@ -16,8 +16,10 @@ spec:
                 name: {{ include "yttscrb.fullname" . }}-app
                 port:
                   number: {{ .Values.service.port }}
+  {{- if .Values.ingress.tlsSecretName }}
   tls:
     - hosts:
         - {{ .Values.ingress.host }}
       secretName: {{ .Values.ingress.tlsSecretName }}
+  {{- end }}
 {{- end }}
