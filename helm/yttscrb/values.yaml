@@ -3,6 +3,10 @@ image:
   tag: latest
   pullPolicy: IfNotPresent
 
+global:
+  security:
+    allowInsecureImages: true
+
 app:
   replicas: 2
   command:
