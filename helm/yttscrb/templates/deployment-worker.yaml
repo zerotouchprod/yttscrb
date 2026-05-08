@@ -19,7 +19,8 @@ spec:
       containers:
         - name: worker
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          command: ["php", "artisan", "queue:work", "redis", "--queue=default", "--sleep=1", "--tries=3", "--timeout=0"]
+          command: {{- toYaml .Values.worker.command | nindent 12 }}
+          args: {{- toYaml .Values.worker.args | nindent 12 }}
           envFrom:
             - configMapRef:
                 name: {{ include "yttscrb.fullname" . }}-config
