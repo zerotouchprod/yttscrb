@@ -37,6 +37,9 @@ RUN composer install --no-interaction --prefer-dist --no-progress
 # Ensure storage directories are writable
 RUN chmod -R 777 storage bootstrap/cache
 
+# Remove .env file — production env comes from Kubernetes ConfigMap/Secret
+RUN rm -f .env
+
 # Install Node.js dependencies and build frontend
 RUN npm install --legacy-peer-deps --ignore-scripts \
     && npm run build \
