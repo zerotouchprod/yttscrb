@@ -26,6 +26,8 @@ app:
     DB_CONNECTION: pgsql
     DB_HOST: yttscrb-postgresql
     DB_PORT: "5432"
+    DB_DATABASE: yttscrb
+    DB_USERNAME: yttscrb
     REDIS_HOST: yttscrb-redis-master
     REDIS_PORT: "6379"
     QUEUE_CONNECTION: redis
