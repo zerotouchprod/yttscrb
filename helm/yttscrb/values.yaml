@@ -88,7 +88,7 @@ postgresql:
   auth:
     database: yttscrb
     username: yttscrb
-    password: secret
+    password: YipPfYfHne
 
 redis:
   enabled: true
