@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
  * @property string $youtube_url
  * @property string|null $video_id
  * @property string|null $title
+ * @property string|null $slug
  * @property string $status
  * @property string|null $workflow_id
  * @property string|null $result_text
@@ -21,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $user_id
  * @property Carbon|null $completed_at
  * @property Carbon|null $failed_at
+ * @property Carbon|null $dmca_removed_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -37,6 +39,7 @@ class MediaTaskModel extends Model
         'youtube_url',
         'video_id',
         'title',
+        'slug',
         'status',
         'workflow_id',
         'result_text',
@@ -46,6 +49,7 @@ class MediaTaskModel extends Model
         'user_id',
         'completed_at',
         'failed_at',
+        'dmca_removed_at',
     ];
 
     protected function casts(): array
@@ -54,6 +58,7 @@ class MediaTaskModel extends Model
             'duration_sec' => 'integer',
             'completed_at' => 'datetime',
             'failed_at' => 'datetime',
+            'dmca_removed_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];

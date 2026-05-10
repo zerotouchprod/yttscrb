@@ -12,15 +12,32 @@ use App\Domain\ValueObjects\VideoId;
 use App\Domain\ValueObjects\YouTubeUrl;
 use DateTimeImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\LazyCollection;
+use Illuminate\Support\Str;
 use ReflectionProperty;
 
 final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
 {
     public function save(MediaTask $mediaTask): void
     {
+        $data = $this->toArray($mediaTask);
+
+        // Auto-generate slug when task completes and has a title but no slug yet.
+        if (
+            $mediaTask->status() === TranscriptionStatus::Completed
+            && $mediaTask->title() !== null
+            && $mediaTask->slug() === null
+        ) {
+            $slug = $this->generateUniqueSlug($mediaTask->title(), $mediaTask->id());
+            $data['slug'] = $slug;
+            $mediaTask->setSlug($slug);
+        } else {
+            $data['slug'] = $mediaTask->slug();
+        }
+
         MediaTaskModel::query()->updateOrCreate(
             ['id' => $mediaTask->id()],
-            $this->toArray($mediaTask),
+            $data,
         );
     }
 
@@ -31,10 +48,25 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
         return $model ? $this->toEntity($model) : null;
     }
 
+    public function findBySlug(string $slug): ?MediaTask
+    {
+        /** @var MediaTaskModel|null $model */
+        $model = MediaTaskModel::query()
+            ->where('slug', $slug)
+            ->where('status', TranscriptionStatus::Completed->value)
+            ->whereNull('dmca_removed_at')
+            ->first();
+
+        return $model ? $this->toEntity($model) : null;
+    }
+
     public function findCompletedByVideoId(VideoId $videoId): ?MediaTask
     {
-        $model = MediaTaskModel::query()->where('video_id', $videoId->value())
+        /** @var MediaTaskModel|null $model */
+        $model = MediaTaskModel::query()
+            ->where('video_id', $videoId->value())
             ->where('status', 'completed')
+            ->whereNull('dmca_removed_at')
             ->first();
 
         return $model ? $this->toEntity($model) : null;
@@ -76,6 +108,7 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
         /** @var MediaTaskModel|null $model */
         $model = MediaTaskModel::query()
             ->where('status', TranscriptionStatus::Completed->value)
+            ->whereNull('dmca_removed_at')
             ->orderByDesc('created_at')
             ->first();
 
@@ -112,6 +145,48 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
         ]);
     }
 
+    /**
+     * @return LazyCollection<int, array{slug: string, completed_at: string|null, updated_at: string|null}>
+     */
+    public function findPublicSlugs(): LazyCollection
+    {
+        /** @var LazyCollection<int, array{slug: string, completed_at: string|null, updated_at: string|null}> */
+        return MediaTaskModel::query()
+            ->where('status', TranscriptionStatus::Completed->value)
+            ->whereNotNull('slug')
+            ->whereNull('dmca_removed_at')
+            ->orderByDesc('completed_at')
+            ->select(['slug', 'completed_at', 'updated_at'])
+            ->cursor()
+            ->map(static function (mixed $model): array {
+                /** @var MediaTaskModel $model */
+                return [
+                    'slug'         => (string) $model->slug,
+                    'completed_at' => $model->completed_at?->toIso8601String(),
+                    'updated_at'   => $model->updated_at?->toIso8601String(),
+                ];
+            });
+    }
+
+    private function generateUniqueSlug(string $title, string $taskId): string
+    {
+        $base = Str::slug($title);
+
+        if (! MediaTaskModel::query()->where('slug', $base)->exists()) {
+            return $base;
+        }
+
+        $suffix = substr(str_replace('-', '', $taskId), 0, 6);
+        $candidate = $base . '-' . strtolower($suffix);
+
+        if (! MediaTaskModel::query()->where('slug', $candidate)->exists()) {
+            return $candidate;
+        }
+
+        // Final deterministic fallback using the full task UUID suffix.
+        return $base . '-' . strtolower(substr(str_replace('-', '', $taskId), 0, 12));
+    }
+
     private function toEntity(MediaTaskModel $model): MediaTask
     {
         $task = MediaTask::create(
@@ -124,6 +199,7 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
         $this->setPrivate($task, 'summary', $model->summary);
         $this->setPrivate($task, 'errorMessage', $model->error_message);
         $this->setPrivate($task, 'durationSec', $model->duration_sec);
+        $this->setPrivate($task, 'slug', $model->slug);
 
         if ($model->title !== null) {
             $task->setTitle($model->title);
@@ -141,6 +217,10 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
             $this->setPrivate($task, 'failedAt', new DateTimeImmutable($model->failed_at->toIso8601String()));
         }
 
+        if ($model->dmca_removed_at !== null) {
+            $this->setPrivate($task, 'dmcaRemovedAt', new DateTimeImmutable($model->dmca_removed_at->toIso8601String()));
+        }
+
         return $task;
     }
 
@@ -150,17 +230,18 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
     private function toArray(MediaTask $task): array
     {
         return [
-            'youtube_url' => $task->youtubeUrl()->value(),
-            'video_id' => $task->youtubeUrl()->videoId()->value(),
-            'status' => $task->status()->value,
-            'workflow_id' => $task->workflowId(),
-            'result_text' => $task->resultText()?->value(),
-            'summary' => $task->summary(),
-            'duration_sec' => $task->durationSec(),
-            'title' => $task->title(),
-            'error_message' => $task->errorMessage(),
-            'completed_at' => $task->completedAt(),
-            'failed_at' => $task->failedAt(),
+            'youtube_url'     => $task->youtubeUrl()->value(),
+            'video_id'        => $task->youtubeUrl()->videoId()->value(),
+            'status'          => $task->status()->value,
+            'workflow_id'     => $task->workflowId(),
+            'result_text'     => $task->resultText()?->value(),
+            'summary'         => $task->summary(),
+            'duration_sec'    => $task->durationSec(),
+            'title'           => $task->title(),
+            'error_message'   => $task->errorMessage(),
+            'completed_at'    => $task->completedAt(),
+            'failed_at'       => $task->failedAt(),
+            'dmca_removed_at' => $task->dmcaRemovedAt(),
         ];
     }
 

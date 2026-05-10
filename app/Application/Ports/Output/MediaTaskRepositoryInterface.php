@@ -8,12 +8,15 @@ use App\Domain\Entities\MediaTask;
 use App\Domain\ValueObjects\VideoId;
 use DateTimeImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\LazyCollection;
 
 interface MediaTaskRepositoryInterface
 {
     public function save(MediaTask $mediaTask): void;
 
     public function findById(string $id): ?MediaTask;
+
+    public function findBySlug(string $slug): ?MediaTask;
 
     public function findCompletedByVideoId(VideoId $videoId): ?MediaTask;
 
@@ -47,4 +50,13 @@ interface MediaTaskRepositoryInterface
      * Call site should guard against null before calling.
      */
     public function storeTitle(string $taskId, string $title): void;
+
+    /**
+     * Returns a lazy cursor of [slug, completed_at, updated_at] arrays
+     * for all public (completed, not DMCA-removed, slug set) tasks.
+     * Ordered newest-first. Used exclusively by the sitemap generator.
+     *
+     * @return LazyCollection<int, array{slug: string, completed_at: string|null, updated_at: string|null}>
+     */
+    public function findPublicSlugs(): LazyCollection;
 }

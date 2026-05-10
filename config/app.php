@@ -123,4 +123,7 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    // Admin token for protected endpoints (e.g. DMCA takedown). Set via ADMIN_TOKEN env.
+    'admin_token' => env('ADMIN_TOKEN', ''),
+
 ];

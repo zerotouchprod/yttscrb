@@ -21,6 +21,8 @@ final class MediaTask
     private ?DateTimeImmutable $failedAt = null;
     private ?int $durationSec = null;
     private ?string $title = null;
+    private ?string $slug = null;
+    private ?DateTimeImmutable $dmcaRemovedAt = null;
 
     private function __construct(
         private readonly string $id,
@@ -137,6 +139,31 @@ final class MediaTask
     public function setTitle(string $title): void
     {
         $this->title = $title;
+    }
+
+    public function slug(): ?string
+    {
+        return $this->slug;
+    }
+
+    public function setSlug(string $slug): void
+    {
+        $this->slug = $slug;
+    }
+
+    public function isDmcaRemoved(): bool
+    {
+        return $this->dmcaRemovedAt !== null;
+    }
+
+    public function dmcaRemovedAt(): ?DateTimeImmutable
+    {
+        return $this->dmcaRemovedAt;
+    }
+
+    public function removeForDmca(): void
+    {
+        $this->dmcaRemovedAt = new DateTimeImmutable();
     }
 
     public function createdAt(): DateTimeImmutable

@@ -1,2 +1,7 @@
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /api/
+Disallow: /horizon/
+Disallow: /waterline/
+
+Sitemap: https://tubesum.app/sitemap.xml

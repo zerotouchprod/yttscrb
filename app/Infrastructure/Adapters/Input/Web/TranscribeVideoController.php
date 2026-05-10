@@ -87,10 +87,11 @@ final class TranscribeVideoController extends Controller
                     'word_count' => $storedTask->resultText()?->wordCount(),
                 ],
                 'completed_at' => $storedTask->completedAt()?->format('c'),
-                '_links'       => [
+                '_links'       => array_filter([
                     'self'         => "/api/transcribe/{$storedTask->id()}",
                     'download_txt' => "/api/transcribe/{$storedTask->id()}/download",
-                ],
+                    'public_page'  => ($storedTask->slug() !== null && ! $storedTask->isDmcaRemoved()) ? '/v/' . $storedTask->slug() : null,
+                ]),
             ], Response::HTTP_OK);
         }
 
@@ -139,6 +140,10 @@ final class TranscribeVideoController extends Controller
             ];
             $response['completed_at'] = $task->completedAt()?->format('c');
             $response['_links']['download_txt'] = "/api/transcribe/{$task->id()}/download";
+
+            if ($task->slug() !== null && ! $task->isDmcaRemoved()) {
+                $response['_links']['public_page'] = '/v/' . $task->slug();
+            }
         }
 
         if ($task->status() === TranscriptionStatus::Processing) {
