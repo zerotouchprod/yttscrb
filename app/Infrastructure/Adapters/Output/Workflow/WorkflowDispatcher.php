@@ -20,18 +20,15 @@ final class WorkflowDispatcher implements WorkflowDispatcherInterface
 
     public function dispatch(MediaTask $task): void
     {
-        $workflowId = 'transcribe-' . $task->id();
-
-        $task->startProcessing($workflowId);
-        $this->repository->save($task);
-
-        $this->workflowStarter->start(
+        $workflowId = $this->workflowStarter->start(
             TranscribeVideoWorkflow::class,
-            $workflowId,
             [
                 'taskId' => $task->id(),
                 'youtubeUrl' => $task->youtubeUrl()->value(),
             ],
         );
+
+        $task->startProcessing((string) $workflowId);
+        $this->repository->save($task);
     }
 }

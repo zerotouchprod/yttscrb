@@ -72,6 +72,12 @@
             "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan migrate --graceful --ansi"
         ],
+        "check": [
+            "@php vendor/bin/phpstan analyse --level=9 --no-progress",
+            "@php vendor/bin/phpcs --standard=PSR12 app/ tests/",
+            "@php vendor/bin/deptrac analyze",
+            "@php vendor/bin/pest --compact"
+        ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
         ]

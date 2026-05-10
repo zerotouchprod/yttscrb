@@ -9,5 +9,5 @@ interface WorkflowStarter
     /**
      * @param array<string, scalar|null> $arguments
      */
-    public function start(string $workflowClass, string $workflowId, array $arguments): void;
+    public function start(string $workflowClass, array $arguments): int;
 }

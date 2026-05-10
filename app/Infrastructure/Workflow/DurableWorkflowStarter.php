@@ -12,12 +12,14 @@ final class DurableWorkflowStarter implements WorkflowStarter
     /**
      * @param array<string, scalar|null> $arguments
      */
-    public function start(string $workflowClass, string $workflowId, array $arguments): void
+    public function start(string $workflowClass, array $arguments): int
     {
         $stub = WorkflowStub::make($workflowClass);
         $stub->start(
             $arguments['taskId'] ?? '',
             $arguments['youtubeUrl'] ?? '',
         );
+
+        return $stub->id();
     }
 }

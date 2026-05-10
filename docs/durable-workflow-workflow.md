@@ -32,7 +32,8 @@
 23. [Webhooks](#webhooks)
 24. [Continue As New](#continue-as-new)
 25. [Versioning](#versioning)
-26. [Constraints](#constraints)
+26. [Common Mistakes](#common-mistakes)
+27. [Constraints](#constraints)
 
 ---
 
@@ -79,6 +80,10 @@ class MyActivity extends Activity
     }
 }
 ```
+
+> ⚠️ **Конструктор зарезервирован пакетом.** Не объявляй `__construct()` в Activity.
+> Сигнатура конструктора пакета: `($index, $now, $storedWorkflow, ...$arguments)`.
+> Объявление своего конструктора сломает Activity при запуске.
 
 **Генерация:**
 ```bash
@@ -151,7 +156,9 @@ class MyWorkflow extends Workflow
 
 ## Dependency Injection
 
-Можно типизировать зависимости в `execute()`:
+### Workflow DI
+
+Можно типизировать зависимости в `execute()` — Laravel инжектит их через Container:
 
 ```php
 use Illuminate\Contracts\Foundation\Application;
@@ -161,6 +168,46 @@ class MyWorkflow extends Workflow
     public function execute(Application $app)
     {
         if ($app->runningInConsole()) { /* ... */ }
+    }
+}
+```
+
+### Activity DI
+
+> ⚠️ Конструктор Activity зарезервирован пакетом — не объявляй `__construct()`.
+
+DI в Activity реализуется двумя способами:
+
+**1. Через параметры `execute()` — типизируй зависимость, Laravel разрешит через Container:**
+
+```php
+use App\Application\Ports\Output\TranscriptionProviderInterface;
+use Workflow\Activity;
+
+class MyActivity extends Activity
+{
+    public function execute(string $audioPath, TranscriptionProviderInterface $provider): string
+    {
+        return $provider->transcribe($audioPath);
+    }
+}
+```
+
+**2. Через `Container::getInstance()->make()` — если нужно резолвить внутри метода:**
+
+```php
+use App\Application\Ports\Output\SubtitleProviderInterface;
+use Illuminate\Container\Container;
+use Workflow\Activity;
+
+class MyActivity extends Activity
+{
+    public function execute(string $youtubeUrl): ?string
+    {
+        /** @var SubtitleProviderInterface $provider */
+        $provider = Container::getInstance()->make(SubtitleProviderInterface::class);
+
+        return $provider->extract($youtubeUrl);
     }
 }
 ```
@@ -651,6 +698,27 @@ if ($version === WorkflowStub::DEFAULT_VERSION) {
 - `changeId` — уникальный ID точки изменения
 - `minSupported` — минимальная поддерживаемая версия
 - `maxSupported` — текущая версия для новых executions
+
+---
+
+## Common Mistakes
+
+| ❌ Ошибка | ✅ Правильно |
+|-----------|-------------|
+| Забыл `yield` перед `activity()` | Всегда `yield activity(...)` |
+| `ActivityStub::make()` внутри workflow | `yield activity(MyActivity::class, ...)` — только функция `activity()` |
+| `Carbon::now()` в workflow | `Workflow\now()` |
+| Прямые HTTP-запросы в workflow | Выносить в Activity |
+| `random_int()` без sideEffect | `yield sideEffect(fn () => random_int(...))` |
+| Свой `__construct()` в Activity | Не объявлять конструктор — он зарезервирован пакетом |
+| Не добавил `use function Workflow\activity;` | Обязательный импорт для функции `activity()` |
+| Передача большого объёма данных в args | Писать в БД/кэш, передавать ключ (ID) |
+| Saga без `try/catch` + `$this->compensate()` | Оборачивать в `try/catch`, вызывать `yield from $this->compensate()` |
+| `$this->addCompensation(fn () => ActivityStub::make(...))` | `$this->addCompensation(fn () => activity(...))` — компенсация должна возвращать `activity()` |
+
+> **Особо важно:** `ActivityStub::make()` — публичный API для запуска activity **вне** workflow (например из контроллера).
+> Внутри workflow используй **только** `yield activity(MyActivity::class, ...)`.
+> Использование `ActivityStub::make()` в saga-компенсации не вызовет активность корректно.
 
 ---
 

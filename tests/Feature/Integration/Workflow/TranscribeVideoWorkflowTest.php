@@ -105,25 +105,46 @@ it('runs subtitle -> summary -> persist flow without audio download when subtitl
 });
 
 it(
-    'runs subtitle -> download -> transcribe -> summary -> persist -> cleanup when subtitles are missing'
-    , function (): void {
+    'runs subtitle -> download -> transcribe -> summary -> persist when subtitles are missing (cleanup is a saga compensation, not dispatched on success)',
+    function (): void {
+        WorkflowStub::mock(SubtitleExtractorActivity::class, null);
+        WorkflowStub::mock(DownloadAudioActivity::class, new DownloadedAudioResult('/tmp/task-123.mp3'));
+        WorkflowStub::mock(
+            GroqTranscriberActivity::class,
+            new WorkflowTranscriptionResult('Full transcript from audio', 321),
+        );
+        WorkflowStub::mock(AiSummaryActivity::class, 'Short summary');
+        WorkflowStub::mock(PersistResultActivity::class, null);
+
+        $workflow = WorkflowStub::make(TranscribeVideoWorkflow::class);
+        $workflow->start('task-123', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+
+        WorkflowStub::assertDispatched(SubtitleExtractorActivity::class);
+        WorkflowStub::assertDispatched(DownloadAudioActivity::class);
+        WorkflowStub::assertDispatched(GroqTranscriberActivity::class);
+        WorkflowStub::assertDispatched(AiSummaryActivity::class);
+        WorkflowStub::assertDispatched(PersistResultActivity::class);
+        WorkflowStub::assertNotDispatched(CleanupActivity::class);
+    }
+);
+
+it('runs cleanup saga compensation when transcription fails after audio download', function (): void {
     WorkflowStub::mock(SubtitleExtractorActivity::class, null);
     WorkflowStub::mock(DownloadAudioActivity::class, new DownloadedAudioResult('/tmp/task-123.mp3'));
     WorkflowStub::mock(
         GroqTranscriberActivity::class,
-        new WorkflowTranscriptionResult('Full transcript from audio', 321),
+        new RuntimeException('Transcription failed'),
     );
-    WorkflowStub::mock(AiSummaryActivity::class, 'Short summary');
-    WorkflowStub::mock(PersistResultActivity::class, null);
-    WorkflowStub::mock(CleanupActivity::class, null);
 
     $workflow = WorkflowStub::make(TranscribeVideoWorkflow::class);
-    $workflow->start('task-123', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+
+    expect(fn () => $workflow->start(
+        'task-123',
+        'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    ))->toThrow(RuntimeException::class);
 
     WorkflowStub::assertDispatched(SubtitleExtractorActivity::class);
     WorkflowStub::assertDispatched(DownloadAudioActivity::class);
     WorkflowStub::assertDispatched(GroqTranscriberActivity::class);
-    WorkflowStub::assertDispatched(AiSummaryActivity::class);
-    WorkflowStub::assertDispatched(PersistResultActivity::class);
     WorkflowStub::assertDispatched(CleanupActivity::class);
 });
