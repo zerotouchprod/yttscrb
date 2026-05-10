@@ -1,0 +1,14 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Infrastructure\Workflow\DTO;
+
+final readonly class WorkflowTranscriptionResult
+{
+    public function __construct(
+        public string $text,
+        public int $durationSec,
+    ) {
+    }
+}
