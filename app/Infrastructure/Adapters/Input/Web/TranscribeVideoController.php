@@ -90,7 +90,9 @@ final class TranscribeVideoController extends Controller
                 '_links'       => array_filter([
                     'self'         => "/api/transcribe/{$storedTask->id()}",
                     'download_txt' => "/api/transcribe/{$storedTask->id()}/download",
-                    'public_page'  => ($storedTask->slug() !== null && ! $storedTask->isDmcaRemoved()) ? '/v/' . $storedTask->slug() : null,
+                    'public_page'  => ($storedTask->slug() !== null && ! $storedTask->isDmcaRemoved())
+                        ? '/v/' . $storedTask->slug()
+                        : null,
                 ]),
             ], Response::HTTP_OK);
         }

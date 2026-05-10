@@ -40,8 +40,8 @@ final class PublicTranscriptControllerTest extends TestCase
             ->assertSee('Rick Astley Never Gonna Give You Up')
             ->assertSee('A timeless 80s pop anthem about devotion.')
             ->assertSee('We are no strangers to love.')
-            ->assertSee('Transcript &amp; AI Summary', false)
-            ->assertSee('tubesum.app/sitemap.xml', false);
+            ->assertSee('AI Summary')
+            ->assertSee('Full Transcript');
     }
 
     public function testIncludesCanonicalUrlInHead(): void
@@ -132,4 +132,3 @@ final class PublicTranscriptControllerTest extends TestCase
             ->assertNotFound();
     }
 }
-

@@ -26,7 +26,7 @@ final class RegisterUserTest extends TestCase
         $response = $this->get('/');
 
         $response->assertOk()
-            ->assertSee('YTTSCRB')
+            ->assertSee('TubeSum')
             ->assertDontSee('Register');
     }
 }

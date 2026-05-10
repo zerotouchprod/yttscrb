@@ -51,4 +51,3 @@ final class AdminDmcaController extends Controller
         return new JsonResponse(['message' => 'Task removed from public index.'], Response::HTTP_OK);
     }
 }
-

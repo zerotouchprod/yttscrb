@@ -157,4 +157,3 @@ final class AdminDmcaControllerTest extends TestCase
         return $id;
     }
 }
-

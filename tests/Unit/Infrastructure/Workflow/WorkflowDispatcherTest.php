@@ -7,7 +7,6 @@ use App\Domain\Entities\MediaTask;
 use App\Domain\ValueObjects\VideoId;
 use App\Domain\ValueObjects\YouTubeUrl;
 use App\Infrastructure\Adapters\Output\Workflow\WorkflowDispatcher;
-use DateTimeImmutable;
 use App\Infrastructure\Workflow\WorkflowStarter;
 use App\Infrastructure\Workflow\Workflows\TranscribeVideoWorkflow;
 
@@ -38,6 +37,11 @@ it('starts durable workflow and stores returned workflow id', function (): void 
         }
 
         public function findById(string $id): ?MediaTask
+        {
+            return null;
+        }
+
+        public function findBySlug(string $slug): ?MediaTask
         {
             return null;
         }
@@ -79,6 +83,11 @@ it('starts durable workflow and stores returned workflow id', function (): void 
         public function countCompletedSince(DateTimeImmutable $since): int
         {
             return 0;
+        }
+
+        public function findPublicSlugs(): \Illuminate\Support\LazyCollection
+        {
+            return \Illuminate\Support\LazyCollection::make([]);
         }
     };
 

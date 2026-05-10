@@ -65,8 +65,14 @@ it('can be removed for DMCA multiple times without error', function (): void {
     // A second call should simply update the timestamp, not throw.
     $task->removeForDmca();
 
-    expect($task->isDmcaRemoved())->toBeTrue()
-        ->and($task->dmcaRemovedAt())->not->toBeNull()
-        ->and($task->dmcaRemovedAt()->getTimestamp())->toBeGreaterThanOrEqual($firstTimestamp->getTimestamp());
-});
+    $secondTimestamp = $task->dmcaRemovedAt();
 
+    expect($task->isDmcaRemoved())->toBeTrue()
+        ->and($secondTimestamp)->not->toBeNull();
+
+    // PHPStan: narrow after null check
+    \PHPUnit\Framework\Assert::assertNotNull($firstTimestamp);
+    \PHPUnit\Framework\Assert::assertNotNull($secondTimestamp);
+
+    expect($secondTimestamp->getTimestamp())->toBeGreaterThanOrEqual($firstTimestamp->getTimestamp());
+});

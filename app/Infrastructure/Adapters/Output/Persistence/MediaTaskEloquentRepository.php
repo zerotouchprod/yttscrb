@@ -150,22 +150,22 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
      */
     public function findPublicSlugs(): LazyCollection
     {
-        /** @var LazyCollection<int, array{slug: string, completed_at: string|null, updated_at: string|null}> */
-        return MediaTaskModel::query()
+        /** @var LazyCollection<int, MediaTaskModel> $cursor */
+        $cursor = MediaTaskModel::query()
             ->where('status', TranscriptionStatus::Completed->value)
             ->whereNotNull('slug')
             ->whereNull('dmca_removed_at')
             ->orderByDesc('completed_at')
-            ->select(['slug', 'completed_at', 'updated_at'])
-            ->cursor()
-            ->map(static function (mixed $model): array {
-                /** @var MediaTaskModel $model */
-                return [
-                    'slug'         => (string) $model->slug,
-                    'completed_at' => $model->completed_at?->toIso8601String(),
-                    'updated_at'   => $model->updated_at?->toIso8601String(),
-                ];
-            });
+            ->cursor();
+
+        /** @var LazyCollection<int, array{slug: string, completed_at: string|null, updated_at: string|null}> */
+        return $cursor->map(static function (MediaTaskModel $model): array {
+            return [
+                'slug'         => (string) $model->slug,
+                'completed_at' => $model->completed_at?->toIso8601String(),
+                'updated_at'   => $model->updated_at?->toIso8601String(),
+            ];
+        });
     }
 
     private function generateUniqueSlug(string $title, string $taskId): string
@@ -218,7 +218,8 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
         }
 
         if ($model->dmca_removed_at !== null) {
-            $this->setPrivate($task, 'dmcaRemovedAt', new DateTimeImmutable($model->dmca_removed_at->toIso8601String()));
+            $dmcaDate = new DateTimeImmutable($model->dmca_removed_at->toIso8601String());
+            $this->setPrivate($task, 'dmcaRemovedAt', $dmcaDate);
         }
 
         return $task;
@@ -229,9 +230,13 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
      */
     private function toArray(MediaTask $task): array
     {
+        $videoId = $task->isDmcaRemoved()
+            ? null
+            : $task->youtubeUrl()->videoId()->value();
+
         return [
             'youtube_url'     => $task->youtubeUrl()->value(),
-            'video_id'        => $task->youtubeUrl()->videoId()->value(),
+            'video_id'        => $videoId,
             'status'          => $task->status()->value,
             'workflow_id'     => $task->workflowId(),
             'result_text'     => $task->resultText()?->value(),

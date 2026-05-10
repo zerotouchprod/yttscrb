@@ -7,6 +7,7 @@ namespace Tests\Feature\Feature\Seo;
 use App\Application\Ports\Output\MediaTaskRepositoryInterface;
 use App\Infrastructure\Adapters\Output\Persistence\MediaTaskModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 /**
@@ -44,7 +45,9 @@ final class GenerateSitemapCommandTest extends TestCase
             'completed_at' => now(),
         ]);
 
-        $this->artisan('sitemap:generate')->assertSuccessful();
+        $exitCode = Artisan::call('sitemap:generate');
+
+        self::assertSame(0, $exitCode, Artisan::output());
 
         $this->assertFileExists(public_path('sitemap.xml'));
         $content = file_get_contents(public_path('sitemap.xml'));
@@ -69,7 +72,9 @@ final class GenerateSitemapCommandTest extends TestCase
             'dmca_removed_at' => now(),
         ]);
 
-        $this->artisan('sitemap:generate')->assertSuccessful();
+        $exitCode = Artisan::call('sitemap:generate');
+
+        self::assertSame(0, $exitCode, Artisan::output());
 
         $content = file_get_contents(public_path('sitemap.xml'));
         $this->assertIsString($content);
@@ -92,7 +97,9 @@ final class GenerateSitemapCommandTest extends TestCase
             'completed_at' => now(),
         ]);
 
-        $this->artisan('sitemap:generate')->assertSuccessful();
+        $exitCode = Artisan::call('sitemap:generate');
+
+        self::assertSame(0, $exitCode, Artisan::output());
 
         $content = file_get_contents(public_path('sitemap.xml'));
         $this->assertIsString($content);
@@ -106,8 +113,10 @@ final class GenerateSitemapCommandTest extends TestCase
         $repository = $this->app->make(MediaTaskRepositoryInterface::class);
         self::assertInstanceOf(MediaTaskRepositoryInterface::class, $repository);
 
-        // findPublicSlugs() must exist on the interface (compile-time guarantee + this check).
-        self::assertTrue(method_exists($repository, 'findPublicSlugs'));
+        // findPublicSlugs() must exist on the interface (compile-time guarantee).
+        // Call it to verify it's implemented by the resolved adapter.
+        $slugs = $repository->findPublicSlugs();
+        self::assertInstanceOf(\Illuminate\Support\LazyCollection::class, $slugs);
     }
 
     protected function tearDown(): void
@@ -120,4 +129,3 @@ final class GenerateSitemapCommandTest extends TestCase
         parent::tearDown();
     }
 }
-

@@ -42,6 +42,11 @@ final class TranscribeVideoHandlerTest extends TestCase
                 return $id === $this->existingTask->id() ? $this->existingTask : null;
             }
 
+            public function findBySlug(string $slug): ?MediaTask
+            {
+                return null;
+            }
+
             public function findCompletedByVideoId(VideoId $videoId): ?MediaTask
             {
                 return $videoId->value() === $this->existingTask->youtubeUrl()->videoId()->value()
@@ -75,6 +80,11 @@ final class TranscribeVideoHandlerTest extends TestCase
             public function countCompletedSince(DateTimeImmutable $since): int
             {
                 return 0;
+            }
+
+            public function findPublicSlugs(): \Illuminate\Support\LazyCollection
+            {
+                return \Illuminate\Support\LazyCollection::make([]);
             }
         };
 
@@ -115,6 +125,11 @@ final class TranscribeVideoHandlerTest extends TestCase
                 return null;
             }
 
+            public function findBySlug(string $slug): ?MediaTask
+            {
+                return null;
+            }
+
             public function findCompletedByVideoId(VideoId $videoId): ?MediaTask
             {
                 return null;
@@ -146,6 +161,11 @@ final class TranscribeVideoHandlerTest extends TestCase
             public function countCompletedSince(DateTimeImmutable $since): int
             {
                 return 0;
+            }
+
+            public function findPublicSlugs(): \Illuminate\Support\LazyCollection
+            {
+                return \Illuminate\Support\LazyCollection::make([]);
             }
         };
 

@@ -24,6 +24,7 @@ final class GenerateSitemapCommand extends Command
     public function handle(): int
     {
         $sitemap = Sitemap::create();
+        $targetPath = public_path('sitemap.xml');
 
         // Static pages
         $sitemap->add(
@@ -46,9 +47,23 @@ final class GenerateSitemapCommand extends Command
             $sitemap->add($entry);
         }
 
-        $sitemap->writeToFile(public_path('sitemap.xml'));
+        $directory = dirname($targetPath);
 
-        $this->info('sitemap.xml generated at ' . public_path('sitemap.xml'));
+        if (! is_dir($directory) && ! mkdir($directory, 0777, true) && ! is_dir($directory)) {
+            $this->error('Unable to create sitemap directory: ' . $directory);
+
+            return Command::FAILURE;
+        }
+
+        $written = file_put_contents($targetPath, $sitemap->render());
+
+        if ($written === false || ! file_exists($targetPath)) {
+            $this->error('Unable to write sitemap.xml to ' . $targetPath);
+
+            return Command::FAILURE;
+        }
+
+        $this->info('sitemap.xml generated at ' . $targetPath);
 
         return Command::SUCCESS;
     }
