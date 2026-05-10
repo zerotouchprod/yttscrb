@@ -77,8 +77,9 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
             $ytDlp = 'yt-dlp';
         }
 
+        // --print title writes to stdout; stderr (warnings) is discarded
         $command = sprintf(
-            '%s --print title --skip-download %s 2>&1',
+            '%s --print title --skip-download %s 2>/dev/null',
             escapeshellcmd($ytDlp),
             escapeshellarg($youtubeUrl),
         );
@@ -89,9 +90,26 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
             return null;
         }
 
-        $title = trim(implode("\n", $output));
+        // Take only the last non-empty line — the actual title
+        $title = '';
+        for ($i = count($output) - 1; $i >= 0; $i--) {
+            $line = trim($output[$i]);
+            if ($line !== '') {
+                $title = $line;
+                break;
+            }
+        }
 
-        return $title !== '' ? $title : null;
+        if ($title === '') {
+            return null;
+        }
+
+        // Truncate to 500 chars max (safe for DB column)
+        if (mb_strlen($title) > 500) {
+            $title = mb_substr($title, 0, 497) . '...';
+        }
+
+        return $title;
     }
 
     private function stripTimestamps(string $content): string
