@@ -25,11 +25,14 @@ final class TranscribeVideoWorkflow extends Workflow
 {
     public function execute(string $taskId, string $youtubeUrl): Generator
     {
-        /** @var string|null $subtitles */
-        $subtitles = yield activity(SubtitleExtractorActivity::class, $youtubeUrl);
+        /** @var array{subtitles: string|null, title: string|null} $subtitleResult */
+        $subtitleResult = yield activity(SubtitleExtractorActivity::class, $youtubeUrl);
 
-        if ($subtitles !== null) {
-            yield sideEffect(fn () => $this->storeTranscript($taskId, $subtitles));
+        if ($subtitleResult['subtitles'] !== null) {
+            yield sideEffect(fn () => $this->storeTranscript($taskId, $subtitleResult['subtitles']));
+            if ($subtitleResult['title'] !== null) {
+                yield sideEffect(fn () => $this->storeTitle($taskId, $subtitleResult['title']));
+            }
             return yield from $this->summariseAndPersist($taskId, 0);
         }
 
@@ -49,6 +52,10 @@ final class TranscribeVideoWorkflow extends Workflow
         }
 
         yield sideEffect(fn () => $this->storeTranscript($taskId, $transcription->text));
+
+        if ($subtitleResult['title'] !== null) {
+            yield sideEffect(fn () => $this->storeTitle($taskId, $subtitleResult['title']));
+        }
 
         return yield from $this->summariseAndPersist($taskId, $transcription->durationSec);
     }
@@ -73,5 +80,12 @@ final class TranscribeVideoWorkflow extends Workflow
         /** @var MediaTaskRepositoryInterface $repository */
         $repository = Container::getInstance()->make(MediaTaskRepositoryInterface::class);
         $repository->storeTranscript($taskId, $transcript);
+    }
+
+    private function storeTitle(string $taskId, string $title): void
+    {
+        /** @var MediaTaskRepositoryInterface $repository */
+        $repository = Container::getInstance()->make(MediaTaskRepositoryInterface::class);
+        $repository->storeTitle($taskId, $title);
     }
 }

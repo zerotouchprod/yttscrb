@@ -113,6 +113,20 @@
 
         <!-- Completed State -->
         <div v-if="task.status === 'completed' && task.result">
+          <!-- Video Preview (completed only) -->
+          <div v-if="thumbnailUrl && !thumbnailError" class="mb-5">
+            <img
+              :src="thumbnailUrl"
+              @error="thumbnailError = true"
+              class="w-full rounded-lg aspect-video object-cover bg-gray-700"
+              :alt="task.title || 'YouTube video thumbnail'"
+              loading="lazy"
+            />
+            <p class="mt-2 text-sm text-gray-400 truncate">
+              {{ task.title || task.youtube_url }}
+            </p>
+          </div>
+
           <!-- Tab Switcher -->
           <div class="flex gap-1 mb-5 bg-gray-700/40 rounded-lg p-1" role="tablist">
             <button
@@ -150,7 +164,7 @@
                 <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 Summary
               </h2>
-              <p class="text-gray-300 break-words">{{ task.result.summary }}</p>
+              <div v-html="renderedSummary" class="prose prose-invert prose-sm max-w-none text-gray-300"></div>
             </div>
             <button
               @click="copySummary"
@@ -221,6 +235,8 @@
 <script setup>
 import { ref, computed, onUnmounted } from 'vue';
 import axios from 'axios';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 const youtubeUrl = ref('');
 const task = ref(null);
@@ -230,6 +246,18 @@ const urlValidationError = ref(null);
 const copySummaryLabel = ref('Copy Summary');
 const copyTranscriptLabel = ref('Copy Transcript');
 const activeTab = ref('summary');
+const thumbnailError = ref(false);
+
+const thumbnailUrl = computed(() => {
+  if (!task.value?.video_id) return null;
+  return `https://img.youtube.com/vi/${task.value.video_id}/maxresdefault.jpg`;
+});
+
+const renderedSummary = computed(() => {
+  const raw = task.value?.result?.summary ?? '';
+  if (!raw) return '';
+  return DOMPurify.sanitize(marked.parse(raw));
+});
 let pollTimer = null;
 
 const statusBadgeClass = computed(() => {
@@ -268,6 +296,7 @@ async function submitUrl() {
     });
     task.value = data;
     activeTab.value = 'summary';
+    thumbnailError.value = false;
     startPolling(data.task_id);
   } catch (e) {
     error.value = e.response?.data?.error?.message || 'Failed to submit URL. Please try again.';

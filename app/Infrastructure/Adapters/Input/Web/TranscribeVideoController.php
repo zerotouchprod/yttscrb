@@ -91,6 +91,7 @@ final class TranscribeVideoController extends Controller
             'status' => $task->status()->value,
             'youtube_url' => $task->youtubeUrl()->value(),
             'video_id' => $task->youtubeUrl()->videoId()->value(),
+            'title' => $task->title(),
             'created_at' => $task->createdAt()->format('c'),
             '_links' => [
                 'self' => "/api/transcribe/{$task->id()}",
@@ -158,7 +159,7 @@ final class TranscribeVideoController extends Controller
             $data[] = [
                 'task_id' => $task->id(),
                 'youtube_url' => $task->youtubeUrl()->value(),
-                'title' => null,
+                'title' => $task->title(),
                 'status' => $task->status()->value,
                 'duration_sec' => $task->durationSec(),
                 'created_at' => $task->createdAt()->format('c'),
@@ -198,7 +199,7 @@ final class TranscribeVideoController extends Controller
         return new JsonResponse([
             'task_id' => $task->id(),
             'youtube_url' => $task->youtubeUrl()->value(),
-            'title' => null,
+            'title' => $task->title(),
             'status' => $task->status()->value,
             'duration_sec' => $task->durationSec(),
             'result' => [

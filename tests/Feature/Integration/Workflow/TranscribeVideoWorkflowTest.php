@@ -97,7 +97,7 @@ afterEach(function (): void {
 });
 
 it('runs subtitle -> summary -> persist flow without audio download when subtitles exist', function (): void {
-    WorkflowStub::mock(SubtitleExtractorActivity::class, 'Hello world transcript');
+    WorkflowStub::mock(SubtitleExtractorActivity::class, ['subtitles' => 'Hello world transcript', 'title' => null]);
     WorkflowStub::mock(AiSummaryActivity::class, 'Short summary');
     WorkflowStub::mock(PersistResultActivity::class, null);
 
@@ -115,7 +115,7 @@ it('runs subtitle -> summary -> persist flow without audio download when subtitl
 it(
     'runs subtitle -> download -> transcribe -> summary -> persist when subtitles are missing',
     function (): void {
-        WorkflowStub::mock(SubtitleExtractorActivity::class, null);
+        WorkflowStub::mock(SubtitleExtractorActivity::class, ['subtitles' => null, 'title' => null]);
         WorkflowStub::mock(AudioDownloaderActivity::class, new DownloadedAudioResult('/tmp/task-123.mp3'));
         WorkflowStub::mock(
             GroqTranscriberActivity::class,

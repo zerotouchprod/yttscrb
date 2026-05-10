@@ -44,3 +44,26 @@ it('does not complete before processing starts', function (): void {
 
     $task->complete('Transcript text', null, 120);
 })->throws(\LogicException::class);
+
+it('has null title by default', function (): void {
+    $task = MediaTask::create('test-id', new YouTubeUrl('https://youtube.com/watch?v=dQw4w9WgXcQ'));
+
+    expect($task->title())->toBeNull();
+});
+
+it('stores title via setTitle', function (): void {
+    $task = MediaTask::create('test-id', new YouTubeUrl('https://youtube.com/watch?v=dQw4w9WgXcQ'));
+    $task->setTitle('Rick Astley - Never Gonna Give You Up');
+
+    expect($task->title())->toBe('Rick Astley - Never Gonna Give You Up');
+});
+
+it('title persists after complete', function (): void {
+    $task = MediaTask::create('test-id', new YouTubeUrl('https://youtube.com/watch?v=dQw4w9WgXcQ'));
+    $task->startProcessing('wf-123');
+    $task->setTitle('Test Video Title');
+    $task->complete('transcript text', 'summary text', 180);
+
+    expect($task->title())->toBe('Test Video Title')
+        ->and($task->status())->toBe(TranscriptionStatus::Completed);
+});

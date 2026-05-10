@@ -7,4 +7,6 @@ namespace App\Application\Ports\Output;
 interface SubtitleProviderInterface
 {
     public function extract(string $youtubeUrl): ?string;
+
+    public function extractTitle(string $youtubeUrl): ?string;
 }

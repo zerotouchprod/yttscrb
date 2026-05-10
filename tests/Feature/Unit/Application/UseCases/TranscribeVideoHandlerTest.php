@@ -62,6 +62,10 @@ final class TranscribeVideoHandlerTest extends TestCase
             {
             }
 
+            public function storeTitle(string $taskId, string $title): void
+            {
+            }
+
             public function getTranscript(string $taskId): ?string
             {
                 return null;
@@ -121,6 +125,10 @@ final class TranscribeVideoHandlerTest extends TestCase
             }
 
             public function storeTranscript(string $taskId, string $transcript): void
+            {
+            }
+
+            public function storeTitle(string $taskId, string $title): void
             {
             }
 

@@ -66,6 +66,10 @@ it('starts durable workflow and stores returned workflow id', function (): void 
         {
         }
 
+        public function storeTitle(string $taskId, string $title): void
+        {
+        }
+
         public function getTranscript(string $taskId): ?string
         {
             return null;

@@ -23,10 +23,15 @@ final class OpenAiSummaryAdapter implements SummaryProviderInterface
         }
 
         $prompt = sprintf(
-            "Summarize the following transcript in %s style in no more than %d words. "
-            . "Focus on key points and main ideas.\n\n%s",
-            $options->style(),
+            "You are a helpful assistant that summarizes video transcripts.\n"
+            . "Return the summary in Markdown format with:\n"
+            . "- A brief intro paragraph\n"
+            . "- **Bold key takeaways** as bullet points under a \"## Key Points\" header\n"
+            . "- Additional ## Section headers if the content has distinct topics\n"
+            . "Use concise language. Maximum %d words. Style: %s.\n\n"
+            . "Transcript:\n%s",
             $options->maxWords(),
+            $options->style(),
             $transcriptText->value(),
         );
 

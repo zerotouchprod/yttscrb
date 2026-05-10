@@ -21,12 +21,18 @@ afterEach(function (): void {
     Mockery::close();
 });
 
-it('returns subtitle text from subtitle provider', function (): void {
+it('returns subtitle text and title from provider', function (): void {
     $provider = new class implements SubtitleProviderInterface {
         /** @phpstan-ignore return.unusedType */
         public function extract(string $youtubeUrl): ?string
         {
             return 'subtitle text';
+        }
+
+        /** @phpstan-ignore return.unusedType */
+        public function extractTitle(string $youtubeUrl): ?string
+        {
+            return 'Video Title';
         }
     };
 
@@ -35,12 +41,17 @@ it('returns subtitle text from subtitle provider', function (): void {
     $url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
     $activity = new SubtitleExtractorActivity(0, 'now', $this->storedWorkflow, $url);
 
-    expect($activity->execute($url))->toBe('subtitle text');
+    expect($activity->execute($url))->toBe(['subtitles' => 'subtitle text', 'title' => 'Video Title']);
 });
 
-it('returns null when subtitle provider returns null', function (): void {
+it('returns null subtitles and null title when provider returns null', function (): void {
     $provider = new class implements SubtitleProviderInterface {
         public function extract(string $youtubeUrl): ?string
+        {
+            return null;
+        }
+
+        public function extractTitle(string $youtubeUrl): ?string
         {
             return null;
         }
@@ -51,7 +62,7 @@ it('returns null when subtitle provider returns null', function (): void {
     $url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
     $activity = new SubtitleExtractorActivity(0, 'now', $this->storedWorkflow, $url);
 
-    expect($activity->execute($url))->toBeNull();
+    expect($activity->execute($url))->toBe(['subtitles' => null, 'title' => null]);
 });
 
 it('passes the youtube url to the subtitle provider', function (): void {
@@ -64,6 +75,11 @@ it('passes the youtube url to the subtitle provider', function (): void {
             $this->receivedUrl = $youtubeUrl;
 
             return 'some text';
+        }
+
+        public function extractTitle(string $youtubeUrl): ?string
+        {
+            return null;
         }
     };
 

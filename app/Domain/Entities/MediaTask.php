@@ -20,6 +20,7 @@ final class MediaTask
     private ?DateTimeImmutable $completedAt = null;
     private ?DateTimeImmutable $failedAt = null;
     private ?int $durationSec = null;
+    private ?string $title = null;
 
     private function __construct(
         private readonly string $id,
@@ -126,6 +127,16 @@ final class MediaTask
     public function durationSec(): ?int
     {
         return $this->durationSec;
+    }
+
+    public function title(): ?string
+    {
+        return $this->title;
+    }
+
+    public function setTitle(string $title): void
+    {
+        $this->title = $title;
     }
 
     public function createdAt(): DateTimeImmutable

@@ -69,6 +69,31 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
         return $this->stripTimestamps($content);
     }
 
+    public function extractTitle(string $youtubeUrl): ?string
+    {
+        $ytDlp = config('services.yt_dlp_binary', 'yt-dlp');
+
+        if (! is_string($ytDlp) || $ytDlp === '') {
+            $ytDlp = 'yt-dlp';
+        }
+
+        $command = sprintf(
+            '%s --print title --skip-download %s 2>&1',
+            escapeshellcmd($ytDlp),
+            escapeshellarg($youtubeUrl),
+        );
+
+        exec($command, $output, $exitCode);
+
+        if ($exitCode !== 0 || $output === []) {
+            return null;
+        }
+
+        $title = trim(implode("\n", $output));
+
+        return $title !== '' ? $title : null;
+    }
+
     private function stripTimestamps(string $content): string
     {
         $lines = explode("\n", $content);

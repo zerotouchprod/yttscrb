@@ -97,6 +97,13 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
         return $model?->result_text;
     }
 
+    public function storeTitle(string $taskId, string $title): void
+    {
+        MediaTaskModel::query()->where('id', $taskId)->update([
+            'title' => $title,
+        ]);
+    }
+
     private function toEntity(MediaTaskModel $model): MediaTask
     {
         $task = MediaTask::create(
@@ -109,6 +116,10 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
         $this->setPrivate($task, 'summary', $model->summary);
         $this->setPrivate($task, 'errorMessage', $model->error_message);
         $this->setPrivate($task, 'durationSec', $model->duration_sec);
+
+        if ($model->title !== null) {
+            $task->setTitle($model->title);
+        }
 
         if ($model->result_text !== null) {
             $this->setPrivate($task, 'resultText', new TranscriptionText($model->result_text));
@@ -138,6 +149,7 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
             'result_text' => $task->resultText()?->value(),
             'summary' => $task->summary(),
             'duration_sec' => $task->durationSec(),
+            'title' => $task->title(),
             'error_message' => $task->errorMessage(),
             'completed_at' => $task->completedAt(),
             'failed_at' => $task->failedAt(),

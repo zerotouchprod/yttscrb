@@ -34,4 +34,10 @@ interface MediaTaskRepositoryInterface
      * Returns null if not yet stored.
      */
     public function getTranscript(string $taskId): ?string;
+
+    /**
+     * Store the video title for the given task.
+     * Call site should guard against null before calling.
+     */
+    public function storeTitle(string $taskId, string $title): void;
 }
