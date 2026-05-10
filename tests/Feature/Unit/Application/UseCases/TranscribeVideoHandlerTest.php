@@ -10,6 +10,7 @@ use App\Application\UseCases\TranscribeVideoHandler;
 use App\Domain\Entities\MediaTask;
 use App\Domain\ValueObjects\VideoId;
 use App\Domain\ValueObjects\YouTubeUrl;
+use DateTimeImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Tests\TestCase;
 
@@ -69,6 +70,11 @@ final class TranscribeVideoHandlerTest extends TestCase
             public function getTranscript(string $taskId): ?string
             {
                 return null;
+            }
+
+            public function countCompletedSince(DateTimeImmutable $since): int
+            {
+                return 0;
             }
         };
 
@@ -135,6 +141,11 @@ final class TranscribeVideoHandlerTest extends TestCase
             public function getTranscript(string $taskId): ?string
             {
                 return null;
+            }
+
+            public function countCompletedSince(DateTimeImmutable $since): int
+            {
+                return 0;
             }
         };
 

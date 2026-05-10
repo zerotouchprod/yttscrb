@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Route;
 // v1.0: all endpoints are public (no auth)
 
 Route::post('/transcribe', [TranscribeVideoController::class, 'create'])
-    ->middleware('throttle:10,1440'); // 10 requests per day per IP (guest limit)
+    ->middleware('throttle:30,1');
+// anti-abuse: 30 req/min per IP; business quota (10 completed/month) checked in controller
 
 Route::get('/transcribe/{id}', [TranscribeVideoController::class, 'status']);
 Route::get('/transcribe/{id}/download', [TranscribeVideoController::class, 'download']);

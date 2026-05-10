@@ -48,4 +48,11 @@ final class TranscribeVideoHandler
     {
         return $this->repository->findLatestCompleted();
     }
+
+    public function countCompletedThisMonth(): int
+    {
+        $firstOfMonth = new \DateTimeImmutable('first day of this month 00:00:00');
+
+        return $this->repository->countCompletedSince($firstOfMonth);
+    }
 }

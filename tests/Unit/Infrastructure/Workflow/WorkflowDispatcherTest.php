@@ -7,6 +7,7 @@ use App\Domain\Entities\MediaTask;
 use App\Domain\ValueObjects\VideoId;
 use App\Domain\ValueObjects\YouTubeUrl;
 use App\Infrastructure\Adapters\Output\Workflow\WorkflowDispatcher;
+use DateTimeImmutable;
 use App\Infrastructure\Workflow\WorkflowStarter;
 use App\Infrastructure\Workflow\Workflows\TranscribeVideoWorkflow;
 
@@ -73,6 +74,11 @@ it('starts durable workflow and stores returned workflow id', function (): void 
         public function getTranscript(string $taskId): ?string
         {
             return null;
+        }
+
+        public function countCompletedSince(DateTimeImmutable $since): int
+        {
+            return 0;
         }
     };
 

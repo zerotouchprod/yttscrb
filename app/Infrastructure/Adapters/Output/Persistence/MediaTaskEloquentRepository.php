@@ -82,6 +82,14 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
         return $model ? $this->toEntity($model) : null;
     }
 
+    public function countCompletedSince(DateTimeImmutable $since): int
+    {
+        return MediaTaskModel::query()
+            ->where('status', TranscriptionStatus::Completed->value)
+            ->where('completed_at', '>=', $since)
+            ->count();
+    }
+
     public function storeTranscript(string $taskId, string $transcript): void
     {
         MediaTaskModel::query()->where('id', $taskId)->update([

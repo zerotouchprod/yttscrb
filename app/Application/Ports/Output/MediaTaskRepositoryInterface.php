@@ -6,6 +6,7 @@ namespace App\Application\Ports\Output;
 
 use App\Domain\Entities\MediaTask;
 use App\Domain\ValueObjects\VideoId;
+use DateTimeImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 interface MediaTaskRepositoryInterface
@@ -22,6 +23,12 @@ interface MediaTaskRepositoryInterface
     public function findAllPaginated(?string $status, int $perPage, int $page): LengthAwarePaginator;
 
     public function findLatestCompleted(): ?MediaTask;
+
+    /**
+     * Count completed transcriptions since the given date (inclusive).
+     * Used for free tier quota enforcement (10 completed/month).
+     */
+    public function countCompletedSince(DateTimeImmutable $since): int;
 
     /**
      * Store intermediate transcript text for the given task.

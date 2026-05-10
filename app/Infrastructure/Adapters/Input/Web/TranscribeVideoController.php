@@ -46,6 +46,26 @@ final class TranscribeVideoController extends Controller
             );
         }
 
+        // Check free tier monthly quota (10 completed transcriptions/month).
+        // Deduplication for existing video_id happens in handler->handle() below
+        // and does NOT consume quota (PRD §9).
+        $completedThisMonth = $this->handler->countCompletedThisMonth();
+        if ($completedThisMonth >= 10) {
+            $now = new \DateTimeImmutable();
+            $firstOfNextMonth = $now->modify('first day of next month')->setTime(0, 0);
+            $retryAfter = $firstOfNextMonth->getTimestamp() - $now->getTimestamp();
+
+            return new JsonResponse([
+                'error' => [
+                    'code' => 'RATE_LIMIT_EXCEEDED',
+                    'message' => 'Monthly limit of 10 transcriptions reached.',
+                    'details' => ['limit' => 10, 'used' => $completedThisMonth],
+                ],
+            ], Response::HTTP_TOO_MANY_REQUESTS, [
+                'Retry-After' => (string) $retryAfter,
+            ]);
+        }
+
         $taskId = Uuid::uuid4()->toString();
         $task = MediaTask::create($taskId, $url);
 
