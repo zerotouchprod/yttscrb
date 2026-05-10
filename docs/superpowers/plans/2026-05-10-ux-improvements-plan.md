@@ -34,7 +34,7 @@
 | `app/Infrastructure/Workflow/Workflows/TranscribeVideoWorkflow.php` | Workflow orchestration — pass title | Sprint 3 |
 | `app/Infrastructure/Workflow/Activities/PersistResultActivity.php` | Persist title alongside result | Sprint 3 |
 | `app/Infrastructure/Adapters/Input/Web/TranscribeVideoController.php` | API responses — un-hardcode title | Sprint 3 |
-| `tests/Unit/Domain/Entities/MediaTaskTest.php` | Entity unit tests | Sprint 3 |
+| `tests/Unit/Domain/MediaTaskTest.php` | Entity unit tests (file already exists, add tests) | Sprint 3 |
 | `tests/Unit/Infrastructure/Adapters/Output/Summary/OpenAiSummaryAdapterTest.php` | Contract test for Markdown output | Sprint 2 |
 | `tests/Unit/Infrastructure/Workflow/Activities/SubtitleExtractorActivityTest.php` | Activity contract test | Sprint 3 |
 | `tests/Feature/Integration/Workflow/TranscribeVideoWorkflowTest.php` | Workflow integration test | Sprint 3 |
@@ -289,11 +289,13 @@ Expected: All three packages listed in dependencies/devDependencies.
 
 **File:** `resources/css/app.css`
 
+> ⚠️ **TailwindCSS v4 note:** This project uses `@tailwindcss/vite` (v4 API). In v4, plugins are registered via the `@plugin` CSS directive — NOT `@import`. Using `@import '@tailwindcss/typography'` will NOT work.
+
 Add after `@import 'tailwindcss';` (line 1):
 
 ```css
 @import 'tailwindcss';
-@import '@tailwindcss/typography';
+@plugin "@tailwindcss/typography";
 ```
 
 - [ ] **Step 5: Commit**
@@ -464,57 +466,42 @@ git commit -m "feat: update OpenAI prompt to request Markdown-formatted summary 
 
 **Files:**
 - Modify: `app/Domain/Entities/MediaTask.php`
-- Modify: `tests/Unit/Domain/Entities/MediaTaskTest.php` (create if not exists)
+- Modify: `tests/Unit/Domain/MediaTaskTest.php` (ADD to existing file — it already exists)
 
 - [ ] **Step 1: Write the failing unit test**
 
-Create or update `tests/Unit/Domain/Entities/MediaTaskTest.php`:
+> ⚠️ **Path correction (vs. initial plan):** Existing tests are in `tests/Unit/Domain/MediaTaskTest.php` (no `Entities/` subfolder). Add new tests to that existing file using **Pest functional style** (not PHPUnit class style).
+
+Update `tests/Unit/Domain/MediaTaskTest.php` — add three new Pest tests at the bottom:
 
 ```php
-<?php
+it('has null title by default', function (): void {
+    $task = MediaTask::create('test-id', new YouTubeUrl('https://youtube.com/watch?v=dQw4w9WgXcQ'));
 
-declare(strict_types=1);
+    expect($task->title())->toBeNull();
+});
 
-namespace Tests\Unit\Domain\Entities;
+it('stores title via setTitle', function (): void {
+    $task = MediaTask::create('test-id', new YouTubeUrl('https://youtube.com/watch?v=dQw4w9WgXcQ'));
+    $task->setTitle('Rick Astley - Never Gonna Give You Up');
 
-use App\Domain\Entities\MediaTask;
-use App\Domain\ValueObjects\TranscriptionStatus;
-use App\Domain\ValueObjects\YouTubeUrl;
-use PHPUnit\Framework\TestCase;
+    expect($task->title())->toBe('Rick Astley - Never Gonna Give You Up');
+});
 
-final class MediaTaskTest extends TestCase
-{
-    public function test_title_is_null_by_default(): void
-    {
-        $task = MediaTask::create('test-id', new YouTubeUrl('https://youtube.com/watch?v=dQw4w9WgXcQ'));
+it('title persists after complete', function (): void {
+    $task = MediaTask::create('test-id', new YouTubeUrl('https://youtube.com/watch?v=dQw4w9WgXcQ'));
+    $task->startProcessing('wf-123');
+    $task->setTitle('Test Video Title');
+    $task->complete('transcript text', 'summary text', 180);
 
-        $this->assertNull($task->title());
-    }
-
-    public function test_set_title_stores_value(): void
-    {
-        $task = MediaTask::create('test-id', new YouTubeUrl('https://youtube.com/watch?v=dQw4w9WgXcQ'));
-        $task->setTitle('Rick Astley - Never Gonna Give You Up');
-
-        $this->assertSame('Rick Astley - Never Gonna Give You Up', $task->title());
-    }
-
-    public function test_title_persists_after_complete(): void
-    {
-        $task = MediaTask::create('test-id', new YouTubeUrl('https://youtube.com/watch?v=dQw4w9WgXcQ'));
-        $task->startProcessing('wf-123');
-        $task->setTitle('Test Video Title');
-        $task->complete('transcript text', 'summary text', 180);
-
-        $this->assertSame('Test Video Title', $task->title());
-        $this->assertSame(TranscriptionStatus::Completed, $task->status());
-    }
-}
+    expect($task->title())->toBe('Test Video Title')
+        ->and($task->status())->toBe(TranscriptionStatus::Completed);
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `vendor/bin/pest tests/Unit/Domain/Entities/MediaTaskTest.php`
+Run: `vendor/bin/pest tests/Unit/Domain/MediaTaskTest.php`
 Expected: FAIL — `Call to undefined method App\Domain\Entities\MediaTask::title()`
 
 - [ ] **Step 3: Add `$title` field, getter, and setter to MediaTask**
@@ -541,8 +528,8 @@ public function setTitle(string $title): void
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `vendor/bin/pest tests/Unit/Domain/Entities/MediaTaskTest.php`
-Expected: PASS (3 tests, 3 assertions)
+Run: `vendor/bin/pest tests/Unit/Domain/MediaTaskTest.php`
+Expected: PASS (3 new tests passing, existing 4 tests still passing)
 
 - [ ] **Step 5: Run quality checks**
 
@@ -553,7 +540,7 @@ vendor/bin/phpstan analyse --level=9 app/Domain/Entities/MediaTask.php
 - [ ] **Step 6: Commit**
 
 ```bash
-git add app/Domain/Entities/MediaTask.php tests/Unit/Domain/Entities/MediaTaskTest.php
+git add app/Domain/Entities/MediaTask.php tests/Unit/Domain/MediaTaskTest.php
 git commit -m "feat: add title field to MediaTask domain entity"
 ```
 
@@ -734,6 +721,13 @@ Since the workflow currently only calls `SubtitleExtractorActivity::class` with 
 
 **Decision: Extend SubtitleExtractorActivity** (YAGNI for v1.0). Change it to return an array/DTO.
 
+> ⚠️ **Breaking change for in-flight workflows:** Durable-workflow serializes activity return values to Redis. Any workflow started before this deploy that has reached the subtitle step has a `?string` serialized. After deploy, deserializing as `array{...}` will crash those tasks. **Drain queue before deploying this change.** In development this is a non-issue.
+
+> ⚠️ **Existing `SubtitleExtractorActivityTest.php` must be updated.** The file at `tests/Unit/Infrastructure/Workflow/Activities/SubtitleExtractorActivityTest.php` has 3 tests that assert `->toBe('subtitle text')` (string) and anonymous class providers that only implement `extract()`. After this change:
+> - Anonymous providers must also implement `extractTitle(): ?string`
+> - Return value assertions must change to `->toBe(['subtitles' => 'subtitle text', 'title' => null])`
+> Both updates are part of Step 5.
+
 **File:** `app/Infrastructure/Workflow/Activities/SubtitleExtractorActivity.php`
 
 Replace current content:
@@ -765,6 +759,103 @@ final class SubtitleExtractorActivity extends Activity
         ];
     }
 }
+```
+
+**Update `tests/Unit/Infrastructure/Workflow/Activities/SubtitleExtractorActivityTest.php` — replace all three anonymous providers and assertions:**
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use App\Application\Ports\Output\SubtitleProviderInterface;
+use App\Infrastructure\Workflow\Activities\SubtitleExtractorActivity;
+use Illuminate\Container\Container;
+use Workflow\Models\StoredWorkflow;
+
+beforeEach(function (): void {
+    $storedWorkflow = Mockery::mock(StoredWorkflow::class);
+    $storedWorkflow->shouldReceive('workflowOptions')->andReturn(new \Workflow\WorkflowOptions());
+    $storedWorkflow->shouldReceive('effectiveConnection')->andReturn(null);
+    $storedWorkflow->shouldReceive('effectiveQueue')->andReturn(null);
+    $storedWorkflow->shouldReceive('hasLogByIndex')->andReturn(false);
+    $storedWorkflow->shouldReceive('id')->andReturn(1);
+    $this->storedWorkflow = $storedWorkflow;
+});
+
+afterEach(function (): void {
+    Mockery::close();
+});
+
+it('returns subtitle text and title from provider', function (): void {
+    $provider = new class implements SubtitleProviderInterface {
+        /** @phpstan-ignore return.unusedType */
+        public function extract(string $youtubeUrl): ?string
+        {
+            return 'subtitle text';
+        }
+
+        public function extractTitle(string $youtubeUrl): ?string
+        {
+            return 'Video Title';
+        }
+    };
+
+    Container::getInstance()->instance(SubtitleProviderInterface::class, $provider);
+
+    $url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+    $activity = new SubtitleExtractorActivity(0, 'now', $this->storedWorkflow, $url);
+
+    expect($activity->execute($url))->toBe(['subtitles' => 'subtitle text', 'title' => 'Video Title']);
+});
+
+it('returns null subtitles and null title when provider returns null', function (): void {
+    $provider = new class implements SubtitleProviderInterface {
+        public function extract(string $youtubeUrl): ?string
+        {
+            return null;
+        }
+
+        public function extractTitle(string $youtubeUrl): ?string
+        {
+            return null;
+        }
+    };
+
+    Container::getInstance()->instance(SubtitleProviderInterface::class, $provider);
+
+    $url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+    $activity = new SubtitleExtractorActivity(0, 'now', $this->storedWorkflow, $url);
+
+    expect($activity->execute($url))->toBe(['subtitles' => null, 'title' => null]);
+});
+
+it('passes the youtube url to the subtitle provider', function (): void {
+    $provider = new class implements SubtitleProviderInterface {
+        public string $receivedUrl = '';
+
+        /** @phpstan-ignore return.unusedType */
+        public function extract(string $youtubeUrl): ?string
+        {
+            $this->receivedUrl = $youtubeUrl;
+
+            return 'some text';
+        }
+
+        public function extractTitle(string $youtubeUrl): ?string
+        {
+            return null;
+        }
+    };
+
+    Container::getInstance()->instance(SubtitleProviderInterface::class, $provider);
+
+    $url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+    $activity = new SubtitleExtractorActivity(0, 'now', $this->storedWorkflow, $url);
+    $activity->execute($url);
+
+    expect($provider->receivedUrl)->toBe($url);
+});
 ```
 
 - [ ] **Step 6: Update TranscribeVideoWorkflow to handle new return shape**
@@ -814,24 +905,43 @@ yield sideEffect(fn () => $this->storeTitle($taskId, $subtitleResult['title']));
 
 - [ ] **Step 7: Add `storeTitle` to MediaTaskRepositoryInterface and implementation**
 
+> ⚠️ **Interface signature uses `string`, not `?string`.** Guard against null at the call site in the workflow (see Step 6). This avoids a nullable trick inside the implementation and passes PHPStan level 9 cleanly.
+
 **File:** `app/Application/Ports/Output/MediaTaskRepositoryInterface.php`
 
 Add method signature:
 
 ```php
-public function storeTitle(string $taskId, ?string $title): void;
+/**
+ * Store the video title for the given task.
+ * Call site should guard against null before calling.
+ */
+public function storeTitle(string $taskId, string $title): void;
+```
+
+**File:** `app/Infrastructure/Workflow/Workflows/TranscribeVideoWorkflow.php`
+
+Change the `storeTitle` call site to guard against null:
+
+```php
+// In subtitle path:
+if ($subtitleResult['title'] !== null) {
+    yield sideEffect(fn () => $this->storeTitle($taskId, $subtitleResult['title']));
+}
+
+// In audio path (after storeTranscript):
+if ($subtitleResult['title'] !== null) {
+    yield sideEffect(fn () => $this->storeTitle($taskId, $subtitleResult['title']));
+}
 ```
 
 **File:** `app/Infrastructure/Adapters/Output/Persistence/MediaTaskEloquentRepository.php`
 
-Add implementation:
+Add implementation (non-nullable `$title`):
 
 ```php
-public function storeTitle(string $taskId, ?string $title): void
+public function storeTitle(string $taskId, string $title): void
 {
-    if ($title === null) {
-        return;
-    }
 
     MediaTaskModel::query()->where('id', $taskId)->update([
         'title' => $title,
@@ -866,9 +976,6 @@ git add app/Application/Ports/Output/SubtitleProviderInterface.php \
 git commit -m "feat: extract video title via yt-dlp and persist through workflow"
 ```
 
----
-
-### Task 3.4: Un-hardcode title in Controller API responses
 
 **Files:**
 - Modify: `app/Infrastructure/Adapters/Input/Web/TranscribeVideoController.php`
@@ -969,6 +1076,156 @@ This sprint requires:
 7. New Vue component: `resources/js/components/TranscriptViewer.vue` — parses segments, renders timecode buttons, `openAtTime()` via YouTube URL
 
 **Not included in this plan per YAGNI.** Reference [`plans/2026-05-10-ux-improvements-plan.md`](../../plans/2026-05-10-ux-improvements-plan.md) sections C1-C3 for full specification.
+
+---
+
+## Code Review — Findings Against Actual Source
+
+> **Reviewed:** 2026-05-10. All findings verified by reading actual source files.
+
+### 🔴 CRITICAL — Must Fix Before Execution
+
+#### CR-1: TailwindCSS v4 Typography Import Syntax Is Wrong
+
+**Location:** Task 2.1, Step 4 (`resources/css/app.css`)
+
+**Plan says:**
+```css
+@import 'tailwindcss';
+@import '@tailwindcss/typography';
+```
+
+**Reality:** The project uses **TailwindCSS v4** (`tailwindcss: ^4.0.0` in `package.json`) with the `@tailwindcss/vite` vite plugin (confirmed in `vite.config.js` line 4: `import tailwindcss from '@tailwindcss/vite'`). In v4, plugins are registered via the `@plugin` CSS directive, **not** `@import`.
+
+**Correct syntax:**
+```css
+@import 'tailwindcss';
+@plugin "@tailwindcss/typography";
+```
+
+> Without this fix the build will fail or typography styles won't load.
+
+---
+
+#### CR-2: Existing `SubtitleExtractorActivityTest.php` Will Break — Plan Doesn't Account For It
+
+**Location:** Task 3.3, Step 5 (changes `SubtitleExtractorActivity::execute()` return type from `?string` to `array{subtitles: ?string, title: ?string}`)
+
+**Reality:** `tests/Unit/Infrastructure/Workflow/Activities/SubtitleExtractorActivityTest.php` (78 lines, 3 tests) already exists and asserts:
+```php
+expect($activity->execute($url))->toBe('subtitle text');  // string
+expect($activity->execute($url))->toBeNull();              // null
+```
+After the plan's change:
+1. All three anonymous class providers must also implement the new `extractTitle()` method or PHPStan/Pest will fail
+2. All `->toBe('subtitle text')` assertions will fail because `execute()` now returns an array
+
+**Fix required:** Plan must include updating `SubtitleExtractorActivityTest.php` with:
+- Anonymous classes implementing new `extractTitle(): ?string`
+- Updated assertions: `->toBe(['subtitles' => 'subtitle text', 'title' => null])`
+
+---
+
+#### CR-3: MediaTaskTest Exists in Pest Style — Plan Proposes PHPUnit Class Style
+
+**Location:** Task 3.1, Step 1 (creates `tests/Unit/Domain/Entities/MediaTaskTest.php`)
+
+**Reality:** `tests/Unit/Domain/MediaTaskTest.php` already exists (47 lines) using **Pest functional style** (`it('...', function() {...})`). The plan proposes PHPUnit class style (`final class MediaTaskTest extends TestCase`).
+
+This creates two problems:
+1. The plan's new test file path is **wrong**: plan says `MediaTaskTest.php` in `tests/Unit/Domain/Entities/` but the existing file is at `tests/Unit/Domain/MediaTaskTest.php`
+2. Style mismatch — should follow existing Pest conventions
+
+**Fix required:**
+- Correct directory: `tests/Unit/Domain/MediaTaskTest.php` (no `Entities/` subfolder)
+- Convert test code to Pest style:
+```php
+it('has null title by default', function (): void {
+    $task = MediaTask::create('test-id', new YouTubeUrl('https://youtube.com/watch?v=dQw4w9WgXcQ'));
+    expect($task->title())->toBeNull();
+});
+
+it('stores title via setTitle', function (): void {
+    $task = MediaTask::create('test-id', new YouTubeUrl('https://youtube.com/watch?v=dQw4w9WgXcQ'));
+    $task->setTitle('Rick Astley - Never Gonna Give You Up');
+    expect($task->title())->toBe('Rick Astley - Never Gonna Give You Up');
+});
+
+it('title persists after complete', function (): void {
+    $task = MediaTask::create('test-id', new YouTubeUrl('https://youtube.com/watch?v=dQw4w9WgXcQ'));
+    $task->startProcessing('wf-123');
+    $task->setTitle('Test Video Title');
+    $task->complete('transcript text', 'summary text', 180);
+    expect($task->title())->toBe('Test Video Title')
+        ->and($task->status())->toBe(TranscriptionStatus::Completed);
+});
+```
+
+---
+
+### 🟡 MEDIUM — Should Fix
+
+#### CR-4: `OpenAiSummaryAdapterTest` — Wrong Test Path and Wrong Assertion Strategy
+
+**Location:** Task 2.3, Step 1
+
+**Reality:** `tests/Unit/Infrastructure/Adapters/Output/` contains only `YoutubeDl/` subfolder. No `Summary/` subdirectory exists yet. The plan creates `OpenAiSummaryAdapterTest.php` but the tests only verify `SummaryResult` (a VO), not the adapter's prompt. This cannot catch a regression if someone reverts the prompt change.
+
+**Better approach:** Since we can't make real OpenAI calls, document that the test verifies VO preservation (as in the plan) and add a separate integration test that mocks `curl_exec()` to verify the prompt string sent to the API contains Markdown instructions. This is more work but gives real regression protection. For v1.0, the current plan approach is acceptable — just document the limitation in the test docblock.
+
+---
+
+#### CR-5: Breaking Change Warning — In-Flight Workflows
+
+**Location:** Task 3.3 (changes `SubtitleExtractorActivity::execute()` return type)
+
+Durable-workflow serializes activity return values to Redis. Any workflow started before this deploy has a `?string` stored for the subtitle step. After deploy, the workflow will try to deserialize it as `array{subtitles: ?string, title: ?string}` → **runtime crash for in-flight tasks**.
+
+**Fix required for production:** Document migration strategy — drain the queue before deploying Task 3.3 changes, or accept that in-flight tasks will fail and retry.
+
+---
+
+#### CR-6: `storeTitle` Interface Accepts `?string` But Should Require `string`
+
+**Location:** Task 3.3, Step 7
+
+The plan adds:
+```php
+public function storeTitle(string $taskId, ?string $title): void;
+```
+And the implementation returns early for `null`. But callers always pass `$subtitleResult['title']` unconditionally — even when `null`. It's cleaner to guard at the call site:
+
+```php
+// In TranscribeVideoWorkflow:
+if ($subtitleResult['title'] !== null) {
+    yield sideEffect(fn () => $this->storeTitle($taskId, $subtitleResult['title']));
+}
+
+// Interface: non-nullable
+public function storeTitle(string $taskId, string $title): void;
+```
+
+This passes PHPStan level 9 cleanly without nullable trick inside the implementation.
+
+---
+
+### 🟢 VERIFIED CORRECT
+
+| Item | Status | Notes |
+|---|---|---|
+| App.vue line references (190, 115-161, 268-282) | ✅ Correct | Verified against actual file |
+| `video_id` available in API status response | ✅ Correct | `TranscribeVideoController::status()` line 93 |
+| `title: null` hardcoded in `history()` line 161 and `latest()` line 201 | ✅ Correct | Both confirmed |
+| `title` column in DB migration exists | ✅ Plan claims correctly | Not read but consistent with plan |
+| `complete()` signature: `(string, ?string, int)` | ✅ Correct | `MediaTask.php` line 62 — title must be set separately |
+| `copyLabel` at line 190, single ref | ✅ Correct | Splitting into two refs is the right approach |
+| `SubtitleExtractorActivity` currently returns `?string` | ✅ Correct | Line 13 confirmed |
+| `SubtitleProviderInterface` has only `extract()` | ✅ Correct | 11 lines, one method |
+| `MediaTaskRepositoryInterface` has no `storeTitle()` | ✅ Correct | Confirmed, must be added |
+| OpenAI prompt currently plain text (no Markdown) | ✅ Correct | Lines 25-31 confirmed |
+| TailwindCSS v4 via `@tailwindcss/vite` (NOT v3 config file) | ✅ Critical differentiator | `vite.config.js` line 4 + `package.json` confirmed |
+| Existing `SubtitleExtractorActivityTest` uses Pest style + anonymous classes | ✅ Must update | 3 failing tests if not updated |
+| Existing `MediaTaskTest` uses Pest style in `tests/Unit/Domain/` (not `Entities/`) | ✅ Wrong path in plan | File: `tests/Unit/Domain/MediaTaskTest.php` |
 
 ---
 
