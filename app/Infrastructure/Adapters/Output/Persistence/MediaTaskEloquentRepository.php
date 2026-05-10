@@ -82,6 +82,21 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
         return $model ? $this->toEntity($model) : null;
     }
 
+    public function storeTranscript(string $taskId, string $transcript): void
+    {
+        MediaTaskModel::query()->where('id', $taskId)->update([
+            'result_text' => $transcript,
+        ]);
+    }
+
+    public function getTranscript(string $taskId): ?string
+    {
+        /** @var MediaTaskModel|null $model */
+        $model = MediaTaskModel::query()->find($taskId);
+
+        return $model?->result_text;
+    }
+
     private function toEntity(MediaTaskModel $model): MediaTask
     {
         $task = MediaTask::create(

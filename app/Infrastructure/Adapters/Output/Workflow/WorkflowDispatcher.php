@@ -20,6 +20,11 @@ final class WorkflowDispatcher implements WorkflowDispatcherInterface
 
     public function dispatch(MediaTask $task): void
     {
+        // Transition to processing BEFORE starting workflow to prevent race condition
+        // where the workflow's PersistResultActivity loads the task while still pending.
+        $task->startProcessing('starting');
+        $this->repository->save($task);
+
         $workflowId = $this->workflowStarter->start(
             TranscribeVideoWorkflow::class,
             [
@@ -28,7 +33,9 @@ final class WorkflowDispatcher implements WorkflowDispatcherInterface
             ],
         );
 
-        $task->startProcessing((string) $workflowId);
+        // Update the real workflow ID now that the workflow has started.
+        // The task is already in 'processing' state.
+        $task->setWorkflowId((string) $workflowId);
         $this->repository->save($task);
     }
 }

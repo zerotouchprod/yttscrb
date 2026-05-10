@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Application\Ports\Output\AudioExtractorInterface;
 use App\Domain\ValueObjects\AudioFile;
 use App\Domain\ValueObjects\YouTubeUrl;
-use App\Infrastructure\Workflow\Activities\DownloadAudioActivity;
+use App\Infrastructure\Workflow\Activities\AudioDownloaderActivity;
 use App\Infrastructure\Workflow\DTO\DownloadedAudioResult;
 use Illuminate\Container\Container;
 use Workflow\Models\StoredWorkflow;
@@ -35,7 +35,7 @@ it('downloads audio through audio extractor port and returns typed result', func
     Container::getInstance()->instance(AudioExtractorInterface::class, $extractor);
 
     $url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-    $activity = new DownloadAudioActivity(0, 'now', $this->storedWorkflow, 'task-123', $url);
+    $activity = new AudioDownloaderActivity(0, 'now', $this->storedWorkflow, 'task-123', $url);
 
     $result = $activity->execute('task-123', $url);
 
@@ -58,7 +58,7 @@ it('passes the youtube url to the audio extractor', function (): void {
     Container::getInstance()->instance(AudioExtractorInterface::class, $extractor);
 
     $url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-    $activity = new DownloadAudioActivity(0, 'now', $this->storedWorkflow, 'task-123', $url);
+    $activity = new AudioDownloaderActivity(0, 'now', $this->storedWorkflow, 'task-123', $url);
     $activity->execute('task-123', $url);
 
     expect($extractor->receivedUrl)->toBeInstanceOf(YouTubeUrl::class)

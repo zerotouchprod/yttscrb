@@ -22,4 +22,16 @@ interface MediaTaskRepositoryInterface
     public function findAllPaginated(?string $status, int $perPage, int $page): LengthAwarePaginator;
 
     public function findLatestCompleted(): ?MediaTask;
+
+    /**
+     * Store intermediate transcript text for the given task.
+     * Used by workflow activities to avoid passing large text via Redis-serialized arguments.
+     */
+    public function storeTranscript(string $taskId, string $transcript): void;
+
+    /**
+     * Retrieve intermediate transcript text for the given task.
+     * Returns null if not yet stored.
+     */
+    public function getTranscript(string $taskId): ?string;
 }

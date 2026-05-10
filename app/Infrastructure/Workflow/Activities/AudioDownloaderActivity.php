@@ -10,7 +10,7 @@ use App\Infrastructure\Workflow\DTO\DownloadedAudioResult;
 use Illuminate\Container\Container;
 use Workflow\Activity;
 
-final class DownloadAudioActivity extends Activity
+final class AudioDownloaderActivity extends Activity
 {
     public function execute(string $taskId, string $youtubeUrl): DownloadedAudioResult
     {

@@ -40,6 +40,25 @@ final class MediaTask
         $this->workflowId = $workflowId;
     }
 
+    /**
+     * Update the workflow ID without state transition.
+     * Used when the task is already in processing state and the real workflow ID
+     * becomes available after the workflow has started.
+     *
+     * @throws LogicException if the task is not in processing state.
+     */
+    public function setWorkflowId(string $workflowId): void
+    {
+        if ($this->status !== TranscriptionStatus::Processing) {
+            throw new LogicException(
+                'Cannot set workflow ID on a task that is not in processing state. ' .
+                'Current status: ' . $this->status->value,
+            );
+        }
+
+        $this->workflowId = $workflowId;
+    }
+
     public function complete(string $transcript, ?string $summary, int $durationSec): void
     {
         $this->transitionTo(TranscriptionStatus::Completed);

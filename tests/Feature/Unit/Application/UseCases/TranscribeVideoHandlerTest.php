@@ -57,6 +57,15 @@ final class TranscribeVideoHandlerTest extends TestCase
             {
                 return null;
             }
+
+            public function storeTranscript(string $taskId, string $transcript): void
+            {
+            }
+
+            public function getTranscript(string $taskId): ?string
+            {
+                return null;
+            }
         };
 
         $dispatcher = new class () implements WorkflowDispatcherInterface {
@@ -107,6 +116,15 @@ final class TranscribeVideoHandlerTest extends TestCase
             }
 
             public function findLatestCompleted(): ?MediaTask
+            {
+                return null;
+            }
+
+            public function storeTranscript(string $taskId, string $transcript): void
+            {
+            }
+
+            public function getTranscript(string $taskId): ?string
             {
                 return null;
             }

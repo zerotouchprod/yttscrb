@@ -61,6 +61,15 @@ it('starts durable workflow and stores returned workflow id', function (): void 
         {
             return null;
         }
+
+        public function storeTranscript(string $taskId, string $transcript): void
+        {
+        }
+
+        public function getTranscript(string $taskId): ?string
+        {
+            return null;
+        }
     };
 
     $dispatcher = new WorkflowDispatcher($launcher, $repository);

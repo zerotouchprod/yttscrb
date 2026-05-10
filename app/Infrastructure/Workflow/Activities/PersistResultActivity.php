@@ -10,10 +10,25 @@ use Workflow\Activity;
 
 final class PersistResultActivity extends Activity
 {
-    public function execute(string $taskId, string $transcript, ?string $summary, int $durationSec): void
+    public function execute(string $taskId, ?string $summary, int $durationSec): void
     {
         /** @var MediaTaskRepositoryInterface $repository */
         $repository = Container::getInstance()->make(MediaTaskRepositoryInterface::class);
+
+        $transcript = $repository->getTranscript($taskId);
+
+        if ($transcript === null) {
+            $task = $repository->findById($taskId);
+
+            if ($task !== null) {
+                $task->fail(
+                    'Transcript not found at persist stage — sideEffect may have failed or DB was wiped during replay'
+                );
+                $repository->save($task);
+            }
+
+            return;
+        }
 
         $task = $repository->findById($taskId);
 
