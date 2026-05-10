@@ -113,51 +113,91 @@
 
         <!-- Completed State -->
         <div v-if="task.status === 'completed' && task.result">
-          <!-- Summary -->
-          <div class="mb-6 bg-gray-700/60 border-l-4 border-blue-500 rounded-r-lg p-4">
-            <h2 class="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-              <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-              Summary
-            </h2>
-            <p class="text-gray-300 break-words">{{ task.result.summary }}</p>
+          <!-- Tab Switcher -->
+          <div class="flex gap-1 mb-5 bg-gray-700/40 rounded-lg p-1" role="tablist">
+            <button
+              @click="activeTab = 'summary'"
+              :class="activeTab === 'summary'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'"
+              class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-150"
+              role="tab"
+              :aria-selected="activeTab === 'summary'"
+              aria-controls="panel-summary"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              AI Summary
+            </button>
+            <button
+              @click="activeTab = 'transcript'"
+              :class="activeTab === 'transcript'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'"
+              class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-150"
+              role="tab"
+              :aria-selected="activeTab === 'transcript'"
+              aria-controls="panel-transcript"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              Transcript
+            </button>
           </div>
 
-          <!-- Transcript -->
-          <div class="mb-6">
-            <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
-              <h2 class="text-lg font-semibold text-white flex items-center gap-2">
-                <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                Transcript
+          <!-- Summary Panel -->
+          <div v-show="activeTab === 'summary'" id="panel-summary" role="tabpanel">
+            <div class="mb-6 bg-gray-700/60 border-l-4 border-blue-500 rounded-r-lg p-4">
+              <h2 class="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                Summary
               </h2>
-              <div class="flex items-center gap-3">
+              <p class="text-gray-300 break-words">{{ task.result.summary }}</p>
+            </div>
+            <button
+              @click="copySummary"
+              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium px-5 py-3 sm:py-2.5 rounded-lg transition-colors"
+              :aria-label="copySummaryLabel"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              {{ copySummaryLabel }}
+            </button>
+          </div>
+
+          <!-- Transcript Panel -->
+          <div v-show="activeTab === 'transcript'" id="panel-transcript" role="tabpanel">
+            <div class="mb-6">
+              <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                  <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  Transcript
+                </h2>
                 <span class="text-sm text-gray-400">{{ task.result.word_count }} words</span>
-                <button
-                  @click="copyTranscript"
-                  class="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
-                  aria-label="Copy transcript to clipboard"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                  {{ copyLabel }}
-                </button>
+              </div>
+              <div class="bg-gray-700/50 rounded-lg p-4 max-h-96 overflow-y-auto">
+                <p class="text-gray-300 whitespace-pre-wrap text-sm leading-relaxed break-words">{{ task.result.transcript }}</p>
               </div>
             </div>
-            <div class="bg-gray-700/50 rounded-lg p-4 max-h-96 overflow-y-auto">
-              <p class="text-gray-300 whitespace-pre-wrap text-sm leading-relaxed break-words">{{ task.result.transcript }}</p>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <button
+                @click="copyTranscript"
+                class="flex-1 inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium px-5 py-3 sm:py-2.5 rounded-lg transition-colors"
+                :aria-label="copyTranscriptLabel"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                {{ copyTranscriptLabel }}
+              </button>
+              <a
+                :href="`/api/transcribe/${task.task_id}/download`"
+                class="flex-1 inline-flex items-center justify-center gap-2 border border-gray-600 hover:border-gray-400 text-gray-300 hover:text-white font-medium px-5 py-3 sm:py-2.5 rounded-lg transition-colors"
+                download
+                aria-label="Download transcript as TXT"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Download .txt
+              </a>
             </div>
           </div>
-
-          <!-- Download Button -->
-          <a
-            :href="`/api/transcribe/${task.task_id}/download`"
-            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-medium px-5 py-3 sm:py-2.5 rounded-lg transition-colors shadow-lg shadow-green-600/20"
-            download
-            aria-label="Download transcript as TXT"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
-            Download TXT
-          </a>
         </div>
 
         <!-- Failed State -->
@@ -187,7 +227,9 @@ const task = ref(null);
 const error = ref(null);
 const isLoading = ref(false);
 const urlValidationError = ref(null);
-const copyLabel = ref('Copy');
+const copySummaryLabel = ref('Copy Summary');
+const copyTranscriptLabel = ref('Copy Transcript');
+const activeTab = ref('summary');
 let pollTimer = null;
 
 const statusBadgeClass = computed(() => {
@@ -225,6 +267,7 @@ async function submitUrl() {
       youtube_url: youtubeUrl.value,
     });
     task.value = data;
+    activeTab.value = 'summary';
     startPolling(data.task_id);
   } catch (e) {
     error.value = e.response?.data?.error?.message || 'Failed to submit URL. Please try again.';
@@ -269,15 +312,23 @@ async function copyTranscript() {
   if (!task.value?.result?.transcript) return;
   try {
     await navigator.clipboard.writeText(task.value.result.transcript);
-    copyLabel.value = 'Copied!';
-    setTimeout(() => {
-      copyLabel.value = 'Copy';
-    }, 2000);
+    copyTranscriptLabel.value = 'Copied!';
+    setTimeout(() => { copyTranscriptLabel.value = 'Copy Transcript'; }, 2000);
   } catch {
-    copyLabel.value = 'Failed';
-    setTimeout(() => {
-      copyLabel.value = 'Copy';
-    }, 2000);
+    copyTranscriptLabel.value = 'Failed';
+    setTimeout(() => { copyTranscriptLabel.value = 'Copy Transcript'; }, 2000);
+  }
+}
+
+async function copySummary() {
+  if (!task.value?.result?.summary) return;
+  try {
+    await navigator.clipboard.writeText(task.value.result.summary);
+    copySummaryLabel.value = 'Copied!';
+    setTimeout(() => { copySummaryLabel.value = 'Copy Summary'; }, 2000);
+  } catch {
+    copySummaryLabel.value = 'Failed';
+    setTimeout(() => { copySummaryLabel.value = 'Copy Summary'; }, 2000);
   }
 }
 
