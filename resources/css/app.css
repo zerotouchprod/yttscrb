@@ -9,3 +9,18 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/* Hero decorative glow */
+@utility hero-glow {
+    background: radial-gradient(ellipse at 50% 0%, rgba(59, 130, 246, 0.18), transparent 65%);
+}
+
+/* Shimmer animation for skeleton loading */
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+@utility animate-shimmer {
+    animation: shimmer 1.5s infinite;
+}

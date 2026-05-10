@@ -5,24 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- Primary SEO -->
-    <title>YTTSCRB — Free YouTube Transcriber & AI Summarizer | Video to Text</title>
+    <title>TubeSum — Free YouTube Transcriber & AI Summarizer | Video to Text</title>
     <meta name="description" content="Free YouTube video to text transcription with AI-powered summary. No signup required. Extract subtitles, transcribe audio, and get instant summaries from any YouTube video.">
     <meta name="keywords" content="YouTube transcriber, YouTube transcription, video to text, YouTube summarizer, AI summary, speech to text, YouTube subtitle extractor, free transcription, транскрибация YouTube, расшифровка видео, суммаризация, текст из видео">
     <meta name="robots" content="index, follow">
-    <meta name="author" content="YTTSCRB">
-    <link rel="canonical" href="https://yttscrb.com">
+    <meta name="author" content="TubeSum">
+    <link rel="canonical" href="https://tubesum.app">
 
     <!-- Open Graph -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="YTTSCRB — Free YouTube Transcriber & AI Summarizer">
+    <meta property="og:title" content="TubeSum — Free YouTube Transcriber & AI Summarizer">
     <meta property="og:description" content="Free YouTube video to text transcription with AI-powered summary. No signup required. Extract subtitles, transcribe audio, and get instant summaries.">
-    <meta property="og:url" content="https://yttscrb.com">
-    <meta property="og:site_name" content="YTTSCRB">
+    <meta property="og:url" content="https://tubesum.app">
+    <meta property="og:site_name" content="TubeSum">
     <meta property="og:locale" content="en_US">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="YTTSCRB — Free YouTube Transcriber & AI Summarizer">
+    <meta name="twitter:title" content="TubeSum — Free YouTube Transcriber & AI Summarizer">
     <meta name="twitter:description" content="Free YouTube video to text transcription with AI-powered summary. No signup required.">
 
     <!-- Structured Data (JSON-LD) -->
@@ -30,9 +30,9 @@
     {
         "@@context": "https://schema.org",
         "@type": "WebApplication",
-        "name": "YTTSCRB",
+        "name": "TubeSum",
         "description": "Free YouTube video to text transcription with AI-powered summary. No signup required.",
-        "url": "https://yttscrb.com",
+        "url": "https://tubesum.app",
         "applicationCategory": "MultimediaApplication",
         "operatingSystem": "Web",
         "offers": {

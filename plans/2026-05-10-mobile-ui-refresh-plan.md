@@ -2,7 +2,7 @@
 
 ## Overview
 
-Исправление мобильной вёрстки и визуальное улучшение главного экрана YTTSCRB без изменения продуктовой логики, API-контрактов или структуры данных.
+Исправление мобильной вёрстки и визуальное улучшение главного экрана TubeSum без изменения продуктовой логики, API-контрактов или структуры данных.
 
 **Спецификация:** [`docs/superpowers/specs/2026-05-10-mobile-ui-refresh-design.md`](../docs/superpowers/specs/2026-05-10-mobile-ui-refresh-design.md)
 
@@ -273,11 +273,11 @@ Phase 7 — финальная проверка.
 
 | Тег | Содержание |
 |-----|-----------|
-| `<title>` | `YTTSCRB — Free YouTube Transcriber & AI Summarizer \| Video to Text` |
+| `<title>` | `TubeSum — Free YouTube Transcriber & AI Summarizer \| Video to Text` |
 | `description` | 155 символов: Free, no signup, AI summary, extract subtitles, transcribe audio |
 | `keywords` | EN: YouTube transcriber, transcription, video to text, summarizer, AI summary, speech to text, subtitle extractor, free transcription. RU: транскрибация YouTube, расшифровка видео, суммаризация, текст из видео |
 | `robots` | `index, follow` |
-| `canonical` | `https://yttscrb.com` |
+| `canonical` | `https://tubesum.app` |
 
 ### 9.2 Open Graph
 
