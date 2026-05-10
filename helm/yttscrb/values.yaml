@@ -22,7 +22,7 @@ app:
       php artisan serve --host=0.0.0.0 --port=80
   env:
     APP_ENV: production
-    APP_URL: http://ytt.aividup.com
+    APP_URL: http://tubesum.app
     DB_CONNECTION: pgsql
     DB_HOST: yttscrb-postgresql
     DB_PORT: "5432"
@@ -74,7 +74,7 @@ service:
 ingress:
   enabled: true
   className: traefik
-  host: ytt.aividup.com
+  host: tubesum.app
   tlsSecretName: ""
 
 postgresql:
