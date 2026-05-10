@@ -1,7 +1,7 @@
 # UX Improvements Plan — Video Preview, Tabs, Markdown, Timecodes
 
 > **Дата:** 2026-05-10
-> **Статус:** Draft
+> **Статус:** In Progress — см. [`2026-05-10-ux-refinement-review.md`](2026-05-10-ux-refinement-review.md) для Phase 2 review
 > **Ссылки:** [`Prd.md`](../Prd.md), [`AGENTS.md`](../AGENTS.md), [`App.vue`](../resources/js/App.vue)
 
 ---

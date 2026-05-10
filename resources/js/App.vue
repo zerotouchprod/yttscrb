@@ -5,22 +5,22 @@
       <div class="hero-glow absolute inset-0 pointer-events-none"></div>
       <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 text-center relative">
         <h1 class="text-5xl sm:text-6xl font-bold tracking-tight mb-3">
-          <span class="bg-gradient-to-r from-blue-400 via-blue-300 to-blue-200 bg-clip-text text-transparent">TubeSum</span>
+          <a href="/" class="bg-gradient-to-r from-blue-400 via-blue-300 to-blue-200 bg-clip-text text-transparent hover:from-blue-300 hover:via-blue-200 hover:to-blue-100 transition-all duration-300">TubeSum</a>
         </h1>
         <p class="text-lg sm:text-xl text-gray-400 mb-5">
           YouTube Transcriber & Summarizer
         </p>
-        <!-- Value Pills -->
+        <!-- Value Pills — informational badges, not buttons -->
         <div class="flex flex-wrap justify-center gap-2">
-          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-800/80 text-gray-300 border border-gray-700/50">
-            <svg class="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-700/30 text-gray-500">
+            <svg class="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             No Signup
           </span>
-          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-800/80 text-gray-300 border border-gray-700/50">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-700/30 text-gray-500">
             <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
             AI Summary
           </span>
-          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-800/80 text-gray-300 border border-gray-700/50">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-700/30 text-gray-500">
             <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             Full Transcript
           </span>
@@ -38,17 +38,18 @@
               type="text"
               placeholder="https://youtube.com/watch?v=..."
               aria-label="YouTube video URL"
-              class="w-full bg-gray-700/80 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200"
-              :class="{ 'border-red-500 focus:ring-red-500/50 focus:border-red-500': urlValidationError }"
+              class="w-full bg-gray-700/80 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+              :class="{ 'border-red-500 focus:ring-red-500 focus:border-red-500': urlValidationError }"
               :disabled="isLoading"
               @input="urlValidationError = null"
             />
             <p v-if="urlValidationError" class="mt-1.5 text-sm text-red-400" role="alert">{{ urlValidationError }}</p>
           </div>
+          <!-- CTA: always blue, never gray — validation happens on click -->
           <button
             type="submit"
-            :disabled="isLoading || !youtubeUrl.trim()"
-            class="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-lg shadow-blue-500/20 disabled:shadow-none whitespace-nowrap"
+            :disabled="isLoading"
+            class="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 disabled:opacity-60 disabled:cursor-not-allowed text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-lg shadow-blue-500/20 disabled:shadow-none whitespace-nowrap"
           >
             <span v-if="isLoading" class="flex items-center justify-center gap-2">
               <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
@@ -75,22 +76,14 @@
         <!-- Status Badge Row -->
         <div class="flex items-center gap-3 mb-5">
           <span :class="statusBadgeClass" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium capitalize" role="status">
-            <!-- Pending: clock icon -->
             <svg v-if="task.status === 'pending'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <!-- Processing: spinner -->
             <svg v-if="task.status === 'processing'" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24" aria-busy="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-            <!-- Completed: check-circle -->
             <svg v-if="task.status === 'completed'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <!-- Failed: x-circle -->
             <svg v-if="task.status === 'failed'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             {{ task.status }}
           </span>
-          <span v-if="task.status === 'processing'" class="text-gray-400 text-sm flex items-center gap-1">
-            <svg class="animate-spin h-4 w-4 inline" viewBox="0 0 24 24" aria-hidden="true">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-            </svg>
-            Estimated: ~{{ task.estimated_completion_sec || 90 }}s
+          <span v-if="task.status === 'processing'" class="text-gray-400 text-sm">
+            ~{{ task.estimated_completion_sec || 90 }}s
           </span>
         </div>
 
@@ -99,32 +92,60 @@
           <p class="text-gray-400">Task queued. Starting soon...</p>
         </div>
 
-        <!-- Processing State -->
-        <div v-if="task.status === 'processing'" class="text-center py-6">
-          <div class="space-y-3 max-w-md mx-auto">
+        <!-- Processing State — dynamic step labels -->
+        <div v-if="task.status === 'processing'" class="py-4">
+          <!-- Progress bar -->
+          <div class="h-1.5 bg-gray-700 rounded-full mb-5 overflow-hidden">
+            <div
+              class="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full transition-all duration-1000"
+              :style="{ width: processingProgress + '%' }"
+            ></div>
+          </div>
+          <!-- Skeleton lines -->
+          <div class="space-y-3 max-w-md mx-auto mb-5">
             <div class="animate-shimmer h-3 rounded bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 bg-[length:200%_100%] w-full"></div>
             <div class="animate-shimmer h-3 rounded bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 bg-[length:200%_100%] w-3/4"></div>
             <div class="animate-shimmer h-3 rounded bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 bg-[length:200%_100%] w-1/2"></div>
             <div class="animate-shimmer h-3 rounded bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 bg-[length:200%_100%] w-5/6"></div>
             <div class="animate-shimmer h-3 rounded bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 bg-[length:200%_100%] w-2/3"></div>
           </div>
-          <p class="text-gray-400 mt-6">Transcribing your video... This may take a minute or two.</p>
+          <!-- Dynamic step label -->
+          <p class="text-center text-gray-400 text-sm transition-all duration-500">
+            <span class="mr-1.5">{{ processingStep.icon }}</span>{{ processingStep.text }}
+          </p>
         </div>
 
-        <!-- Completed State -->
+        <!-- Completed state: result not yet loaded (defensive fallback for slow networks) -->
+        <div v-if="task.status === 'completed' && !task.result" class="py-6 text-center">
+          <div class="space-y-3 max-w-md mx-auto mb-4">
+            <div class="animate-shimmer h-3 rounded bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 bg-[length:200%_100%] w-full"></div>
+            <div class="animate-shimmer h-3 rounded bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 bg-[length:200%_100%] w-4/5"></div>
+            <div class="animate-shimmer h-3 rounded bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 bg-[length:200%_100%] w-3/5"></div>
+          </div>
+          <p class="text-gray-500 text-sm">Loading cached result...</p>
+        </div>
+
+        <!-- Completed State — only render when result data is fully loaded -->
         <div v-if="task.status === 'completed' && task.result">
-          <!-- Video Preview (completed only) -->
-          <div v-if="thumbnailUrl && !thumbnailError" class="mb-5">
+          <!-- Video Preview — compact horizontal layout -->
+          <div v-if="thumbnailUrl && !thumbnailError" class="flex gap-4 items-start mb-5">
             <img
               :src="thumbnailUrl"
               @error="thumbnailError = true"
-              class="w-full rounded-lg aspect-video object-cover bg-gray-700"
+              class="w-[150px] flex-shrink-0 rounded-lg object-cover bg-gray-700"
+              style="aspect-ratio: 16/9"
               :alt="task.title || 'YouTube video thumbnail'"
               loading="lazy"
             />
-            <p class="mt-2 text-sm text-gray-400 truncate">
-              {{ task.title || task.youtube_url }}
-            </p>
+            <div class="min-w-0 flex-1 pt-0.5">
+              <h2 class="text-sm font-semibold text-white leading-snug line-clamp-3">
+                {{ task.title || 'YouTube Video' }}
+              </h2>
+              <p class="mt-1.5 text-xs text-gray-500 truncate">{{ task.youtube_url }}</p>
+              <p v-if="task.duration_sec" class="mt-1 text-xs text-gray-600">
+                {{ formatDuration(task.duration_sec) }}
+              </p>
+            </div>
           </div>
 
           <!-- Tab Switcher -->
@@ -176,7 +197,7 @@
             </button>
           </div>
 
-          <!-- Transcript Panel -->
+          <!-- Transcript Panel — paragraph-chunked for readability -->
           <div v-show="activeTab === 'transcript'" id="panel-transcript" role="tabpanel">
             <div class="mb-6">
               <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
@@ -187,7 +208,23 @@
                 <span class="text-sm text-gray-400">{{ task.result.word_count }} words</span>
               </div>
               <div class="bg-gray-700/50 rounded-lg p-4 max-h-96 overflow-y-auto">
-                <p class="text-gray-300 whitespace-pre-wrap text-sm leading-relaxed break-words">{{ task.result.transcript }}</p>
+                <!-- Paragraph-chunked transcript with estimated timecodes -->
+                <div
+                  v-for="(chunk, index) in groupedTranscript"
+                  :key="index"
+                  class="mb-3 last:mb-0 text-sm leading-relaxed text-gray-300 break-words"
+                >
+                  <a
+                    v-if="chunk.timeSec !== null && task.video_id"
+                    :href="`https://youtube.com/watch?v=${task.video_id}&t=${chunk.timeSec}`"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-block text-blue-400 hover:text-blue-300 font-mono text-xs mr-2 transition-colors shrink-0"
+                    :title="`Open YouTube at ${formatTimecode(chunk.timeSec)}`"
+                  >[{{ formatTimecode(chunk.timeSec) }}]</a><span
+                    v-else-if="chunk.timeSec === null && index === 0"
+                  ></span>{{ chunk.text }}
+                </div>
               </div>
             </div>
             <div class="flex flex-col sm:flex-row gap-2">
@@ -248,6 +285,44 @@ const copyTranscriptLabel = ref('Copy Transcript');
 const activeTab = ref('summary');
 const thumbnailError = ref(false);
 
+// Processing step tracking
+const processingStartedAt = ref(null);
+const processingElapsed = ref(0);
+let elapsedTimer = null;
+
+const PROCESSING_STEPS = [
+  { maxSec: 10,       icon: '📥', text: 'Downloading audio track...' },
+  { maxSec: 60,       icon: '🤖', text: 'Transcribing speech with AI (Whisper / Groq)...' },
+  { maxSec: 90,       icon: '✨', text: 'Generating smart summary...' },
+  { maxSec: Infinity, icon: '⏳', text: 'Finalizing... almost done!' },
+];
+
+const processingStep = computed(() => {
+  const elapsed = processingElapsed.value;
+  return PROCESSING_STEPS.find(s => elapsed < s.maxSec) ?? PROCESSING_STEPS[PROCESSING_STEPS.length - 1];
+});
+
+const processingProgress = computed(() => {
+  const total = task.value?.estimated_completion_sec || 90;
+  return Math.min(Math.round((processingElapsed.value / total) * 100), 95);
+});
+
+function startElapsedTimer() {
+  processingStartedAt.value = Date.now();
+  processingElapsed.value = 0;
+  stopElapsedTimer();
+  elapsedTimer = setInterval(() => {
+    processingElapsed.value = Math.round((Date.now() - processingStartedAt.value) / 1000);
+  }, 1000);
+}
+
+function stopElapsedTimer() {
+  if (elapsedTimer) {
+    clearInterval(elapsedTimer);
+    elapsedTimer = null;
+  }
+}
+
 const thumbnailUrl = computed(() => {
   if (!task.value?.video_id) return null;
   return `https://img.youtube.com/vi/${task.value.video_id}/maxresdefault.jpg`;
@@ -258,6 +333,54 @@ const renderedSummary = computed(() => {
   if (!raw) return '';
   return DOMPurify.sanitize(marked.parse(raw));
 });
+
+/**
+ * Split transcript into ~80-word chunks with estimated timecodes.
+ * Time is derived from video duration_sec proportional to word position.
+ * Falls back to timeSec=null when duration is unavailable.
+ */
+const groupedTranscript = computed(() => {
+  const text = task.value?.result?.transcript ?? '';
+  if (!text) return [];
+
+  const CHUNK_SIZE = 80;
+  const words = text.split(/\s+/);
+  const totalWords = words.length;
+  const durationSec = task.value?.duration_sec ?? 0;
+  const wordsPerSec = durationSec > 0 && totalWords > 0
+    ? totalWords / durationSec
+    : 0;
+
+  const chunks = [];
+  for (let i = 0; i < words.length; i += CHUNK_SIZE) {
+    const timeSec = wordsPerSec > 0
+      ? Math.round(i / wordsPerSec)
+      : null;
+    chunks.push({
+      text: words.slice(i, i + CHUNK_SIZE).join(' '),
+      timeSec,
+    });
+  }
+  return chunks;
+});
+
+/** Format seconds → "MM:SS" timecode label (e.g. "12:05") */
+function formatTimecode(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+/** Format seconds → "12:05" or "1:02:45" */
+function formatDuration(sec) {
+  if (!sec) return '';
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 let pollTimer = null;
 
 const statusBadgeClass = computed(() => {
@@ -283,6 +406,11 @@ async function submitUrl() {
   error.value = null;
   urlValidationError.value = null;
 
+  if (!youtubeUrl.value.trim()) {
+    urlValidationError.value = 'Please paste a YouTube URL to get started.';
+    return;
+  }
+
   if (!isValidYouTubeUrl(youtubeUrl.value.trim())) {
     urlValidationError.value = 'Please enter a valid YouTube URL (e.g. https://youtube.com/watch?v=... or https://youtu.be/...)';
     return;
@@ -297,6 +425,13 @@ async function submitUrl() {
     task.value = data;
     activeTab.value = 'summary';
     thumbnailError.value = false;
+
+    if (data.status === 'completed' && data.result) {
+      // Full data already in POST response (cached duplicate) — no polling needed
+      return;
+    }
+
+    if (data.status === 'processing') startElapsedTimer();
     startPolling(data.task_id);
   } catch (e) {
     error.value = e.response?.data?.error?.message || 'Failed to submit URL. Please try again.';
@@ -313,19 +448,28 @@ function startPolling(taskId) {
     attempts++;
     try {
       const { data } = await axios.get(`/api/transcribe/${taskId}`);
+
+      // Start elapsed timer when task transitions to processing
+      if (data.status === 'processing' && task.value?.status !== 'processing') {
+        startElapsedTimer();
+      }
+
       task.value = data;
 
       if (data.status === 'completed' || data.status === 'failed') {
         stopPolling();
+        stopElapsedTimer();
       }
 
       // Stop polling after 120 attempts (~10 minutes)
       if (attempts > 120) {
         stopPolling();
+        stopElapsedTimer();
       }
     } catch (e) {
       error.value = 'Failed to fetch task status.';
       stopPolling();
+      stopElapsedTimer();
     }
   }, 5000);
 }
@@ -369,5 +513,6 @@ function retry() {
 
 onUnmounted(() => {
   stopPolling();
+  stopElapsedTimer();
 });
 </script>

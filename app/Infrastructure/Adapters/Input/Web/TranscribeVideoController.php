@@ -72,12 +72,24 @@ final class TranscribeVideoController extends Controller
         $storedTask = $this->handler->handle($task);
 
         if ($storedTask->id() !== $task->id()) {
+            // Return full completed payload (same shape as status()) so the frontend
+            // can render immediately without an extra polling round-trip.
             return new JsonResponse([
-                'task_id' => $storedTask->id(),
-                'status' => $storedTask->status()->value,
-                'message' => 'This video has already been transcribed.',
-                '_links' => [
-                    'download' => "/api/transcribe/{$storedTask->id()}/download",
+                'task_id'      => $storedTask->id(),
+                'status'       => $storedTask->status()->value,
+                'youtube_url'  => $storedTask->youtubeUrl()->value(),
+                'video_id'     => $storedTask->youtubeUrl()->videoId()->value(),
+                'title'        => $storedTask->title(),
+                'duration_sec' => $storedTask->durationSec(),
+                'result'       => [
+                    'transcript' => $storedTask->resultText()?->value(),
+                    'summary'    => $storedTask->summary(),
+                    'word_count' => $storedTask->resultText()?->wordCount(),
+                ],
+                'completed_at' => $storedTask->completedAt()?->format('c'),
+                '_links'       => [
+                    'self'         => "/api/transcribe/{$storedTask->id()}",
+                    'download_txt' => "/api/transcribe/{$storedTask->id()}/download",
                 ],
             ], Response::HTTP_OK);
         }
