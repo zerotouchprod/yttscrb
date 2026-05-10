@@ -4,13 +4,20 @@
 #
 # Prerequisites on the deployment host:
 #   - Docker (logged into ghcr.io)
-#   - kubectl (with KUBECONFIG=/etc/rancher/k3s/k3s.yaml or equivalent)
+#   - kubectl (KUBECONFIG defaults to /etc/rancher/k3s/k3s.yaml)
 #   - Helm 3.x
 #   - Git clone of this repo at ~/apps/yttscrb
 #
 # Usage:
-#   ./deploy.sh                    # Build from HEAD, push, deploy
-#   ./deploy.sh --tag 47f9503      # Deploy an already-pushed tag
+#   ./deploy.sh                         # Build from HEAD, push, deploy
+#   ./deploy.sh --tag 47f9503           # Deploy an already-pushed tag
+#   KUBECONFIG=/path ./deploy.sh        # Use custom kubeconfig
+#
+# Troubleshooting:
+#   - "context deadline exceeded" → check KUBECONFIG & cluster health
+#   - "password authentication failed" → DB_PASSWORD mismatch between secret and values.yaml
+#   - "ERR AUTH" → REDIS_PASSWORD in secret but Redis auth is disabled
+#   - "Unsupported cipher" → APP_KEY in secret is not valid base64:... format
 #
 
 set -euo pipefail
@@ -22,6 +29,9 @@ RELEASE="yttscrb"
 IMAGE="ghcr.io/zerotouchprod/yttscrb"
 KUBECONFIG="${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}"
 HELM_CHART="${REPO_DIR}/helm/yttscrb"
+
+# Ensure KUBECONFIG is exported for kubectl + helm subprocesses
+export KUBECONFIG
 
 # ── Pre-flight checks ─────────────────────────────────────────
 check_cmd() {
@@ -37,6 +47,48 @@ check_cmd helm
 check_cmd git
 
 cd "$REPO_DIR"
+
+# ── Verify Kubernetes secret & APP_KEY ─────────────────────────
+SECRET_NAME="yttscrb-secrets"
+echo "=== Checking Kubernetes secret '$SECRET_NAME' in namespace '$NAMESPACE' ==="
+
+if ! kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+    echo "ERROR: Secret '$SECRET_NAME' not found in namespace '$NAMESPACE'." >&2
+    echo "" >&2
+    echo "Create it with:" >&2
+    echo "  kubectl create secret generic $SECRET_NAME -n $NAMESPACE \\" >&2
+    echo "    --from-literal=APP_KEY=\"base64:\$(php artisan key:generate --show | cut -d: -f2-)\" \\" >&2
+    echo "    --from-literal=DB_PASSWORD=\"secret\" \\" >&2
+    echo "    --from-literal=GROQ_API_KEY=\"<your-key>\" \\" >&2
+    echo "    --from-literal=OPENAI_API_KEY=\"<your-key>\"" >&2
+    echo "" >&2
+    echo "Do NOT add REDIS_PASSWORD — Redis auth is disabled (redis.auth.enabled=false)." >&2
+    exit 1
+fi
+
+# Validate APP_KEY format (must be base64:... that decodes to exactly 32 bytes)
+APP_KEY=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data.APP_KEY}" | base64 -d)
+if [[ ! "$APP_KEY" =~ ^base64: ]]; then
+    echo "ERROR: APP_KEY in secret '$SECRET_NAME' does not start with 'base64:'." >&2
+    echo "Current value: ${APP_KEY:0:30}..." >&2
+    echo "Regenerate with: php artisan key:generate --show" >&2
+    exit 1
+fi
+KEY_BYTES=$(echo "${APP_KEY#base64:}" | base64 -d 2>/dev/null | wc -c)
+if [[ "$KEY_BYTES" -ne 32 ]]; then
+    echo "ERROR: APP_KEY base64-decodes to $KEY_BYTES bytes, expected 32." >&2
+    echo "Regenerate with: php artisan key:generate --show" >&2
+    exit 1
+fi
+echo "  APP_KEY: valid"
+
+# Warn about REDIS_PASSWORD presence (Redis auth is disabled)
+if kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data.REDIS_PASSWORD}" >/dev/null 2>&1; then
+    echo "  WARNING: REDIS_PASSWORD key found in secret — Redis auth is disabled, this will break Horizon/Worker."
+    echo "  Remove with: kubectl patch secret $SECRET_NAME -n $NAMESPACE --type json -p='[{\"op\":\"remove\",\"path\":\"/data/REDIS_PASSWORD\"}]'"
+fi
+
+echo "  OK"
 
 # ── Determine tag ──────────────────────────────────────────────
 if [[ "${1:-}" == --tag ]]; then

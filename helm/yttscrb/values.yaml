@@ -19,11 +19,19 @@ app:
       until php -r "exit((int)!@fsockopen(getenv('REDIS_HOST'), (int)getenv('REDIS_PORT')));";
       do echo 'waiting for redis'; sleep 3; done;
       rm -f .env &&
+      php -r "
+      \$key = getenv('APP_KEY');
+      if (!\$key || !str_starts_with(\$key, 'base64:')) { echo 'FATAL: APP_KEY missing or invalid format (expected base64:...)'.PHP_EOL; exit(1); }
+      \$decoded = base64_decode(substr(\$key, 7));
+      if (strlen(\$decoded) !== 32) { echo 'FATAL: APP_KEY decodes to '.strlen(\$decoded).' bytes, expected 32'.PHP_EOL; exit(1); }
+      echo 'APP_KEY OK'.PHP_EOL;
+      " &&
+      cp -n vendor/durable-workflow/workflow/src/migrations/* database/migrations/ 2>/dev/null &&
       php artisan migrate --force &&
       php artisan serve --host=0.0.0.0 --port=80
   env:
     APP_ENV: production
-    APP_URL: http://tubesum.app
+    APP_URL: https://tubesum.app
     DB_CONNECTION: pgsql
     DB_HOST: yttscrb-postgresql
     DB_PORT: "5432"
