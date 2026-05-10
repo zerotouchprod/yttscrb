@@ -8,6 +8,7 @@ use App\Application\UseCases\TranscribeVideoHandler;
 use App\Domain\Entities\MediaTask;
 use App\Domain\ValueObjects\TranscriptionStatus;
 use App\Domain\ValueObjects\YouTubeUrl;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -191,7 +192,7 @@ final class TranscribeVideoController extends Controller
 
         $paginator = $this->handler->listHistory($status, $perPage, $page);
 
-        /** @var list<array{task_id: string, youtube_url: string, title: string|null, status: string, duration_sec: int|null, created_at: string|null, completed_at: string|null}> $data */
+        /** @var list<array{task_id: string, youtube_url: string, title: string|null, status: string, duration_sec: int|null, created_at: string|null, completed_at: string|null, _links: array<string, string|null>}> $data */
         $data = [];
         foreach ($paginator->getCollection() as $task) {
             /** @var \App\Domain\Entities\MediaTask $task */
@@ -203,6 +204,9 @@ final class TranscribeVideoController extends Controller
                 'duration_sec' => $task->durationSec(),
                 'created_at' => $task->createdAt()->format('c'),
                 'completed_at' => $task->completedAt()?->format('c'),
+                '_links' => array_filter([
+                    'public_page' => $task->slug() !== null ? '/v/' . $task->slug() : null,
+                ]),
             ];
         }
 
@@ -254,8 +258,110 @@ final class TranscribeVideoController extends Controller
         ]);
     }
 
+    public function search(Request $request): JsonResponse
+    {
+        $query = $request->query('q');
+
+        if (! is_string($query) || $query === '') {
+            return $this->errorResponse(
+                'INVALID_QUERY',
+                'Search query parameter "q" is required and must be a non-empty string.',
+                ['field' => 'q', 'constraint' => 'required'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        if (mb_strlen($query) < 2) {
+            return $this->errorResponse(
+                'INVALID_QUERY',
+                'Search query must be at least 2 characters.',
+                ['field' => 'q', 'constraint' => 'min_length', 'min' => 2],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        if (mb_strlen($query) > 100) {
+            return $this->errorResponse(
+                'INVALID_QUERY',
+                'Search query must not exceed 100 characters.',
+                ['field' => 'q', 'constraint' => 'max_length', 'max' => 100],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        // Reject wildcard-only queries (e.g. "%%%%%%", "____")
+        if (
+            preg_match('/[^\x00-\x7F\pL\pN]/u', $query) === 0
+            && preg_match('/[\pL\pN]/u', $query) === 0
+        ) {
+            return $this->errorResponse(
+                'INVALID_QUERY',
+                'Search query must contain at least one letter or digit.',
+                ['field' => 'q', 'constraint' => 'non_wildcard'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $page = max(1, (int) $request->query('page', '1'));
+        $perPage = min(50, max(1, (int) $request->query('per_page', '15')));
+
+        $paginator = $this->handler->searchByTitle($query, $perPage, $page);
+
+        /** @var list<array{task_id: string, title: string|null, youtube_url: string, duration_sec: int|null, completed_at: string|null, _links: array<string, string|null>}> $data */
+        $data = [];
+        foreach ($paginator->getCollection() as $task) {
+            /** @var \App\Domain\Entities\MediaTask $task */
+            $data[] = array_filter([
+                'task_id'      => $task->id(),
+                'title'        => $task->title(),
+                'youtube_url'  => $task->youtubeUrl()->value(),
+                'duration_sec' => $task->durationSec(),
+                'completed_at' => $task->completedAt()?->format('c'),
+                '_links'       => array_filter([
+                    'public_page' => $task->slug() !== null ? '/v/' . $task->slug() : null,
+                ]),
+            ]);
+        }
+
+        $currentPage = $paginator->currentPage();
+        $lastPage = $paginator->lastPage();
+        $hasMorePages = $currentPage < $lastPage;
+
+        $baseUrl = '/api/search?q=' . urlencode($query) . '&per_page=' . $perPage;
+
+        return new JsonResponse([
+            'data' => $data,
+            'meta' => [
+                'current_page' => $currentPage,
+                'last_page'    => $lastPage,
+                'per_page'     => $paginator->perPage(),
+                'total'        => $paginator->total(),
+                'query'        => $query,
+            ],
+            '_links' => [
+                'first' => $baseUrl . '&page=1',
+                'prev'  => $currentPage > 1 ? $baseUrl . '&page=' . ($currentPage - 1) : null,
+                'next'  => $hasMorePages ? $baseUrl . '&page=' . ($currentPage + 1) : null,
+                'last'  => $baseUrl . '&page=' . $lastPage,
+            ],
+        ]);
+    }
+
+    public function historyPage(Request $request): View
+    {
+        $page = max(1, (int) $request->query('page', '1'));
+        $perPage = 20;
+
+        $paginator = $this->handler->listHistory(null, $perPage, $page);
+
+        return view('history', [
+            'tasks'     => $paginator->getCollection(),
+            'paginator' => $paginator,
+        ]);
+    }
+
     /**
-     * @param array<string, string> $details
+     * @param array<string, string|int> $details
      */
     private function errorResponse(string $code, string $message, array $details, int $status): JsonResponse
     {

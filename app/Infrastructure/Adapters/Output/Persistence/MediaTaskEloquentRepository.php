@@ -12,6 +12,7 @@ use App\Domain\ValueObjects\VideoId;
 use App\Domain\ValueObjects\YouTubeUrl;
 use DateTimeImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\LazyCollection;
 use Illuminate\Support\Str;
 use ReflectionProperty;
@@ -166,6 +167,47 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
                 'updated_at'   => $model->updated_at?->toIso8601String(),
             ];
         });
+    }
+
+    /**
+     * @return LengthAwarePaginator<int, MediaTask>
+     */
+    public function searchByTitle(string $query, int $perPage, int $page): LengthAwarePaginator
+    {
+        $escaped = addcslashes($query, '%_\\');
+
+        $driver = DB::getDriverName();
+
+        $queryBuilder = MediaTaskModel::query()
+            ->where('status', TranscriptionStatus::Completed->value)
+            ->whereNull('dmca_removed_at')
+            ->orderByDesc('created_at');
+
+        if ($driver === 'pgsql') {
+            $queryBuilder->whereRaw('title ILIKE ?', ['%' . $escaped . '%']);
+        } else {
+            // SQLite / other drivers: fall back to LOWER/LIKE
+            $queryBuilder->whereRaw('LOWER(title) LIKE ?', ['%' . mb_strtolower($escaped) . '%']);
+        }
+
+        /** @var \Illuminate\Pagination\LengthAwarePaginator<int, MediaTaskModel> $paginator */
+        $paginator = $queryBuilder->paginate($perPage, ['*'], 'page', $page);
+
+        /** @var \Illuminate\Support\Collection<int, MediaTask> $entities */
+        $entities = $paginator->getCollection()->map(function (mixed $item): MediaTask {
+            /** @var MediaTaskModel $model */
+            $model = $item;
+
+            return $this->toEntity($model);
+        });
+
+        /** @var LengthAwarePaginator<int, MediaTask> */
+        return new LengthAwarePaginator(
+            $entities,
+            $paginator->total(),
+            $paginator->perPage(),
+            $paginator->currentPage(),
+        );
     }
 
     private function generateUniqueSlug(string $title, string $taskId): string

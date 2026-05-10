@@ -9,6 +9,8 @@ use App\Domain\ValueObjects\YouTubeUrl;
 use App\Infrastructure\Adapters\Output\Workflow\WorkflowDispatcher;
 use App\Infrastructure\Workflow\WorkflowStarter;
 use App\Infrastructure\Workflow\Workflows\TranscribeVideoWorkflow;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\LazyCollection;
 
 it('starts durable workflow and stores returned workflow id', function (): void {
     $launcher = new class implements WorkflowStarter {
@@ -52,14 +54,14 @@ it('starts durable workflow and stores returned workflow id', function (): void 
         }
 
         /**
-         * @return \Illuminate\Pagination\LengthAwarePaginator<int, MediaTask>
+         * @return LengthAwarePaginator<int, MediaTask>
          */
         public function findAllPaginated(
             ?string $status,
             int $perPage,
             int $page,
-        ): \Illuminate\Pagination\LengthAwarePaginator {
-            return new \Illuminate\Pagination\LengthAwarePaginator([], 0, $perPage, $page);
+        ): LengthAwarePaginator {
+            return new LengthAwarePaginator([], 0, $perPage, $page);
         }
 
         public function findLatestCompleted(): ?MediaTask
@@ -85,9 +87,17 @@ it('starts durable workflow and stores returned workflow id', function (): void 
             return 0;
         }
 
-        public function findPublicSlugs(): \Illuminate\Support\LazyCollection
+        public function findPublicSlugs(): LazyCollection
         {
-            return \Illuminate\Support\LazyCollection::make([]);
+            return LazyCollection::make([]);
+        }
+
+        public function searchByTitle(
+            string $query,
+            int $perPage,
+            int $page
+        ): LengthAwarePaginator {
+            return new LengthAwarePaginator([], 0, $perPage, $page);
         }
     };
 
@@ -100,9 +110,8 @@ it('starts durable workflow and stores returned workflow id', function (): void 
         ->and($launcher->arguments)->toBe([
             'taskId' => 'task-123',
             'youtubeUrl' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-        ]);
-
-    expect($repository->savedTask)->not->toBeNull();
+        ])
+        ->and($repository->savedTask)->not->toBeNull();
 
     if ($repository->savedTask !== null) {
         expect($repository->savedTask->status()->value)->toBe('processing')

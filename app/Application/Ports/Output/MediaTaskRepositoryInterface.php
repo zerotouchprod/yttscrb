@@ -59,4 +59,12 @@ interface MediaTaskRepositoryInterface
      * @return LazyCollection<int, array{slug: string, completed_at: string|null, updated_at: string|null}>
      */
     public function findPublicSlugs(): LazyCollection;
+
+    /**
+     * Search completed (non-DMCA) tasks by title (case-insensitive partial match).
+     * Uses PostgreSQL ILIKE with pg_trgm GIN index for performance.
+     *
+     * @return LengthAwarePaginator<int, MediaTask>
+     */
+    public function searchByTitle(string $query, int $perPage, int $page): LengthAwarePaginator;
 }

@@ -49,6 +49,14 @@ final class TranscribeVideoHandler
         return $this->repository->findLatestCompleted();
     }
 
+    /**
+     * @return LengthAwarePaginator<int, MediaTask>
+     */
+    public function searchByTitle(string $query, int $perPage, int $page): LengthAwarePaginator
+    {
+        return $this->repository->searchByTitle($query, $perPage, $page);
+    }
+
     public function countCompletedThisMonth(): int
     {
         $firstOfMonth = new \DateTimeImmutable('first day of this month 00:00:00');

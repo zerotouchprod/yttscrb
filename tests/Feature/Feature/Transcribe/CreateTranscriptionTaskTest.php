@@ -101,6 +101,7 @@ final class CreateTranscriptionTaskTest extends TestCase
             'summary' => 'Summary',
             'duration_sec' => 5,
             'completed_at' => now(),
+            'slug' => 'test-slug',
         ]);
 
         $response = $this->getJson('/api/history');
@@ -108,6 +109,11 @@ final class CreateTranscriptionTaskTest extends TestCase
         $response->assertOk()
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('meta.total', 2);
+
+        // At least one completed task should have a public_page link.
+        $data = $response->json('data');
+        $completedWithLink = array_filter($data, fn (array $item): bool => ($item['_links']['public_page'] ?? null) === '/v/test-slug');
+        $this->assertCount(1, $completedWithLink);
     }
 
     public function testReturnsLatestCompletedTaskWithoutRegistration(): void

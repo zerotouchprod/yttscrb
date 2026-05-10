@@ -14,6 +14,8 @@ Route::post('/transcribe', [TranscribeVideoController::class, 'create'])
 
 Route::get('/transcribe/{id}', [TranscribeVideoController::class, 'status']);
 Route::get('/transcribe/{id}/download', [TranscribeVideoController::class, 'download']);
+Route::get('/search', [TranscribeVideoController::class, 'search'])
+    ->middleware('throttle:60,1');
 Route::get('/history', [TranscribeVideoController::class, 'history']);
 Route::get('/history/latest', [TranscribeVideoController::class, 'latest']);
 

@@ -29,8 +29,43 @@
     </header>
 
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+      <!-- Recently Transcribed -->
+      <section v-if="recentTasks.length > 0" class="mb-8">
+        <h2 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+          <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Recently Transcribed
+        </h2>
+        <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
+          <div
+            v-for="t in recentTasks"
+            :key="t.task_id"
+            class="flex-shrink-0 w-56 bg-gray-800/70 rounded-lg p-3 border border-gray-700/40 hover:border-gray-600/60 transition-colors"
+          >
+            <a
+              v-if="t._links?.public_page"
+              :href="t._links.public_page"
+              class="text-sm font-medium text-blue-400 hover:text-blue-300 line-clamp-2 mb-1.5 block"
+            >{{ t.title || 'Untitled' }}</a>
+            <span v-else class="text-sm font-medium text-gray-400 line-clamp-2 mb-1.5 block">{{ t.title || 'Untitled' }}</span>
+            <div class="flex items-center gap-2 text-xs text-gray-500">
+              <span v-if="t.duration_sec">{{ formatDuration(t.duration_sec) }}</span>
+              <span v-if="t.completed_at" class="truncate">{{ formatDate(t.completed_at) }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3 text-center">
+          <a
+            href="/history"
+            class="inline-flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+          >
+            View all history
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      </section>
+
       <!-- Input Form -->
-      <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-xl border border-gray-700/50">
+      <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-6 shadow-xl border border-gray-700/50">
         <form @submit.prevent="submitUrl" class="flex flex-col sm:flex-row gap-3">
           <div class="flex-1 min-w-0">
             <input
@@ -61,6 +96,87 @@
             <span v-else>Transcribe</span>
           </button>
         </form>
+      </div>
+
+      <!-- Search Section -->
+      <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-6 shadow-xl border border-gray-700/50">
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search transcripts by title..."
+            aria-label="Search transcripts by title"
+            class="w-full bg-gray-700/80 border border-gray-600 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+            :disabled="searchLoading"
+            @input="onSearchInput"
+          />
+          <svg v-if="searchLoading" class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+        </div>
+        <p v-if="searchQuery.length === 1" class="mt-2 text-xs text-gray-500">Enter at least 2 characters to search.</p>
+      </div>
+
+      <!-- Search Results -->
+      <div v-if="searchResults !== null" class="mb-6">
+        <!-- Search Error -->
+        <div v-if="searchError" class="bg-red-900/50 border border-red-700 rounded-xl p-4 mb-4" role="alert">
+          <div class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <p class="text-red-300 break-words">{{ searchError }}</p>
+          </div>
+        </div>
+
+        <!-- Search Loading Skeleton -->
+        <div v-if="searchLoading && searchResults.length === 0" class="space-y-3">
+          <div v-for="n in 3" :key="n" class="animate-shimmer h-20 rounded-xl bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 bg-[length:200%_100%]"></div>
+        </div>
+
+        <!-- Empty Results -->
+        <div v-if="!searchLoading && searchQuery.length >= 2 && searchResults.length === 0 && !searchError" class="text-center py-8">
+          <svg class="w-12 h-12 text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <p class="text-gray-500">No transcripts found matching your query.</p>
+        </div>
+
+        <!-- Result Cards -->
+        <div v-if="searchResults.length > 0" class="space-y-3">
+          <div
+            v-for="item in searchResults"
+            :key="item.task_id"
+            class="bg-gray-800/70 rounded-lg p-4 border border-gray-700/40 hover:border-gray-600/60 transition-colors"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <a
+                  v-if="item._links?.public_page"
+                  :href="item._links.public_page"
+                  class="text-sm font-semibold text-blue-400 hover:text-blue-300 line-clamp-2 mb-1 block"
+                >{{ item.title || 'Untitled' }}</a>
+                <span v-else class="text-sm font-semibold text-gray-300 line-clamp-2 mb-1 block">{{ item.title || 'Untitled' }}</span>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                  <span v-if="item.duration_sec">{{ formatDuration(item.duration_sec) }}</span>
+                  <span v-if="item.completed_at">{{ formatDate(item.completed_at) }}</span>
+                  <a
+                    :href="item.youtube_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-blue-500 hover:text-blue-400 truncate"
+                  >YouTube</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Load More -->
+          <div v-if="searchHasMore" class="text-center pt-2">
+            <button
+              @click="searchLoadMore"
+              :disabled="searchLoading"
+              class="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-200 font-medium px-6 py-2.5 rounded-lg transition-colors text-sm"
+            >
+              Load More
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Error -->
@@ -270,7 +386,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue';
+import { ref, computed, onUnmounted, onMounted } from 'vue';
 import axios from 'axios';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -284,6 +400,18 @@ const copySummaryLabel = ref('Copy Summary');
 const copyTranscriptLabel = ref('Copy Transcript');
 const activeTab = ref('summary');
 const thumbnailError = ref(false);
+
+// Search state
+const searchQuery = ref('');
+const searchResults = ref(null);
+const searchLoading = ref(false);
+const searchError = ref(null);
+const searchPage = ref(1);
+const searchHasMore = ref(false);
+let searchDebounceTimer = null;
+
+// Recently Transcribed
+const recentTasks = ref([]);
 
 // Processing step tracking
 const processingStartedAt = ref(null);
@@ -381,6 +509,13 @@ function formatDuration(sec) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+/** Format ISO date string → "May 10, 2026" */
+function formatDate(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 let pollTimer = null;
 
 const statusBadgeClass = computed(() => {
@@ -401,6 +536,94 @@ function isValidYouTubeUrl(url) {
   ];
   return patterns.some(p => p.test(url));
 }
+
+// ---- Search ----
+
+function onSearchInput() {
+  const q = searchQuery.value.trim();
+
+  // Reset results when query is cleared
+  if (q === '') {
+    cancelSearchDebounce();
+    searchResults.value = null;
+    searchError.value = null;
+    searchPage.value = 1;
+    searchHasMore.value = false;
+    return;
+  }
+
+  // Don't search for single character
+  if (q.length < 2) {
+    cancelSearchDebounce();
+    searchResults.value = null;
+    searchError.value = null;
+    searchPage.value = 1;
+    searchHasMore.value = false;
+    return;
+  }
+
+  cancelSearchDebounce();
+  searchDebounceTimer = setTimeout(() => {
+    searchPage.value = 1;
+    performSearch(q, 1);
+  }, 300);
+}
+
+function searchLoadMore() {
+  const q = searchQuery.value.trim();
+  if (q.length < 2 || searchLoading.value || !searchHasMore.value) return;
+  const nextPage = searchPage.value + 1;
+  performSearch(q, nextPage, true);
+}
+
+async function performSearch(q, page, append = false) {
+  searchLoading.value = true;
+  searchError.value = null;
+
+  try {
+    const { data } = await axios.get('/api/search', {
+      params: { q, page, per_page: 15 },
+    });
+
+    if (append) {
+      searchResults.value = [...searchResults.value, ...data.data];
+    } else {
+      searchResults.value = data.data;
+    }
+
+    searchPage.value = data.meta.current_page;
+    searchHasMore.value = data.meta.current_page < data.meta.last_page;
+  } catch (e) {
+    if (!append) {
+      searchResults.value = [];
+    }
+    searchError.value = e.response?.data?.error?.message || 'Search failed. Please try again.';
+  } finally {
+    searchLoading.value = false;
+  }
+}
+
+function cancelSearchDebounce() {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = null;
+  }
+}
+
+// ---- Recently Transcribed ----
+
+async function fetchRecentTasks() {
+  try {
+    const { data } = await axios.get('/api/history', {
+      params: { status: 'completed', per_page: 10, page: 1 },
+    });
+    recentTasks.value = data.data || [];
+  } catch {
+    // Silently ignore — history is decorative
+  }
+}
+
+// ---- Transcription ----
 
 async function submitUrl() {
   error.value = null;
@@ -511,8 +734,37 @@ function retry() {
   submitUrl();
 }
 
+onMounted(async () => {
+  fetchRecentTasks();
+
+  // If navigated from /history with ?task_id=..., load that task
+  const params = new URLSearchParams(window.location.search);
+  const taskId = params.get('task_id');
+  if (taskId) {
+    try {
+      const { data } = await axios.get(`/api/transcribe/${taskId}`);
+      task.value = data;
+      activeTab.value = 'summary';
+      thumbnailError.value = false;
+
+      if (data.status === 'completed' && data.result) {
+        // Already completed — no polling needed
+        return;
+      }
+
+      if (data.status === 'processing') startElapsedTimer();
+      if (data.status !== 'completed' && data.status !== 'failed') {
+        startPolling(taskId);
+      }
+    } catch {
+      error.value = 'Failed to load task.';
+    }
+  }
+});
+
 onUnmounted(() => {
   stopPolling();
   stopElapsedTimer();
+  cancelSearchDebounce();
 });
 </script>
