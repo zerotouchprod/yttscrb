@@ -35,6 +35,8 @@ app:
     QUEUE_CONNECTION: redis
     CACHE_STORE: redis
     SESSION_DRIVER: redis
+    LOG_CHANNEL: errorlog
+    LOG_LEVEL: error
     WORKFLOW_CONNECTION: redis
     TRANSCRIPTION_PROVIDER: groq
     SUMMARY_PROVIDER: openai
