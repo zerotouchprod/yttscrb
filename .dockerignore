@@ -1,0 +1,9 @@
+.env
+.git
+node_modules
+vendor
+storage/logs/*
+public/build
+public/hot
+Dockerfile.dev
+docker-compose.yml
