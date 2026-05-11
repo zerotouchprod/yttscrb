@@ -27,8 +27,6 @@
         :statusBadgeClass="statusBadgeClass"
         :processingProgress="processingProgress"
         :processingStep="processingStep"
-        :thumbnailUrl="thumbnailUrl"
-        :thumbnailError="thumbnailError"
         :renderedSummary="renderedSummary"
         :groupedTranscript="groupedTranscript"
         :copySummaryLabel="copySummaryLabel"

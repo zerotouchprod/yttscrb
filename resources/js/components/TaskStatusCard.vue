@@ -36,55 +36,40 @@
     </div>
 
     <div v-if="task.status === 'completed' && task.result">
-      <div v-if="thumbnailUrl && !thumbnailError" class="flex gap-4 items-start mb-5">
-        <img :src="thumbnailUrl" @error="thumbnailError = true" class="w-[150px] flex-shrink-0 rounded-lg object-cover bg-gray-700" style="aspect-ratio: 16/9" :alt="task.title || 'YouTube video thumbnail'" loading="lazy" />
-        <div class="min-w-0 flex-1 pt-0.5">
-          <h2 class="text-sm font-semibold text-white leading-snug line-clamp-3">{{ task.title || 'YouTube Video' }}</h2>
-          <p class="mt-1.5 text-xs text-gray-500 truncate">{{ task.youtube_url }}</p>
-          <p v-if="task.duration_sec" class="mt-1 text-xs text-gray-600">{{ formatDuration(task.duration_sec) }}</p>
+      <!-- Video title / meta — compact, no thumbnail (player is inside Summary tab) -->
+      <div class="mb-5">
+        <h2 class="text-base font-semibold text-white leading-snug line-clamp-2">{{ task.title || 'YouTube Video' }}</h2>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+          <p class="text-xs text-gray-500 truncate max-w-xs">{{ task.youtube_url }}</p>
+          <p v-if="task.duration_sec" class="text-xs text-gray-600">{{ formatDuration(task.duration_sec) }}</p>
+          <a
+            v-if="task.video_id"
+            :href="'https://youtube.com/watch?v=' + task.video_id"
+            target="_blank" rel="noopener noreferrer"
+            class="text-xs text-red-400 hover:text-red-300 transition-colors shrink-0"
+          >↗ YouTube</a>
         </div>
       </div>
+
+      <!-- Tab bar -->
       <div class="flex gap-1 mb-5 bg-gray-700/40 rounded-lg p-1" role="tablist">
         <button @click="activeTab = 'summary'" :class="activeTab === 'summary' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'" class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-150" role="tab" :aria-selected="activeTab === 'summary'" aria-controls="panel-summary"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> AI Summary</button>
         <button @click="activeTab = 'transcript'" :class="activeTab === 'transcript' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'" class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-150" role="tab" :aria-selected="activeTab === 'transcript'" aria-controls="panel-transcript"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Transcript</button>
       </div>
+
+      <!-- Summary tab: embedded player + structured summary with seek-to -->
       <div v-show="activeTab === 'summary'" id="panel-summary" role="tabpanel">
-        <div class="mb-6 bg-gray-700/60 border-l-4 border-blue-500 rounded-r-lg p-4">
-          <h2 class="text-lg font-semibold text-white mb-2 flex items-center gap-2"><svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Summary</h2>
-
-          <!-- Introduction -->
-          <p v-if="renderedSummary.introduction" class="text-gray-300 text-sm leading-relaxed mb-4">
-            {{ renderedSummary.introduction }}
-          </p>
-
-          <!-- Key Points -->
-          <div v-if="renderedSummary.key_points && renderedSummary.key_points.length > 0" class="space-y-2.5 mb-4">
-            <div v-for="(point, idx) in renderedSummary.key_points" :key="idx" class="bg-blue-950/30 rounded-lg p-3 border border-blue-800/30">
-              <div class="flex items-start gap-2">
-                <a
-                  v-if="task.video_id"
-                  :href="'https://youtube.com/watch?v=' + task.video_id + '&t=' + timecodeToSec(point.timecode)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-blue-400 hover:text-blue-300 font-mono text-xs mt-0.5 shrink-0 transition-colors"
-                  :title="'Open YouTube at ' + point.timecode"
-                >[{{ point.timecode }}]</a>
-                <span v-else class="text-blue-400/60 font-mono text-xs mt-0.5 shrink-0">[{{ point.timecode }}]</span>
-                <div>
-                  <strong class="text-gray-100 text-sm">{{ point.title }}</strong>
-                  <p class="text-gray-400 text-xs mt-0.5">{{ point.details }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Conclusion -->
-          <p v-if="renderedSummary.conclusion" class="text-gray-300 text-sm leading-relaxed italic border-t border-blue-800/30 pt-3 mt-4">
-            {{ renderedSummary.conclusion }}
-          </p>
-        </div>
+        <SummaryResult
+          v-if="task.video_id && renderedSummary && typeof renderedSummary === 'object'"
+          :video-id="task.video_id"
+          :summary="renderedSummary"
+          class="mb-5"
+        />
+        <p v-else class="text-gray-400 text-sm mb-5">No summary available.</p>
         <button @click="$emit('copySummary')" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium px-5 py-3 sm:py-2.5 rounded-lg transition-colors" :aria-label="copySummaryLabel"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg> {{ copySummaryLabel }}</button>
       </div>
+
+      <!-- Transcript tab -->
       <div v-show="activeTab === 'transcript'" id="panel-transcript" role="tabpanel">
         <div class="mb-6">
           <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
@@ -113,17 +98,12 @@
   </div>
 </template>
 <script setup>
+import SummaryResult from './SummaryResult.vue';
 import { formatDuration, formatTimecode } from '../composables/useFormatting.js';
-
-function timecodeToSec(tc) {
-  const parts = tc.split(':').map(Number);
-  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  return parts[0] * 60 + parts[1];
-}
 
 defineProps({
   task: Object, statusBadgeClass: String, processingProgress: Number, processingStep: Object,
-  thumbnailUrl: String, thumbnailError: Boolean, renderedSummary: Object, groupedTranscript: Array,
+  renderedSummary: Object, groupedTranscript: Array,
   copySummaryLabel: String, copyTranscriptLabel: String,
 });
 const activeTab = defineModel('activeTab', { default: 'summary' });
