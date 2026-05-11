@@ -190,14 +190,6 @@ if [[ -z "$OPENAI_K" ]]; then
 fi
 echo "  OPENAI_API_KEY: present (${#OPENAI_K} chars, starts with ${OPENAI_K:0:3})"
 
-# Validate DEEPSEEK_API_KEY exists
-DEEPSEEK_K=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data.DEEPSEEK_API_KEY}" 2>/dev/null | base64 -d)
-if [[ -z "$DEEPSEEK_K" ]]; then
-    echo "ERROR: DEEPSEEK_API_KEY key is missing or empty in secret '$SECRET_NAME'." >&2
-    exit 1
-fi
-echo "  DEEPSEEK_API_KEY: present (${#DEEPSEEK_K} chars)"
-
 # Warn about REDIS_PASSWORD presence (Redis auth is disabled)
 if kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data.REDIS_PASSWORD}" >/dev/null 2>&1; then
     REDIS_PW=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data.REDIS_PASSWORD}" 2>/dev/null | base64 -d)

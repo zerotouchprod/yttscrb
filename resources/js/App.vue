@@ -74,7 +74,7 @@
           <div>
             <h3 class="font-semibold text-slate-100 mb-3">Connect</h3>
             <ul class="space-y-2 text-slate-400">
-              <li><a href="https://x.com/tubesum" target="_blank" rel="noopener noreferrer" class="hover:text-blue-400 transition-colors">Twitter (X)</a></li>
+              <li><a href="https://x.com/tubesumapp" target="_blank" rel="noopener noreferrer" class="hover:text-blue-400 transition-colors">Twitter (X)</a></li>
               <li><a href="/contact" class="hover:text-blue-400 transition-colors">Contact Support</a></li>
             </ul>
           </div>
