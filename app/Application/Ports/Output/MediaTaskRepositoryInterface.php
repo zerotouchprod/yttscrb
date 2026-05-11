@@ -67,4 +67,13 @@ interface MediaTaskRepositoryInterface
      * @return LengthAwarePaginator<int, MediaTask>
      */
     public function searchByTitle(string $query, int $perPage, int $page): LengthAwarePaginator;
+
+    /**
+     * Public-facing paginated listing for the main page.
+     * Filters: status=completed, dmca not removed, title present.
+     * Ordered newest-first.
+     *
+     * @return LengthAwarePaginator<int, MediaTask>
+     */
+    public function findPublicCompletedPaginated(int $perPage, int $page): LengthAwarePaginator;
 }

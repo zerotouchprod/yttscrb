@@ -111,8 +111,12 @@ final class CreateTranscriptionTaskTest extends TestCase
             ->assertJsonPath('meta.total', 2);
 
         // At least one completed task should have a public_page link.
+        /** @var list<array{_links: array{public_page: string|null}}> $data */
         $data = $response->json('data');
-        $completedWithLink = array_filter($data, fn (array $item): bool => ($item['_links']['public_page'] ?? null) === '/v/test-slug');
+        $completedWithLink = array_filter(
+            $data,
+            fn (array $item): bool => ($item['_links']['public_page'] ?? null) === '/v/test-slug',
+        );
         $this->assertCount(1, $completedWithLink);
     }
 

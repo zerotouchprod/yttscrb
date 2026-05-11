@@ -29,43 +29,8 @@
     </header>
 
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-      <!-- Recently Transcribed -->
-      <section v-if="recentTasks.length > 0" class="mb-8">
-        <h2 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-          <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          Recently Transcribed
-        </h2>
-        <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
-          <div
-            v-for="t in recentTasks"
-            :key="t.task_id"
-            class="flex-shrink-0 w-56 bg-gray-800/70 rounded-lg p-3 border border-gray-700/40 hover:border-gray-600/60 transition-colors"
-          >
-            <a
-              v-if="t._links?.public_page"
-              :href="t._links.public_page"
-              class="text-sm font-medium text-blue-400 hover:text-blue-300 line-clamp-2 mb-1.5 block"
-            >{{ t.title || 'Untitled' }}</a>
-            <span v-else class="text-sm font-medium text-gray-400 line-clamp-2 mb-1.5 block">{{ t.title || 'Untitled' }}</span>
-            <div class="flex items-center gap-2 text-xs text-gray-500">
-              <span v-if="t.duration_sec">{{ formatDuration(t.duration_sec) }}</span>
-              <span v-if="t.completed_at" class="truncate">{{ formatDate(t.completed_at) }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="mt-3 text-center">
-          <a
-            href="/history"
-            class="inline-flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 transition-colors"
-          >
-            View all history
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          </a>
-        </div>
-      </section>
-
-      <!-- Input Form -->
-      <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-6 shadow-xl border border-gray-700/50">
+      <!-- Input Form — main action, always on top -->
+      <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-xl border border-gray-700/50 transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
         <form @submit.prevent="submitUrl" class="flex flex-col sm:flex-row gap-3">
           <div class="flex-1 min-w-0">
             <input
@@ -73,14 +38,13 @@
               type="text"
               placeholder="https://youtube.com/watch?v=..."
               aria-label="YouTube video URL"
-              class="w-full bg-gray-700/80 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-              :class="{ 'border-red-500 focus:ring-red-500 focus:border-red-500': urlValidationError }"
+              class="w-full bg-gray-700/80 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-0 transition-all duration-200"
+              :class="{ 'border-red-500 ring-2 ring-red-500': urlValidationError }"
               :disabled="isLoading"
               @input="urlValidationError = null"
             />
             <p v-if="urlValidationError" class="mt-1.5 text-sm text-red-400" role="alert">{{ urlValidationError }}</p>
           </div>
-          <!-- CTA: always blue, never gray — validation happens on click -->
           <button
             type="submit"
             :disabled="isLoading"
@@ -98,23 +62,70 @@
         </form>
       </div>
 
-      <!-- Search Section -->
-      <div class="bg-gray-800/80 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-6 shadow-xl border border-gray-700/50">
-        <div class="relative">
-          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search transcripts by title..."
-            aria-label="Search transcripts by title"
-            class="w-full bg-gray-700/80 border border-gray-600 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-            :disabled="searchLoading"
-            @input="onSearchInput"
-          />
-          <svg v-if="searchLoading" class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+      <!-- Public Library -->
+      <section v-if="recentTasks.length > 0" class="mb-8">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            Public Library
+          </h2>
+          <!-- Inline search, compact -->
+          <div class="relative w-full sm:w-56">
+            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search summaries..."
+              aria-label="Search summaries by title"
+              class="w-full bg-gray-700/80 border border-gray-600 rounded-lg pl-8 pr-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+              :disabled="searchLoading"
+              @input="onSearchInput"
+            />
+            <svg v-if="searchLoading" class="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+          </div>
         </div>
-        <p v-if="searchQuery.length === 1" class="mt-2 text-xs text-gray-500">Enter at least 2 characters to search.</p>
-      </div>
+        <p v-if="searchQuery.length === 1" class="mt-1 text-xs text-gray-500">Enter at least 2 characters to search.</p>
+        <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
+          <div
+            v-for="t in recentTasks"
+            :key="t.task_id"
+            class="flex-shrink-0 w-64 bg-gray-800/70 rounded-lg border border-gray-700/40 hover:border-gray-600/60 transition-colors overflow-hidden"
+          >
+            <!-- YouTube thumbnail -->
+            <div class="aspect-video bg-gray-700 overflow-hidden">
+              <img
+                v-if="t.video_id"
+                :src="`https://img.youtube.com/vi/${t.video_id}/mqdefault.jpg`"
+                :alt="t.title || 'Video thumbnail'"
+                class="w-full h-full object-cover"
+                loading="lazy"
+                @error="e => e.target.style.display = 'none'"
+              />
+            </div>
+            <div class="p-3">
+              <a
+                v-if="t._links?.public_page"
+                :href="t._links.public_page"
+                class="text-sm font-medium text-blue-400 hover:text-blue-300 line-clamp-2 mb-1.5 block"
+              >{{ t.title || 'Untitled' }}</a>
+              <span v-else class="text-sm font-medium text-gray-400 line-clamp-2 mb-1.5 block">{{ t.title || 'Untitled' }}</span>
+              <div class="flex items-center gap-2 text-xs text-gray-500">
+                <span v-if="t.duration_sec">{{ formatDuration(t.duration_sec) }}</span>
+                <span v-if="t.completed_at" class="truncate">{{ formatDate(t.completed_at) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3 text-center">
+          <a
+            href="/history"
+            class="inline-flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+          >
+            Browse all summaries
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      </section>
 
       <!-- Search Results -->
       <div v-if="searchResults !== null" class="mb-6">
@@ -615,7 +626,7 @@ function cancelSearchDebounce() {
 async function fetchRecentTasks() {
   try {
     const { data } = await axios.get('/api/history', {
-      params: { status: 'completed', per_page: 10, page: 1 },
+      params: { public: 1, per_page: 10, page: 1 },
     });
     recentTasks.value = data.data || [];
   } catch {

@@ -74,15 +74,47 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
     }
 
     /**
+     * Public-facing paginated listing. Excludes DMCA-removed tasks.
+     *
      * @return LengthAwarePaginator<int, MediaTask>
      */
     public function findAllPaginated(?string $status, int $perPage, int $page): LengthAwarePaginator
     {
-        $query = MediaTaskModel::query()->orderByDesc('created_at');
+        $query = MediaTaskModel::query()
+            ->whereNull('dmca_removed_at')
+            ->orderByDesc('created_at');
 
         if ($status !== null && $status !== '') {
             $query->where('status', $status);
         }
+
+        /** @var \Illuminate\Pagination\LengthAwarePaginator<int, MediaTaskModel> $paginator */
+        $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+
+        /** @var \Illuminate\Support\Collection<int, MediaTask> $entities */
+        $entities = $paginator->getCollection()->map(function (mixed $item): MediaTask {
+            /** @var MediaTaskModel $model */
+            $model = $item;
+
+            return $this->toEntity($model);
+        });
+
+        /** @var LengthAwarePaginator<int, MediaTask> */
+        return new LengthAwarePaginator(
+            $entities,
+            $paginator->total(),
+            $paginator->perPage(),
+            $paginator->currentPage(),
+        );
+    }
+
+    public function findPublicCompletedPaginated(int $perPage, int $page): LengthAwarePaginator
+    {
+        $query = MediaTaskModel::query()
+            ->where('status', TranscriptionStatus::Completed->value)
+            ->whereNotNull('title')
+            ->whereNull('dmca_removed_at')
+            ->orderByDesc('created_at');
 
         /** @var \Illuminate\Pagination\LengthAwarePaginator<int, MediaTaskModel> $paginator */
         $paginator = $query->paginate($perPage, ['*'], 'page', $page);

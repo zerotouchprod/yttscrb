@@ -99,6 +99,11 @@ it('starts durable workflow and stores returned workflow id', function (): void 
         ): LengthAwarePaginator {
             return new LengthAwarePaginator([], 0, $perPage, $page);
         }
+
+        public function findPublicCompletedPaginated(int $perPage, int $page): LengthAwarePaginator
+        {
+            return new LengthAwarePaginator([], 0, $perPage, $page);
+        }
     };
 
     $dispatcher = new WorkflowDispatcher($launcher, $repository);

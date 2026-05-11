@@ -9,12 +9,13 @@ use App\Application\Ports\Output\WorkflowDispatcherInterface;
 use App\Domain\Entities\MediaTask;
 use Illuminate\Pagination\LengthAwarePaginator;
 
-final class TranscribeVideoHandler
+final readonly class TranscribeVideoHandler
 {
     public function __construct(
-        private readonly MediaTaskRepositoryInterface $repository,
-        private readonly WorkflowDispatcherInterface $dispatcher,
-    ) {
+        private MediaTaskRepositoryInterface $repository,
+        private WorkflowDispatcherInterface  $dispatcher,
+    )
+    {
     }
 
     public function handle(MediaTask $task): MediaTask
@@ -55,6 +56,14 @@ final class TranscribeVideoHandler
     public function searchByTitle(string $query, int $perPage, int $page): LengthAwarePaginator
     {
         return $this->repository->searchByTitle($query, $perPage, $page);
+    }
+
+    /**
+     * @return LengthAwarePaginator<int, MediaTask>
+     */
+    public function listPublicCompleted(int $perPage, int $page): LengthAwarePaginator
+    {
+        return $this->repository->findPublicCompletedPaginated($perPage, $page);
     }
 
     public function countCompletedThisMonth(): int

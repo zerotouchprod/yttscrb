@@ -85,6 +85,11 @@ final class TranscribeVideoHandlerSearchTest extends TestCase
             {
                 return LazyCollection::make([]);
             }
+
+            public function findPublicCompletedPaginated(int $perPage, int $page): LengthAwarePaginator
+            {
+                return new LengthAwarePaginator(collect(), 0, $perPage, $page);
+            }
         };
 
         $dispatcher = new class () implements WorkflowDispatcherInterface {
@@ -169,6 +174,11 @@ final class TranscribeVideoHandlerSearchTest extends TestCase
             public function findPublicSlugs(): LazyCollection
             {
                 return LazyCollection::make([]);
+            }
+
+            public function findPublicCompletedPaginated(int $perPage, int $page): LengthAwarePaginator
+            {
+                return new LengthAwarePaginator(collect(), 0, $perPage, $page);
             }
         };
 

@@ -8,6 +8,7 @@ use App\Application\UseCases\TranscribeVideoHandler;
 use App\Domain\Entities\MediaTask;
 use App\Domain\ValueObjects\TranscriptionStatus;
 use App\Domain\ValueObjects\YouTubeUrl;
+use App\Infrastructure\Adapters\Input\Web\Requests\TranscribeVideoRequest;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,11 +24,12 @@ final class TranscribeVideoController extends Controller
     ) {
     }
 
-    public function create(Request $request): JsonResponse
+    public function create(TranscribeVideoRequest $request): JsonResponse
     {
-        $youtubeUrl = $request->input('youtube_url');
+        $youtubeUrl = $request->validated('youtube_url');
 
-        if (! is_string($youtubeUrl) || $youtubeUrl === '') {
+        if (! is_string($youtubeUrl)) {
+            // Unreachable — validated as required string above.
             return $this->errorResponse(
                 'INVALID_YOUTUBE_URL',
                 'The provided URL is not a valid YouTube video URL.',
@@ -183,31 +185,49 @@ final class TranscribeVideoController extends Controller
         ]);
     }
 
+    /**
+     * GET /api/history
+     *
+     * Query params:
+     *   - page (int, default 1)
+     *   - per_page (int, 1-50, default 15)
+     *   - status (string|null) — filter by task status; ignored when public=1
+     *   - public (string) — when "1", returns only public-completed tasks
+     *     (status=completed, title not null, DMCA not removed), ignoring the status param.
+     */
     public function history(Request $request): JsonResponse
     {
         $page = max(1, (int) $request->query('page', '1'));
         $perPage = min(50, max(1, (int) $request->query('per_page', '15')));
         $rawStatus = $request->query('status');
         $status = is_string($rawStatus) && $rawStatus !== '' ? $rawStatus : null;
+        $isPublic = $request->query('public') === '1';
 
-        $paginator = $this->handler->listHistory($status, $perPage, $page);
+        if ($isPublic) {
+            $paginator = $this->handler->listPublicCompleted($perPage, $page);
+        } else {
+            $paginator = $this->handler->listHistory($status, $perPage, $page);
+        }
 
-        /** @var list<array{task_id: string, youtube_url: string, title: string|null, status: string, duration_sec: int|null, created_at: string|null, completed_at: string|null, _links: array<string, string|null>}> $data */
+        /** @var list<array{task_id: string, youtube_url: string, video_id: string, title: string|null, status: string, duration_sec: int|null, created_at: string|null, completed_at: string|null, _links: array<string, string|null>}> $data */
         $data = [];
         foreach ($paginator->getCollection() as $task) {
             /** @var \App\Domain\Entities\MediaTask $task */
-            $data[] = [
-                'task_id' => $task->id(),
-                'youtube_url' => $task->youtubeUrl()->value(),
-                'title' => $task->title(),
-                'status' => $task->status()->value,
+            $data[] = array_filter([
+                'task_id'      => $task->id(),
+                'youtube_url'  => $task->youtubeUrl()->value(),
+                'video_id'     => $task->youtubeUrl()->videoId()->value(),
+                'title'        => $task->title(),
+                'status'       => $task->status()->value,
                 'duration_sec' => $task->durationSec(),
-                'created_at' => $task->createdAt()->format('c'),
+                'created_at'   => $task->createdAt()->format('c'),
                 'completed_at' => $task->completedAt()?->format('c'),
-                '_links' => array_filter([
-                    'public_page' => $task->slug() !== null ? '/v/' . $task->slug() : null,
+                '_links'       => array_filter([
+                    'public_page' => ($task->slug() !== null && ! $task->isDmcaRemoved())
+                        ? '/v/' . $task->slug()
+                        : null,
                 ]),
-            ];
+            ]);
         }
 
         return new JsonResponse([

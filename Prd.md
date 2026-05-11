@@ -831,14 +831,15 @@ class TranscribeVideoWorkflowImpl implements TranscribeVideoWorkflow
 
 ### 7.5 История пользователя
 
-**`GET /api/history`** — возвращает список задач текущего пользователя, отсортированный по `created_at DESC` (самые новые — первые).
+**`GET /api/history`** — возвращает список задач, отсортированный по `created_at DESC` (самые новые — первые). Исключает задачи с DMCA-удалением.
 
 **Параметры запроса (query string):**
 | Параметр | Тип | По умолчанию | Описание |
 |---|---|---|---|
 | `page` | int | 1 | Номер страницы |
 | `per_page` | int | 15 | Элементов на странице (max 50) |
-| `status` | string | — | Фильтр по статусу (`pending`, `processing`, `completed`, `failed`) |
+| `status` | string | — | Фильтр по статусу (`pending`, `processing`, `completed`, `failed`). Игнорируется при `public=1`. |
+| `public` | string | — | При значении `"1"` возвращает только публичные завершённые задачи (status=completed, title не null, не DMCA). Игнорирует `status`. |
 
 **Пример ответа:**
 ```json
@@ -847,11 +848,15 @@ class TranscribeVideoWorkflowImpl implements TranscribeVideoWorkflow
         {
             "task_id": "550e8400-e29b-41d4-a716-446655440000",
             "youtube_url": "https://youtube.com/watch?v=dQw4w9WgXcQ",
+            "video_id": "dQw4w9WgXcQ",
             "title": "Rick Astley - Never Gonna Give You Up",
             "status": "completed",
             "duration_sec": 212,
             "created_at": "2026-05-07T12:00:00Z",
-            "completed_at": "2026-05-07T12:02:15Z"
+            "completed_at": "2026-05-07T12:02:15Z",
+            "_links": {
+                "public_page": "/v/rick-astley-never-gonna-give-you-up"
+            }
         }
     ],
     "meta": {

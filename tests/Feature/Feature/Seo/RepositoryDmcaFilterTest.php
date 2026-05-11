@@ -110,6 +110,91 @@ final class RepositoryDmcaFilterTest extends TestCase
     }
 
     // -----------------------------------------------------------------------
+    // findAllPaginated (DMCA filter on public history)
+    // -----------------------------------------------------------------------
+
+    public function testFindAllPaginatedSkipsDmcaRemoved(): void
+    {
+        MediaTaskModel::query()->create($this->taskData('slug-h', 'completed', 'aaaaaaaaa05'));
+        MediaTaskModel::query()->create(array_merge(
+            $this->taskData('slug-i', 'completed', 'aaaaaaaaa06'),
+            [
+                'id'              => 'eeeeeeee-0000-0000-0000-000000000006',
+                'youtube_url'     => 'https://youtube.com/watch?v=aaaaaaaaa06',
+                'video_id'        => 'aaaaaaaaa06',
+                'dmca_removed_at' => now(),
+            ],
+        ));
+
+        $repo = $this->app->make(\App\Application\Ports\Output\MediaTaskRepositoryInterface::class);
+        $paginator = $repo->findAllPaginated(null, 10, 1);
+
+        self::assertSame(1, $paginator->total());
+        self::assertSame('slug-h', $paginator->getCollection()->first()?->slug());
+    }
+
+    // -----------------------------------------------------------------------
+    // findPublicCompletedPaginated
+    // -----------------------------------------------------------------------
+
+    public function testFindPublicCompletedPaginatedReturnsOnlyCompletedWithTitleNotDmca(): void
+    {
+        // Non-completed — excluded
+        MediaTaskModel::query()->create($this->taskData('slug-j', 'processing', 'aaaaaaaaa07'));
+        // Completed but no title — excluded
+        MediaTaskModel::query()->create(array_merge(
+            $this->taskData('slug-k', 'completed', 'aaaaaaaaa08'),
+            ['title' => null, 'slug' => 'slug-k'],
+        ));
+        // Completed with DMCA — excluded
+        MediaTaskModel::query()->create(array_merge(
+            $this->taskData('slug-l', 'completed', 'aaaaaaaaa09'),
+            [
+                'id'              => 'eeeeeeee-0000-0000-0000-000000000009',
+                'youtube_url'     => 'https://youtube.com/watch?v=aaaaaaaaa09',
+                'video_id'        => 'aaaaaaaaa09',
+                'dmca_removed_at' => now(),
+            ],
+        ));
+        // Valid public task — included
+        MediaTaskModel::query()->create($this->taskData('slug-m', 'completed', 'aaaaaaaaa10'));
+
+        $repo = $this->app->make(\App\Application\Ports\Output\MediaTaskRepositoryInterface::class);
+        $paginator = $repo->findPublicCompletedPaginated(10, 1);
+
+        self::assertSame(1, $paginator->total(), 'Only completed, titled, non-DMCA tasks should appear.');
+        self::assertSame('slug-m', $paginator->getCollection()->first()?->slug());
+    }
+
+    public function testFindPublicCompletedPaginatedOrdersNewestFirst(): void
+    {
+        $older = new \Carbon\CarbonImmutable('2026-01-01 12:00:00');
+        $newer = new \Carbon\CarbonImmutable('2026-06-01 12:00:00');
+
+        \Illuminate\Support\Facades\DB::table('media_tasks')->insert(array_merge(
+            $this->taskData('slug-n', 'completed', 'aaaaaaaaa11'),
+            ['created_at' => $older, 'updated_at' => $older],
+        ));
+        \Illuminate\Support\Facades\DB::table('media_tasks')->insert(array_merge(
+            $this->taskData('slug-o', 'completed', 'aaaaaaaaa12'),
+            [
+                'id'          => 'eeeeeeee-0000-0000-0000-000000000012',
+                'youtube_url' => 'https://youtube.com/watch?v=aaaaaaaaa12',
+                'video_id'    => 'aaaaaaaaa12',
+                'created_at'  => $newer,
+                'updated_at'  => $newer,
+            ],
+        ));
+
+        $repo = $this->app->make(\App\Application\Ports\Output\MediaTaskRepositoryInterface::class);
+        $paginator = $repo->findPublicCompletedPaginated(10, 1);
+
+        self::assertSame(2, $paginator->total());
+        // Newest first
+        self::assertSame('slug-o', $paginator->getCollection()->first()?->slug());
+    }
+
+    // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
 
@@ -119,6 +204,7 @@ final class RepositoryDmcaFilterTest extends TestCase
     private function taskData(string $slug, string $status, string $videoId = 'dQw4w9WgXcQ'): array
     {
         return [
+
             'id'           => 'eeeeeeee-0000-0000-0000-' . $slug
                     |> md5(...)
                     |> (fn($x) => substr($x, 0, 12))

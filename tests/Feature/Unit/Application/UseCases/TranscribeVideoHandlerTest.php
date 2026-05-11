@@ -91,6 +91,11 @@ final class TranscribeVideoHandlerTest extends TestCase
             {
                 return new LengthAwarePaginator(collect(), 0, $perPage, $page);
             }
+
+            public function findPublicCompletedPaginated(int $perPage, int $page): LengthAwarePaginator
+            {
+                return new LengthAwarePaginator(collect(), 0, $perPage, $page);
+            }
         };
 
         $dispatcher = new class () implements WorkflowDispatcherInterface {
@@ -174,6 +179,11 @@ final class TranscribeVideoHandlerTest extends TestCase
             }
 
             public function searchByTitle(string $query, int $perPage, int $page): LengthAwarePaginator
+            {
+                return new LengthAwarePaginator(collect(), 0, $perPage, $page);
+            }
+
+            public function findPublicCompletedPaginated(int $perPage, int $page): LengthAwarePaginator
             {
                 return new LengthAwarePaginator(collect(), 0, $perPage, $page);
             }

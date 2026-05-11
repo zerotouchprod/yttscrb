@@ -11,8 +11,8 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/site.webmanifest">
 
-    <title>Transcription History — TubeSum</title>
-    <meta name="description" content="Browse all recently transcribed YouTube videos with AI summaries on TubeSum.">
+    <title>Public Library — TubeSum</title>
+    <meta name="description" content="Browse all recently transcribed YouTube videos with AI summaries on TubeSum. Free, no signup required.">
     <meta name="robots" content="noindex, follow">
     <link rel="canonical" href="{{ url('/history') }}">
 
@@ -42,14 +42,14 @@
 
     <main class="max-w-4xl mx-auto px-4 py-10">
 
-        <h1 class="text-3xl font-bold text-white mb-8">Transcription History</h1>
+        <h1 class="text-3xl font-bold text-white mb-8">Public Library</h1>
 
         @if (count($tasks) === 0)
             <div class="text-center py-16">
                 <svg class="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                 </svg>
-                <p class="text-gray-500 text-lg">No transcriptions yet.</p>
+                <p class="text-gray-500 text-lg">No summaries yet.</p>
                 <a href="/" class="mt-4 inline-block text-blue-400 hover:text-blue-300 transition-colors">
                     Transcribe your first video →
                 </a>
@@ -61,13 +61,18 @@
                         $cardLink = ($task->slug() !== null && ! $task->isDmcaRemoved())
                             ? '/v/' . $task->slug()
                             : '/?task_id=' . $task->id();
+                        $videoId = $task->youtubeUrl()->videoId()->value();
+                        $thumbnailUrl = 'https://img.youtube.com/vi/' . $videoId . '/mqdefault.jpg';
                     @endphp
                     <a
                         href="{{ $cardLink }}"
-                        class="block bg-gray-800/70 rounded-lg p-4 border border-gray-700/40 hover:border-gray-600/60 transition-colors"
+                        class="block bg-gray-800/70 rounded-lg overflow-hidden border border-gray-700/40 hover:border-gray-600/60 transition-colors"
                     >
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="min-w-0 flex-1">
+                        <div class="flex gap-3">
+                            <div class="w-40 flex-shrink-0">
+                                <img src="{{ $thumbnailUrl }}" alt="" class="w-full aspect-video object-cover bg-gray-700" loading="lazy" />
+                            </div>
+                            <div class="min-w-0 flex-1 p-3 pl-0">
                                 <span class="text-sm font-semibold text-blue-400 hover:text-blue-300 line-clamp-2 mb-1 block">{{ $task->title() ?? 'Untitled' }}</span>
                                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                                     @if ($task->durationSec() !== null)
@@ -76,7 +81,6 @@
                                     @if ($task->completedAt() !== null)
                                         <span>{{ $task->completedAt()->format('M j, Y') }}</span>
                                     @endif
-                                    <span class="capitalize">{{ $task->status()->value }}</span>
                                     <span class="text-blue-500 hover:text-blue-400 truncate">YouTube</span>
                                 </div>
                             </div>
@@ -142,7 +146,7 @@
             <p>© {{ date('Y') }} TubeSum. AI-powered YouTube transcription service.</p>
             <div class="flex items-center gap-4">
                 <a href="/" class="hover:text-gray-400 transition-colors">Transcribe a video</a>
-                <a href="/history" class="hover:text-gray-400 transition-colors">History</a>
+                <a href="/history" class="hover:text-gray-400 transition-colors">Public Library</a>
                 <a href="/dmca" class="hover:text-gray-400 transition-colors">Content Removal / DMCA</a>
             </div>
         </div>
