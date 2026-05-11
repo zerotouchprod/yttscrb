@@ -70,7 +70,10 @@
                     >
                         <div class="flex gap-3">
                             <div class="w-40 flex-shrink-0">
-                                <img src="{{ $thumbnailUrl }}" alt="" class="w-full aspect-video object-cover bg-gray-700" loading="lazy" />
+                                <div class="w-full aspect-video bg-gray-800 flex items-center justify-center relative overflow-hidden">
+                                    <svg class="w-6 h-6 text-gray-600 absolute" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <img src="{{ $thumbnailUrl }}" alt="" class="w-full aspect-video object-cover relative z-10" loading="lazy" />
+                                </div>
                             </div>
                             <div class="min-w-0 flex-1 p-3 pl-0">
                                 <span class="text-sm font-semibold text-blue-400 hover:text-blue-300 line-clamp-2 mb-1 block">{{ $task->title() ?? 'Untitled' }}</span>

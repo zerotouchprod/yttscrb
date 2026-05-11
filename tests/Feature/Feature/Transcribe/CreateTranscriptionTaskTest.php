@@ -110,9 +110,13 @@ final class CreateTranscriptionTaskTest extends TestCase
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('meta.total', 2);
 
-        // At least one completed task should have a public_page link.
-        /** @var list<array{_links: array{public_page: string|null}}> $data */
+        // Each task must include video_id for thumbnail URLs on the frontend.
+        /** @var list<array{video_id: string, _links: array{public_page: string|null}}> $data */
         $data = $response->json('data');
+        $this->assertNotEmpty($data[0]['video_id'] ?? null, 'Each history item must include video_id');
+        $this->assertNotEmpty($data[1]['video_id'] ?? null, 'Each history item must include video_id');
+
+        // At least one completed task should have a public_page link.
         $completedWithLink = array_filter(
             $data,
             fn (array $item): bool => ($item['_links']['public_page'] ?? null) === '/v/test-slug',

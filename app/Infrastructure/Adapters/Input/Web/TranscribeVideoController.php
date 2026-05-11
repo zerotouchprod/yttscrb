@@ -13,6 +13,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\HttpFoundation\Response;
@@ -194,6 +195,9 @@ final class TranscribeVideoController extends Controller
      *   - status (string|null) — filter by task status; ignored when public=1
      *   - public (string) — when "1", returns only public-completed tasks
      *     (status=completed, title not null, DMCA not removed), ignoring the status param.
+     *
+     *   Public requests (public=1) are cached for 60 seconds to reduce
+     *   database load on the main page.
      */
     public function history(Request $request): JsonResponse
     {
@@ -204,10 +208,17 @@ final class TranscribeVideoController extends Controller
         $isPublic = $request->query('public') === '1';
 
         if ($isPublic) {
-            $paginator = $this->handler->listPublicCompleted($perPage, $page);
+            $cacheKey = "public_history_page_{$page}_per{$perPage}";
+            $paginator = Cache::remember(
+                $cacheKey,
+                60,
+                fn () => $this->handler->listPublicCompleted($perPage, $page),
+            );
         } else {
             $paginator = $this->handler->listHistory($status, $perPage, $page);
         }
+
+        /** @var \Illuminate\Pagination\LengthAwarePaginator<int, \App\Domain\Entities\MediaTask> $paginator */
 
         /** @var list<array{task_id: string, youtube_url: string, video_id: string, title: string|null, status: string, duration_sec: int|null, created_at: string|null, completed_at: string|null, _links: array<string, string|null>}> $data */
         $data = [];

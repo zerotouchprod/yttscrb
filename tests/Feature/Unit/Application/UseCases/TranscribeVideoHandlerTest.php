@@ -208,4 +208,82 @@ final class TranscribeVideoHandlerTest extends TestCase
         self::assertSame('new-task', $repository->lastSavedTask?->id());
         self::assertSame('new-task', $dispatcher->dispatchedTask?->id());
     }
+
+    public function testListPublicCompletedDelegatesToRepository(): void
+    {
+        $expectedTask = MediaTask::create(
+            'public-task',
+            new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+        );
+        $expectedTask->startProcessing('wf-public');
+        $expectedTask->complete('Transcript', 'Summary', 60);
+
+        $repository = new class ($expectedTask) implements MediaTaskRepositoryInterface {
+            public function __construct(private readonly MediaTask $task)
+            {
+            }
+
+            public function save(MediaTask $mediaTask): void
+            {
+            }
+            public function findById(string $id): ?MediaTask
+            {
+                return null;
+            }
+            public function findBySlug(string $slug): ?MediaTask
+            {
+                return null;
+            }
+            public function findCompletedByVideoId(VideoId $videoId): ?MediaTask
+            {
+                return null;
+            }
+            public function findAllPaginated(?string $status, int $perPage, int $page): LengthAwarePaginator
+            {
+                return new LengthAwarePaginator(collect(), 0, $perPage, $page);
+            }
+            public function findLatestCompleted(): ?MediaTask
+            {
+                return null;
+            }
+            public function storeTranscript(string $taskId, string $transcript): void
+            {
+            }
+            public function storeTitle(string $taskId, string $title): void
+            {
+            }
+            public function getTranscript(string $taskId): ?string
+            {
+                return null;
+            }
+            public function countCompletedSince(DateTimeImmutable $since): int
+            {
+                return 0;
+            }
+            public function findPublicSlugs(): \Illuminate\Support\LazyCollection
+            {
+                return \Illuminate\Support\LazyCollection::make([]);
+            }
+            public function searchByTitle(string $query, int $perPage, int $page): LengthAwarePaginator
+            {
+                return new LengthAwarePaginator(collect(), 0, $perPage, $page);
+            }
+            public function findPublicCompletedPaginated(int $perPage, int $page): LengthAwarePaginator
+            {
+                return new LengthAwarePaginator(collect([$this->task]), 1, $perPage, $page);
+            }
+        };
+
+        $dispatcher = new class () implements WorkflowDispatcherInterface {
+            public function dispatch(MediaTask $task): void
+            {
+            }
+        };
+
+        $handler = new TranscribeVideoHandler($repository, $dispatcher);
+        $paginator = $handler->listPublicCompleted(10, 1);
+
+        self::assertSame(1, $paginator->total());
+        self::assertSame('public-task', $paginator->getCollection()->first()?->id());
+    }
 }

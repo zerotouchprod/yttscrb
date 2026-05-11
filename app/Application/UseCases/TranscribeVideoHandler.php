@@ -13,9 +13,8 @@ final readonly class TranscribeVideoHandler
 {
     public function __construct(
         private MediaTaskRepositoryInterface $repository,
-        private WorkflowDispatcherInterface  $dispatcher,
-    )
-    {
+        private WorkflowDispatcherInterface $dispatcher,
+    ) {
     }
 
     public function handle(MediaTask $task): MediaTask

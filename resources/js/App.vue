@@ -91,13 +91,14 @@
             :key="t.task_id"
             class="flex-shrink-0 w-64 bg-gray-800/70 rounded-lg border border-gray-700/40 hover:border-gray-600/60 transition-colors overflow-hidden"
           >
-            <!-- YouTube thumbnail -->
-            <div class="aspect-video bg-gray-700 overflow-hidden">
+            <!-- YouTube thumbnail with fallback -->
+            <div class="aspect-video bg-gray-800 flex items-center justify-center relative overflow-hidden">
+              <svg class="w-8 h-8 text-gray-600 absolute" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               <img
                 v-if="t.video_id"
                 :src="`https://img.youtube.com/vi/${t.video_id}/mqdefault.jpg`"
                 :alt="t.title || 'Video thumbnail'"
-                class="w-full h-full object-cover"
+                class="w-full h-full object-cover relative z-10"
                 loading="lazy"
                 @error="e => e.target.style.display = 'none'"
               />
