@@ -16,7 +16,7 @@ use Illuminate\Support\Carbon;
  * @property string $status
  * @property string|null $workflow_id
  * @property string|null $result_text
- * @property string|null $summary
+ * @property array<string, mixed>|null $summary
  * @property int|null $duration_sec
  * @property string|null $error_message
  * @property int|null $user_id
@@ -55,6 +55,7 @@ class MediaTaskModel extends Model
     protected function casts(): array
     {
         return [
+            'summary' => 'array',
             'duration_sec' => 'integer',
             'completed_at' => 'datetime',
             'failed_at' => 'datetime',

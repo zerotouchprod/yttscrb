@@ -1,7 +1,5 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
 
 export function useTranscription() {
   const youtubeUrl = ref('');
@@ -54,9 +52,9 @@ export function useTranscription() {
   });
 
   const renderedSummary = computed(() => {
-    const raw = task.value?.result?.summary ?? '';
-    if (!raw) return '';
-    return DOMPurify.sanitize(marked.parse(raw));
+    const summary = task.value?.result?.summary;
+    if (!summary || typeof summary !== 'object') return '';
+    return summary;
   });
 
   const groupedTranscript = computed(() => {
@@ -153,10 +151,22 @@ export function useTranscription() {
     }
   }
 
+  function summaryAsText() {
+    const s = task.value?.result?.summary;
+    if (!s || typeof s !== 'object') return '';
+    let text = (s.introduction || '') + '\n\n';
+    for (const kp of s.key_points || []) {
+      text += `[${kp.timecode}] ${kp.title}: ${kp.details}\n`;
+    }
+    if (s.conclusion) text += '\n' + s.conclusion;
+    return text;
+  }
+
   async function copySummary() {
-    if (!task.value?.result?.summary) return;
+    const text = summaryAsText();
+    if (!text) return;
     try {
-      await navigator.clipboard.writeText(task.value.result.summary);
+      await navigator.clipboard.writeText(text);
       copySummaryLabel.value = 'Copied!';
       setTimeout(() => { copySummaryLabel.value = 'Copy Summary'; }, 2000);
     } catch {

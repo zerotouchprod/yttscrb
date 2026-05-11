@@ -60,7 +60,7 @@ final class ProcessTranscriptionJob implements ShouldQueue
                     new SummaryOptions(),
                 );
 
-                $task->complete($subtitles, $summary->text(), 0);
+                $task->complete($subtitles, $summary, 0);
                 $repository->save($task);
 
                 return;
@@ -84,7 +84,7 @@ final class ProcessTranscriptionJob implements ShouldQueue
                 // Step 4: Persist
                 $task->complete(
                     $transcription->text()->value(),
-                    $summary->text(),
+                    $summary,
                     $transcription->durationSec(),
                 );
                 $repository->save($task);

@@ -127,9 +127,48 @@
                     </svg>
                     AI Summary
                 </h2>
-                <div class="text-gray-200 leading-relaxed prose prose-invert prose-sm max-w-none prose-headings:text-gray-100 prose-a:text-blue-400 prose-strong:text-gray-100 prose-code:text-gray-300 prose-code:bg-gray-800 prose-code:px-1 prose-code:rounded prose-li:text-gray-300">
-                    {!! $renderedSummary !!}
-                </div>
+
+                <!-- Introduction -->
+                <p class="text-gray-200 leading-relaxed mb-4">
+                    {{ $renderedSummary->introduction() }}
+                </p>
+
+                <!-- Key Points -->
+                @if (count($renderedSummary->keyPoints()) > 0)
+                    <div class="space-y-3 mb-4">
+                        @foreach ($renderedSummary->keyPoints() as $point)
+                            <div class="bg-blue-950/30 rounded-lg p-3 border border-blue-800/30">
+                                <div class="flex items-start gap-2">
+                                    @if ($task->youtubeUrl() !== null)
+                                        @php
+                                            $parts = explode(':', $point->timecode);
+                                            $sec = count($parts) === 3
+                                                ? (int)$parts[0] * 3600 + (int)$parts[1] * 60 + (int)$parts[2]
+                                                : (int)$parts[0] * 60 + (int)$parts[1];
+                                        @endphp
+                                        <a href="https://youtube.com/watch?v={{ $task->youtubeUrl()->videoId()->value() }}&t={{ $sec }}"
+                                           target="_blank" rel="noopener noreferrer"
+                                           class="text-blue-400 hover:text-blue-300 font-mono text-xs mt-0.5 shrink-0 transition-colors"
+                                           title="Open YouTube at {{ $point->timecode }}">
+                                            [{{ $point->timecode }}]
+                                        </a>
+                                    @endif
+                                    <div>
+                                        <strong class="text-gray-100 text-sm">{{ $point->title }}</strong>
+                                        <p class="text-gray-400 text-sm mt-0.5">{{ $point->details }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+
+                <!-- Conclusion -->
+                @if ($renderedSummary->conclusion() !== null)
+                    <p class="text-gray-300 leading-relaxed italic border-t border-blue-800/30 pt-3 mt-4">
+                        {{ $renderedSummary->conclusion() }}
+                    </p>
+                @endif
             </section>
         @endif
 

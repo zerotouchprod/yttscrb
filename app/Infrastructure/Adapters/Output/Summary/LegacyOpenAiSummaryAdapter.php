@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Adapters\Output\Summary;
 
-use App\Application\DTO\SummaryResult;
 use App\Application\Ports\Output\SummaryProviderInterface;
+use App\Domain\ValueObjects\SummaryResult;
 use App\Domain\ValueObjects\SummaryOptions;
 use App\Domain\ValueObjects\TranscriptionText;
 use RuntimeException;
 
-final class OpenAiSummaryAdapter implements SummaryProviderInterface
+final class LegacyOpenAiSummaryAdapter implements SummaryProviderInterface
 {
     private const API_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -80,6 +80,6 @@ final class OpenAiSummaryAdapter implements SummaryProviderInterface
             throw new RuntimeException('OpenAI API returned unexpected response: ' . $response);
         }
 
-        return new SummaryResult(trim($data['choices'][0]['message']['content']));
+        return new SummaryResult(trim($data['choices'][0]['message']['content']), []);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Adapters\Output\Persistence;
 
+use App\Domain\ValueObjects\SummaryResult;
 use App\Application\Ports\Output\MediaTaskRepositoryInterface;
 use App\Domain\Entities\MediaTask;
 use App\Domain\ValueObjects\TranscriptionStatus;
@@ -270,7 +271,12 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
 
         $this->setPrivate($task, 'status', TranscriptionStatus::from($model->status));
         $this->setPrivate($task, 'workflowId', $model->workflow_id);
-        $this->setPrivate($task, 'summary', $model->summary);
+
+        if ($model->summary !== null) {
+            /** @var array{introduction: string, key_points: array<int, array{timecode: string, title: string, details: string}>, conclusion?: string|null} $summaryData */
+            $summaryData = $model->summary;
+            $this->setPrivate($task, 'summary', SummaryResult::fromArray($summaryData));
+        }
         $this->setPrivate($task, 'errorMessage', $model->error_message);
         $this->setPrivate($task, 'durationSec', $model->duration_sec);
         $this->setPrivate($task, 'slug', $model->slug);
@@ -300,7 +306,7 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
     }
 
     /**
-     * @return array<string, int|string|null|\DateTimeImmutable>
+     * @return array<string, int|string|array<string, mixed>|null|\DateTimeImmutable>
      */
     private function toArray(MediaTask $task): array
     {
@@ -314,7 +320,7 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
             'status'          => $task->status()->value,
             'workflow_id'     => $task->workflowId(),
             'result_text'     => $task->resultText()?->value(),
-            'summary'         => $task->summary(),
+            'summary'         => $task->summary()?->toArray(),
             'duration_sec'    => $task->durationSec(),
             'title'           => $task->title(),
             'error_message'   => $task->errorMessage(),

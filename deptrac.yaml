@@ -14,10 +14,17 @@ parameters:
       collectors:
         - type: directory
           value: app/Infrastructure/.*
+    - name: AiAgents
+      collectors:
+        - type: directory
+          value: app/Ai/.*
   ruleset:
     Domain: []
     Application:
       - Domain
     Infrastructure:
       - Application
+      - Domain
+      - AiAgents
+    AiAgents:
       - Domain

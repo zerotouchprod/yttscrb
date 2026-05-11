@@ -87,7 +87,7 @@ final class TranscribeVideoController extends Controller
                 'duration_sec' => $storedTask->durationSec(),
                 'result'       => [
                     'transcript' => $storedTask->resultText()?->value(),
-                    'summary'    => $storedTask->summary(),
+                    'summary'    => $storedTask->summary()?->toArray(),
                     'word_count' => $storedTask->resultText()?->wordCount(),
                 ],
                 'completed_at' => $storedTask->completedAt()?->format('c'),
@@ -141,7 +141,7 @@ final class TranscribeVideoController extends Controller
             $response['duration_sec'] = $task->durationSec();
             $response['result'] = [
                 'transcript' => $task->resultText()?->value(),
-                'summary' => $task->summary(),
+                'summary' => $task->summary()?->toArray(),
                 'word_count' => $task->resultText()?->wordCount(),
             ];
             $response['completed_at'] = $task->completedAt()?->format('c');
@@ -207,55 +207,60 @@ final class TranscribeVideoController extends Controller
         $status = is_string($rawStatus) && $rawStatus !== '' ? $rawStatus : null;
         $isPublic = $request->query('public') === '1';
 
+        $buildResponse = function () use ($isPublic, $status, $perPage, $page): array {
+            $paginator = $isPublic
+                ? $this->handler->listPublicCompleted($perPage, $page)
+                : $this->handler->listHistory($status, $perPage, $page);
+
+            /** @var \Illuminate\Pagination\LengthAwarePaginator<int, \App\Domain\Entities\MediaTask> $paginator */
+
+            /** @var list<array{task_id: string, youtube_url: string, video_id: string, title: string|null, status: string, duration_sec: int|null, created_at: string|null, completed_at: string|null, _links: array<string, string|null>}> $data */
+            $data = [];
+            foreach ($paginator->getCollection() as $task) {
+                /** @var \App\Domain\Entities\MediaTask $task */
+                $data[] = array_filter([
+                    'task_id'      => $task->id(),
+                    'youtube_url'  => $task->youtubeUrl()->value(),
+                    'video_id'     => $task->youtubeUrl()->videoId()->value(),
+                    'title'        => $task->title(),
+                    'status'       => $task->status()->value,
+                    'duration_sec' => $task->durationSec(),
+                    'created_at'   => $task->createdAt()->format('c'),
+                    'completed_at' => $task->completedAt()?->format('c'),
+                    '_links'       => array_filter([
+                        'public_page' => ($task->slug() !== null && ! $task->isDmcaRemoved())
+                            ? '/v/' . $task->slug()
+                            : null,
+                    ]),
+                ]);
+            }
+
+            return [
+                'data' => $data,
+                'meta' => [
+                    'current_page' => $paginator->currentPage(),
+                    'last_page'    => $paginator->lastPage(),
+                    'per_page'     => $paginator->perPage(),
+                    'total'        => $paginator->total(),
+                ],
+                '_links' => [
+                    'first' => '/api/history?page=1',
+                    'prev'  => $paginator->previousPageUrl(),
+                    'next'  => $paginator->nextPageUrl(),
+                    'last'  => '/api/history?page=' . $paginator->lastPage(),
+                ],
+            ];
+        };
+
         if ($isPublic) {
             $cacheKey = "public_history_page_{$page}_per{$perPage}";
-            $paginator = Cache::remember(
-                $cacheKey,
-                60,
-                fn () => $this->handler->listPublicCompleted($perPage, $page),
-            );
+            /** @var array<string, mixed> $responseData */
+            $responseData = Cache::remember($cacheKey, 60, $buildResponse);
         } else {
-            $paginator = $this->handler->listHistory($status, $perPage, $page);
+            $responseData = $buildResponse();
         }
 
-        /** @var \Illuminate\Pagination\LengthAwarePaginator<int, \App\Domain\Entities\MediaTask> $paginator */
-
-        /** @var list<array{task_id: string, youtube_url: string, video_id: string, title: string|null, status: string, duration_sec: int|null, created_at: string|null, completed_at: string|null, _links: array<string, string|null>}> $data */
-        $data = [];
-        foreach ($paginator->getCollection() as $task) {
-            /** @var \App\Domain\Entities\MediaTask $task */
-            $data[] = array_filter([
-                'task_id'      => $task->id(),
-                'youtube_url'  => $task->youtubeUrl()->value(),
-                'video_id'     => $task->youtubeUrl()->videoId()->value(),
-                'title'        => $task->title(),
-                'status'       => $task->status()->value,
-                'duration_sec' => $task->durationSec(),
-                'created_at'   => $task->createdAt()->format('c'),
-                'completed_at' => $task->completedAt()?->format('c'),
-                '_links'       => array_filter([
-                    'public_page' => ($task->slug() !== null && ! $task->isDmcaRemoved())
-                        ? '/v/' . $task->slug()
-                        : null,
-                ]),
-            ]);
-        }
-
-        return new JsonResponse([
-            'data' => $data,
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-            ],
-            '_links' => [
-                'first' => '/api/history?page=1',
-                'prev' => $paginator->previousPageUrl(),
-                'next' => $paginator->nextPageUrl(),
-                'last' => '/api/history?page=' . $paginator->lastPage(),
-            ],
-        ]);
+        return new JsonResponse($responseData);
     }
 
     public function latest(): JsonResponse

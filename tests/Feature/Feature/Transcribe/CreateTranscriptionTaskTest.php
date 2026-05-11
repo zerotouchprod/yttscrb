@@ -69,7 +69,7 @@ final class CreateTranscriptionTaskTest extends TestCase
             'video_id' => 'dQw4w9WgXcQ',
             'status' => 'completed',
             'result_text' => 'Existing transcript',
-            'summary' => 'Existing summary',
+            'summary' => ['introduction' => 'Existing summary', 'key_points' => [], 'conclusion' => null],
             'duration_sec' => 10,
             'completed_at' => now(),
         ]);
@@ -98,7 +98,7 @@ final class CreateTranscriptionTaskTest extends TestCase
             'video_id' => 'bbbbbbbbbbb',
             'status' => 'completed',
             'result_text' => 'Transcript',
-            'summary' => 'Summary',
+            'summary' => ['introduction' => 'Summary', 'key_points' => [], 'conclusion' => null],
             'duration_sec' => 5,
             'completed_at' => now(),
             'slug' => 'test-slug',
@@ -132,7 +132,7 @@ final class CreateTranscriptionTaskTest extends TestCase
             'video_id' => 'ccccccccccc',
             'status' => 'completed',
             'result_text' => 'Latest transcript',
-            'summary' => 'Latest summary',
+            'summary' => ['introduction' => 'Latest summary', 'key_points' => [], 'conclusion' => null],
             'duration_sec' => 7,
             'completed_at' => now(),
         ]);

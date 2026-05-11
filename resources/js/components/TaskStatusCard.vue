@@ -51,7 +51,37 @@
       <div v-show="activeTab === 'summary'" id="panel-summary" role="tabpanel">
         <div class="mb-6 bg-gray-700/60 border-l-4 border-blue-500 rounded-r-lg p-4">
           <h2 class="text-lg font-semibold text-white mb-2 flex items-center gap-2"><svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Summary</h2>
-          <div v-html="renderedSummary" class="prose prose-invert prose-sm max-w-none text-gray-300"></div>
+
+          <!-- Introduction -->
+          <p v-if="renderedSummary.introduction" class="text-gray-300 text-sm leading-relaxed mb-4">
+            {{ renderedSummary.introduction }}
+          </p>
+
+          <!-- Key Points -->
+          <div v-if="renderedSummary.key_points && renderedSummary.key_points.length > 0" class="space-y-2.5 mb-4">
+            <div v-for="(point, idx) in renderedSummary.key_points" :key="idx" class="bg-blue-950/30 rounded-lg p-3 border border-blue-800/30">
+              <div class="flex items-start gap-2">
+                <a
+                  v-if="task.video_id"
+                  :href="'https://youtube.com/watch?v=' + task.video_id + '&t=' + timecodeToSec(point.timecode)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-blue-400 hover:text-blue-300 font-mono text-xs mt-0.5 shrink-0 transition-colors"
+                  :title="'Open YouTube at ' + point.timecode"
+                >[{{ point.timecode }}]</a>
+                <span v-else class="text-blue-400/60 font-mono text-xs mt-0.5 shrink-0">[{{ point.timecode }}]</span>
+                <div>
+                  <strong class="text-gray-100 text-sm">{{ point.title }}</strong>
+                  <p class="text-gray-400 text-xs mt-0.5">{{ point.details }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Conclusion -->
+          <p v-if="renderedSummary.conclusion" class="text-gray-300 text-sm leading-relaxed italic border-t border-blue-800/30 pt-3 mt-4">
+            {{ renderedSummary.conclusion }}
+          </p>
         </div>
         <button @click="$emit('copySummary')" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium px-5 py-3 sm:py-2.5 rounded-lg transition-colors" :aria-label="copySummaryLabel"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg> {{ copySummaryLabel }}</button>
       </div>
@@ -84,9 +114,16 @@
 </template>
 <script setup>
 import { formatDuration, formatTimecode } from '../composables/useFormatting.js';
+
+function timecodeToSec(tc) {
+  const parts = tc.split(':').map(Number);
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  return parts[0] * 60 + parts[1];
+}
+
 defineProps({
   task: Object, statusBadgeClass: String, processingProgress: Number, processingStep: Object,
-  thumbnailUrl: String, thumbnailError: Boolean, renderedSummary: String, groupedTranscript: Array,
+  thumbnailUrl: String, thumbnailError: Boolean, renderedSummary: Object, groupedTranscript: Array,
   copySummaryLabel: String, copyTranscriptLabel: String,
 });
 const activeTab = defineModel('activeTab', { default: 'summary' });

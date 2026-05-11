@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Feature\Seo;
 
+use App\Domain\ValueObjects\SummaryResult;
 use App\Domain\Entities\MediaTask;
 use App\Domain\ValueObjects\YouTubeUrl;
 use App\Infrastructure\Adapters\Output\Persistence\MediaTaskModel;
@@ -15,6 +16,12 @@ use Tests\TestCase;
 final class SearchControllerTest extends TestCase
 {
     use RefreshDatabase;
+
+    private const string ID_TASK_1     = 'aaaaaaaa-0000-0000-0000-000000000001';
+    private const string ID_TASK_DMCA  = 'aaaaaaaa-0000-0000-0000-00000000000d';
+    private const string ID_NO_SLUG    = 'aaaaaaaa-0000-0000-0000-00000000000e';
+    private const string ID_LINKS      = 'aaaaaaaa-0000-0000-0000-00000000000f';
+    private const string ID_CASE       = 'aaaaaaaa-0000-0000-0000-000000000010';
 
     protected function setUp(): void
     {
@@ -29,9 +36,9 @@ final class SearchControllerTest extends TestCase
 
     public function testSuccessfulSearchReturnsMatchingTasks(): void
     {
-        $task = MediaTask::create('task-1', new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
+        $task = MediaTask::create(self::ID_TASK_1, new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
         $task->startProcessing('wf-1');
-        $task->complete('Transcript text', 'Summary text', 212);
+        $task->complete('Transcript text', new SummaryResult('Summary text', []), 212);
         $task->setTitle('Rick Astley - Never Gonna Give You Up');
         $task->setSlug('rick-astley-never-gonna-give-you-up');
 
@@ -40,7 +47,7 @@ final class SearchControllerTest extends TestCase
         $response = $this->getJson('/api/search?q=rick+astley');
 
         $response->assertOk();
-        $response->assertJsonPath('data.0.task_id', 'task-1');
+        $response->assertJsonPath('data.0.task_id', self::ID_TASK_1);
         $response->assertJsonPath('data.0.title', 'Rick Astley - Never Gonna Give You Up');
         $response->assertJsonPath('data.0._links.public_page', '/v/rick-astley-never-gonna-give-you-up');
         $response->assertJsonPath('meta.query', 'rick astley');
@@ -80,9 +87,9 @@ final class SearchControllerTest extends TestCase
 
     public function testExcludesDmcaRemovedTasks(): void
     {
-        $task = MediaTask::create('task-dmca', new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
+        $task = MediaTask::create(self::ID_TASK_DMCA, new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
         $task->startProcessing('wf-dmca');
-        $task->complete('Transcript', 'Summary', 100);
+        $task->complete('Transcript', new SummaryResult('Summary', []), 100);
         $task->setTitle('Rick Astley DMCA Removed');
         $task->setSlug('rick-astley-dmca-removed');
         $task->removeForDmca();
@@ -97,9 +104,9 @@ final class SearchControllerTest extends TestCase
 
     public function testSlugNullOmitsPublicPageLink(): void
     {
-        $task = MediaTask::create('task-no-slug', new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
+        $task = MediaTask::create(self::ID_NO_SLUG, new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
         $task->startProcessing('wf-no-slug');
-        $task->complete('Transcript', 'Summary', 100);
+        $task->complete('Transcript', new SummaryResult('Summary', []), 100);
         $task->setTitle('Rick Astley No Slug');
 
         $this->persistTask($task);
@@ -107,15 +114,15 @@ final class SearchControllerTest extends TestCase
         $response = $this->getJson('/api/search?q=rick+astley');
 
         $response->assertOk();
-        $response->assertJsonPath('data.0.task_id', 'task-no-slug');
+        $response->assertJsonPath('data.0.task_id', self::ID_NO_SLUG);
         $response->assertJsonMissing(['data.0._links.public_page']);
     }
 
     public function testLinksContainCorrectQueryParameter(): void
     {
-        $task = MediaTask::create('task-links', new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
+        $task = MediaTask::create(self::ID_LINKS, new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
         $task->startProcessing('wf-links');
-        $task->complete('Transcript', 'Summary', 100);
+        $task->complete('Transcript', new SummaryResult('Summary', []), 100);
         $task->setTitle('Rick Astley Links Test');
         $task->setSlug('rick-astley-links-test');
 
@@ -150,9 +157,9 @@ final class SearchControllerTest extends TestCase
 
     public function testSearchIsCaseInsensitive(): void
     {
-        $task = MediaTask::create('task-case', new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
+        $task = MediaTask::create(self::ID_CASE, new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
         $task->startProcessing('wf-case');
-        $task->complete('Transcript', 'Summary', 100);
+        $task->complete('Transcript', new SummaryResult('Summary', []), 100);
         $task->setTitle('RICK ASTLEY UPPERCASE');
         $task->setSlug('rick-astley-uppercase');
 
@@ -161,7 +168,7 @@ final class SearchControllerTest extends TestCase
         $response = $this->getJson('/api/search?q=rick+astley');
 
         $response->assertOk();
-        $response->assertJsonPath('data.0.task_id', 'task-case');
+        $response->assertJsonPath('data.0.task_id', self::ID_CASE);
     }
 
     private function persistTask(MediaTask $task): void
@@ -173,7 +180,7 @@ final class SearchControllerTest extends TestCase
         $model->status = $task->status()->value;
         $model->workflow_id = $task->workflowId();
         $model->result_text = $task->resultText()?->value();
-        $model->summary = $task->summary();
+        $model->summary = $task->summary()?->toArray();
         $model->duration_sec = $task->durationSec();
         $model->title = $task->title();
         $model->slug = $task->slug();

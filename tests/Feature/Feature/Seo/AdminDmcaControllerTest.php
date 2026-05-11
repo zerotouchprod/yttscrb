@@ -149,7 +149,7 @@ final class AdminDmcaControllerTest extends TestCase
             'slug'         => 'test-dmca-video',
             'status'       => 'completed',
             'result_text'  => 'Some transcript.',
-            'summary'      => 'A summary.',
+            'summary'      => ['introduction' => 'A summary.', 'key_points' => [], 'conclusion' => null],
             'duration_sec' => 90,
             'completed_at' => now(),
         ]);

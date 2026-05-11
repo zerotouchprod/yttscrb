@@ -28,19 +28,16 @@ final class PublicTranscriptController extends Controller
 
         $summary = $task->summary();
         $summaryExcerpt = $summary !== null
-            ? mb_substr($summary, 0, 155)
+            ? mb_substr($summary->introduction(), 0, 155)
             : null;
 
         $metaDescription = $summaryExcerpt !== null
-            ? $summaryExcerpt . (mb_strlen($summary) > 155 ? '…' : '')
+            ? $summaryExcerpt . (mb_strlen($summary->introduction()) > 155 ? '…' : '')
             : 'Full transcript and AI-generated summary of the YouTube video. No signup required.';
 
         $canonicalUrl = url('/v/' . $slug);
 
-        // Render summary as markdown (safe by default — escapes raw HTML)
-        $renderedSummary = $summary !== null
-            ? Str::markdown($summary)
-            : null;
+        $renderedSummary = $summary;
 
         // Chunk transcript into paragraphs with estimated timecodes (matching SPA logic)
         $transcriptChunks = $this->chunkTranscript($task);

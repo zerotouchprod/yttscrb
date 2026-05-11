@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Unit\Application\UseCases;
 
+use App\Domain\ValueObjects\SummaryResult;
 use App\Application\Ports\Output\MediaTaskRepositoryInterface;
 use App\Application\Ports\Output\WorkflowDispatcherInterface;
 use App\Application\UseCases\TranscribeVideoHandler;
@@ -23,7 +24,7 @@ final class TranscribeVideoHandlerTest extends TestCase
             new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
         );
         $existingTask->startProcessing('transcribe-existing-task');
-        $existingTask->complete('Existing transcript', 'Existing summary', 10);
+        $existingTask->complete('Existing transcript', new SummaryResult('Existing summary', []), 10);
 
         $repository = new class ($existingTask) implements MediaTaskRepositoryInterface {
             public int $saveCalls = 0;
@@ -216,7 +217,7 @@ final class TranscribeVideoHandlerTest extends TestCase
             new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
         );
         $expectedTask->startProcessing('wf-public');
-        $expectedTask->complete('Transcript', 'Summary', 60);
+        $expectedTask->complete('Transcript', new SummaryResult('Summary', []), 60);
 
         $repository = new class ($expectedTask) implements MediaTaskRepositoryInterface {
             public function __construct(private readonly MediaTask $task)

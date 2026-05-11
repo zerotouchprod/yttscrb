@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Application\UseCases;
 
+use App\Domain\ValueObjects\SummaryResult;
 use App\Application\Ports\Output\MediaTaskRepositoryInterface;
 use App\Application\Ports\Output\WorkflowDispatcherInterface;
 use App\Application\UseCases\TranscribeVideoHandler;
@@ -115,7 +116,7 @@ final class TranscribeVideoHandlerSearchTest extends TestCase
             new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
         );
         $task->startProcessing('wf-test');
-        $task->complete('Transcript', 'Summary', 212);
+        $task->complete('Transcript', new SummaryResult('Test intro', []), 212);
         $task->setTitle('Rick Astley - Never Gonna Give You Up');
 
         $paginator = new LengthAwarePaginator(

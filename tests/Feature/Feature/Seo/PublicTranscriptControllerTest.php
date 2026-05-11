@@ -29,7 +29,11 @@ final class PublicTranscriptControllerTest extends TestCase
             'slug'         => 'rick-astley-never-gonna-give-you-up',
             'status'       => 'completed',
             'result_text'  => 'We are no strangers to love.',
-            'summary'      => 'A timeless 80s pop anthem about devotion.',
+            'summary'      => [
+                'introduction' => 'A timeless 80s pop anthem about devotion.',
+                'key_points' => [],
+                'conclusion' => null
+            ],
             'duration_sec' => 213,
             'completed_at' => now(),
         ]);
@@ -54,7 +58,7 @@ final class PublicTranscriptControllerTest extends TestCase
             'slug'         => 'test-video',
             'status'       => 'completed',
             'result_text'  => 'Some transcript.',
-            'summary'      => 'A short summary.',
+            'summary'      => ['introduction' => 'A short summary.', 'key_points' => [], 'conclusion' => null],
             'duration_sec' => 60,
             'completed_at' => now(),
         ]);
@@ -76,7 +80,7 @@ final class PublicTranscriptControllerTest extends TestCase
             'slug'         => 'another-video',
             'status'       => 'completed',
             'result_text'  => 'Transcript.',
-            'summary'      => 'Summary.',
+            'summary'      => ['introduction' => 'Summary.', 'key_points' => [], 'conclusion' => null],
             'duration_sec' => 120,
             'completed_at' => now(),
         ]);

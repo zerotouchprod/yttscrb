@@ -33,6 +33,6 @@ final class AiSummaryActivity extends Activity
             new SummaryOptions(),
         );
 
-        return $result->text();
+        return json_encode($result->toArray(), JSON_THROW_ON_ERROR);
     }
 }

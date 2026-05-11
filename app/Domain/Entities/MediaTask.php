@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Entities;
 
+use App\Domain\ValueObjects\SummaryResult;
 use App\Domain\ValueObjects\TranscriptionStatus;
 use App\Domain\ValueObjects\TranscriptionText;
 use App\Domain\ValueObjects\YouTubeUrl;
@@ -15,7 +16,7 @@ final class MediaTask
     private TranscriptionStatus $status;
     private ?string $workflowId = null;
     private ?TranscriptionText $resultText = null;
-    private ?string $summary = null;
+    private ?SummaryResult $summary = null;
     private ?string $errorMessage = null;
     private ?DateTimeImmutable $completedAt = null;
     private ?DateTimeImmutable $failedAt = null;
@@ -62,7 +63,7 @@ final class MediaTask
         $this->workflowId = $workflowId;
     }
 
-    public function complete(string $transcript, ?string $summary, int $durationSec): void
+    public function complete(string $transcript, ?SummaryResult $summary, int $durationSec): void
     {
         $this->transitionTo(TranscriptionStatus::Completed);
         $this->resultText = new TranscriptionText($transcript);
@@ -106,7 +107,7 @@ final class MediaTask
         return $this->resultText;
     }
 
-    public function summary(): ?string
+    public function summary(): ?SummaryResult
     {
         return $this->summary;
     }

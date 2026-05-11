@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Feature\Seo;
 
+use App\Application\Ports\Output\MediaTaskRepositoryInterface;
 use App\Infrastructure\Adapters\Output\Persistence\MediaTaskModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -25,7 +26,7 @@ final class RepositoryDmcaFilterTest extends TestCase
     {
         MediaTaskModel::query()->create($this->taskData('slug-a', 'completed'));
 
-        $repo = $this->app->make(\App\Application\Ports\Output\MediaTaskRepositoryInterface::class);
+        $repo = $this->app->make(MediaTaskRepositoryInterface::class);
         $result = $repo->findBySlug('slug-a');
 
         self::assertNotNull($result);
@@ -39,7 +40,7 @@ final class RepositoryDmcaFilterTest extends TestCase
             ['dmca_removed_at' => now()],
         ));
 
-        $repo = $this->app->make(\App\Application\Ports\Output\MediaTaskRepositoryInterface::class);
+        $repo = $this->app->make(MediaTaskRepositoryInterface::class);
         self::assertNull($repo->findBySlug('slug-b'));
     }
 
@@ -47,7 +48,7 @@ final class RepositoryDmcaFilterTest extends TestCase
     {
         MediaTaskModel::query()->create($this->taskData('slug-c', 'pending'));
 
-        $repo = $this->app->make(\App\Application\Ports\Output\MediaTaskRepositoryInterface::class);
+        $repo = $this->app->make(MediaTaskRepositoryInterface::class);
         self::assertNull($repo->findBySlug('slug-c'));
     }
 
@@ -75,7 +76,7 @@ final class RepositoryDmcaFilterTest extends TestCase
             ],
         ));
 
-        $repo = $this->app->make(\App\Application\Ports\Output\MediaTaskRepositoryInterface::class);
+        $repo = $this->app->make(MediaTaskRepositoryInterface::class);
         $result = $repo->findLatestCompleted();
 
         self::assertNotNull($result);
@@ -93,7 +94,7 @@ final class RepositoryDmcaFilterTest extends TestCase
             ['dmca_removed_at' => now()],
         ));
 
-        $repo = $this->app->make(\App\Application\Ports\Output\MediaTaskRepositoryInterface::class);
+        $repo = $this->app->make(MediaTaskRepositoryInterface::class);
         $result = $repo->findCompletedByVideoId(new \App\Domain\ValueObjects\VideoId('aaaaaaaaa03'));
 
         self::assertNull($result);
@@ -103,7 +104,7 @@ final class RepositoryDmcaFilterTest extends TestCase
     {
         MediaTaskModel::query()->create($this->taskData('slug-g', 'completed', 'aaaaaaaaa04'));
 
-        $repo = $this->app->make(\App\Application\Ports\Output\MediaTaskRepositoryInterface::class);
+        $repo = $this->app->make(MediaTaskRepositoryInterface::class);
         $result = $repo->findCompletedByVideoId(new \App\Domain\ValueObjects\VideoId('aaaaaaaaa04'));
 
         self::assertNotNull($result);
@@ -126,7 +127,7 @@ final class RepositoryDmcaFilterTest extends TestCase
             ],
         ));
 
-        $repo = $this->app->make(\App\Application\Ports\Output\MediaTaskRepositoryInterface::class);
+        $repo = $this->app->make(MediaTaskRepositoryInterface::class);
         $paginator = $repo->findAllPaginated(null, 10, 1);
 
         self::assertSame(1, $paginator->total());
@@ -159,7 +160,7 @@ final class RepositoryDmcaFilterTest extends TestCase
         // Valid public task — included
         MediaTaskModel::query()->create($this->taskData('slug-m', 'completed', 'aaaaaaaaa10'));
 
-        $repo = $this->app->make(\App\Application\Ports\Output\MediaTaskRepositoryInterface::class);
+        $repo = $this->app->make(MediaTaskRepositoryInterface::class);
         $paginator = $repo->findPublicCompletedPaginated(10, 1);
 
         self::assertSame(1, $paginator->total(), 'Only completed, titled, non-DMCA tasks should appear.');
@@ -173,7 +174,11 @@ final class RepositoryDmcaFilterTest extends TestCase
 
         \Illuminate\Support\Facades\DB::table('media_tasks')->insert(array_merge(
             $this->taskData('slug-n', 'completed', 'aaaaaaaaa11'),
-            ['created_at' => $older, 'updated_at' => $older],
+            [
+                'summary'     => json_encode(['introduction' => 'Summary.', 'key_points' => [], 'conclusion' => null]),
+                'created_at'  => $older,
+                'updated_at'  => $older,
+            ],
         ));
         \Illuminate\Support\Facades\DB::table('media_tasks')->insert(array_merge(
             $this->taskData('slug-o', 'completed', 'aaaaaaaaa12'),
@@ -181,12 +186,13 @@ final class RepositoryDmcaFilterTest extends TestCase
                 'id'          => 'eeeeeeee-0000-0000-0000-000000000012',
                 'youtube_url' => 'https://youtube.com/watch?v=aaaaaaaaa12',
                 'video_id'    => 'aaaaaaaaa12',
+                'summary'     => json_encode(['introduction' => 'Summary.', 'key_points' => [], 'conclusion' => null]),
                 'created_at'  => $newer,
                 'updated_at'  => $newer,
             ],
         ));
 
-        $repo = $this->app->make(\App\Application\Ports\Output\MediaTaskRepositoryInterface::class);
+        $repo = $this->app->make(MediaTaskRepositoryInterface::class);
         $paginator = $repo->findPublicCompletedPaginated(10, 1);
 
         self::assertSame(2, $paginator->total());
@@ -205,17 +211,14 @@ final class RepositoryDmcaFilterTest extends TestCase
     {
         return [
 
-            'id'           => 'eeeeeeee-0000-0000-0000-' . $slug
-                    |> md5(...)
-                    |> (fn($x) => substr($x, 0, 12))
-                    |> (fn($x) => str_pad($x, 12, '0')),
+            'id'           => 'eeeeeeee-0000-0000-0000-' . str_pad(substr(md5($slug), 0, 12), 12, '0'),
             'youtube_url'  => "https://youtube.com/watch?v={$videoId}",
             'video_id'     => $videoId,
             'title'        => 'Test Video ' . $slug,
             'slug'         => $slug,
             'status'       => $status,
             'result_text'  => 'Transcript.',
-            'summary'      => 'Summary.',
+            'summary'      => ['introduction' => 'Summary.', 'key_points' => [], 'conclusion' => null],
             'duration_sec' => 60,
             'completed_at' => $status === 'completed' ? now() : null,
         ];

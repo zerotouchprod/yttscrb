@@ -1,6 +1,8 @@
 <?php
 
+use App\Domain\ValueObjects\SummaryResult;
 use App\Domain\Entities\MediaTask;
+use App\Domain\ValueObjects\SummaryKeyPoint;
 use App\Domain\ValueObjects\TranscriptionStatus;
 use App\Domain\ValueObjects\YouTubeUrl;
 
@@ -15,13 +17,22 @@ it('creates a pending media task', function (): void {
 it('moves a task through processing to completed', function (): void {
     $task = MediaTask::create('task-1', new YouTubeUrl('https://youtu.be/dQw4w9WgXcQ'));
 
+    $summary = new SummaryResult(
+        introduction: 'This video covers testing.',
+        keyPoints: [
+            new SummaryKeyPoint('01:00', 'Test Setup', 'How to set up tests.'),
+        ],
+        conclusion: 'Testing is important.',
+    );
+
     $task->startProcessing('transcribe-task-1');
-    $task->complete('Transcript text', 'Summary text', 120);
+    $task->complete('Transcript text', $summary, 120);
 
     expect($task->status())->toBe(TranscriptionStatus::Completed)
         ->and($task->workflowId())->toBe('transcribe-task-1')
         ->and($task->resultText()?->value())->toBe('Transcript text')
-        ->and($task->summary())->toBe('Summary text')
+        ->and($task->summary())->not->toBeNull()
+        ->and($task->summary()?->introduction())->toBe('This video covers testing.')
         ->and($task->durationSec())->toBe(120)
         ->and($task->completedAt())->not->toBeNull()
         ->and($task->failedAt())->toBeNull();
@@ -62,7 +73,13 @@ it('title persists after complete', function (): void {
     $task = MediaTask::create('test-id', new YouTubeUrl('https://youtube.com/watch?v=dQw4w9WgXcQ'));
     $task->startProcessing('wf-123');
     $task->setTitle('Test Video Title');
-    $task->complete('transcript text', 'summary text', 180);
+
+    $summary = new SummaryResult(
+        introduction: 'A test summary.',
+        keyPoints: [],
+    );
+
+    $task->complete('transcript text', $summary, 180);
 
     expect($task->title())->toBe('Test Video Title')
         ->and($task->status())->toBe(TranscriptionStatus::Completed);

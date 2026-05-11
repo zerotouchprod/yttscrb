@@ -9,8 +9,9 @@
 #   - Git clone of this repo at ~/apps/yttscrb
 #
 # Environment variables for first deploy (secret auto-creation):
-#   YTSCRB_GROQ_API_KEY    Groq API key (starts with gsk_)
-#   YTSCRB_OPENAI_API_KEY  OpenAI API key (starts with sk-)
+#   YTSCRB_GROQ_API_KEY      Groq API key (starts with gsk_)
+#   YTSCRB_OPENAI_API_KEY    OpenAI API key (starts with sk-)
+#   YTSCRB_DEEPSEEK_API_KEY  DeepSeek API key
 #
 # Usage:
 #   ./deploy.sh                         # Build from HEAD, push, deploy
@@ -87,6 +88,7 @@ create_secret_if_missing() {
     # API keys from environment (both required for first deploy)
     local groq_key="${YTSCRB_GROQ_API_KEY:-${GROQ_API_KEY:-}}"
     local openai_key="${YTSCRB_OPENAI_API_KEY:-${OPENAI_API_KEY:-}}"
+    local deepseek_key="${YTSCRB_DEEPSEEK_API_KEY:-${DEEPSEEK_API_KEY:-}}"
 
     local missing_vars=()
     if [[ -z "$groq_key" ]]; then
@@ -94,6 +96,9 @@ create_secret_if_missing() {
     fi
     if [[ -z "$openai_key" ]]; then
         missing_vars+=("YTSCRB_OPENAI_API_KEY  (OpenAI API key, starts with sk-)")
+    fi
+    if [[ -z "$deepseek_key" ]]; then
+        missing_vars+=("YTSCRB_DEEPSEEK_API_KEY  (DeepSeek API key)")
     fi
 
     if [[ ${#missing_vars[@]} -gt 0 ]]; then
@@ -105,6 +110,7 @@ create_secret_if_missing() {
         echo "Set them and re-run:" >&2
         echo "  export YTSCRB_GROQ_API_KEY=gsk_..." >&2
         echo "  export YTSCRB_OPENAI_API_KEY=sk-..." >&2
+        echo "  export YTSCRB_DEEPSEEK_API_KEY=..." >&2
         echo "  ./deploy.sh" >&2
         return 1
     fi
@@ -133,6 +139,7 @@ create_secret_if_missing() {
         --from-literal=DB_PASSWORD="$db_password" \
         --from-literal=GROQ_API_KEY="$groq_key" \
         --from-literal=OPENAI_API_KEY="$openai_key" \
+        --from-literal=DEEPSEEK_API_KEY="$deepseek_key" \
         --dry-run=client -o yaml | kubectl apply -f -
 
     echo "=== Secret '$SECRET_NAME' created successfully ==="
@@ -182,6 +189,14 @@ if [[ -z "$OPENAI_K" ]]; then
     exit 1
 fi
 echo "  OPENAI_API_KEY: present (${#OPENAI_K} chars, starts with ${OPENAI_K:0:3})"
+
+# Validate DEEPSEEK_API_KEY exists
+DEEPSEEK_K=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data.DEEPSEEK_API_KEY}" 2>/dev/null | base64 -d)
+if [[ -z "$DEEPSEEK_K" ]]; then
+    echo "ERROR: DEEPSEEK_API_KEY key is missing or empty in secret '$SECRET_NAME'." >&2
+    exit 1
+fi
+echo "  DEEPSEEK_API_KEY: present (${#DEEPSEEK_K} chars)"
 
 # Warn about REDIS_PASSWORD presence (Redis auth is disabled)
 if kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data.REDIS_PASSWORD}" >/dev/null 2>&1; then
