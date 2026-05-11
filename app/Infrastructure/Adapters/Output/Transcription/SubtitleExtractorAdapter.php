@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Log;
 
 final class SubtitleExtractorAdapter implements SubtitleProviderInterface
 {
+    public function __construct(
+        private readonly SrtParser $srtParser = new SrtParser(),
+    ) {
+    }
+
     public function extract(string $youtubeUrl): ?string
     {
         $outputDir = storage_path('app/temp/subs');
@@ -65,8 +70,8 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
             return null;
         }
 
-        // Convert SRT/VTT to plain text (remove timestamps and sequence numbers)
-        return $this->stripTimestamps($content);
+        // Parse SRT into timecoded transcript: "[MM:SS] text" lines
+        return $this->srtParser->parse($content);
     }
 
     public function extractTitle(string $youtubeUrl): ?string
@@ -110,44 +115,5 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
         }
 
         return $title;
-    }
-
-    private function stripTimestamps(string $content): string
-    {
-        $lines = explode("\n", $content);
-        $textLines = [];
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-
-            // Skip empty lines
-            if ($line === '') {
-                continue;
-            }
-
-            // Skip sequence numbers (pure digits)
-            if (preg_match('/^\d+$/', $line)) {
-                continue;
-            }
-
-            // Skip timestamp lines (contain -->)
-            if (str_contains($line, '-->')) {
-                continue;
-            }
-
-            // Skip VTT header
-            if ($line === 'WEBVTT' || str_starts_with($line, 'Kind:') || str_starts_with($line, 'Language:')) {
-                continue;
-            }
-
-            // Remove HTML-like tags
-            $line = strip_tags($line);
-
-            if ($line !== '') {
-                $textLines[] = $line;
-            }
-        }
-
-        return implode(' ', $textLines);
     }
 }

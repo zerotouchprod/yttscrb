@@ -9,8 +9,11 @@ parameters:
         - '#Call to an undefined static method Workflow\\WorkflowStub::(mock|assertDispatched|assertNotDispatched)\(\)#'
         # Mockery dynamic methods (andReturn)
         - '#Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage::andReturn\(\)#'
-        # Pest dynamic properties ($this->storedWorkflow, $this->tempDir)
+        # Pest dynamic properties ($this->storedWorkflow, $this->tempDir, $this->parser etc.)
         - '#Access to an undefined property Pest\\PendingCalls\\TestCall::\$storedWorkflow#'
         - '#Access to an undefined property Pest\\PendingCalls\\TestCall::\$tempDir#'
+        - '#Access to an undefined property Pest\\PendingCalls\\TestCall::\$parser#'
+        # Pest ->not->xxx() chain ($not is a magic proxy property)
+        - '#Access to an undefined property Pest\\Mixins\\Expectation<.*>::\$not#'
         # YouTubeUrl|null after App::make() in tests
         - '#Cannot call method value\(\) on App\\Domain\\ValueObjects\\YouTubeUrl\|null#'

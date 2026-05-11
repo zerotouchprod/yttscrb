@@ -195,9 +195,13 @@
                         <p class="mb-3 last:mb-0 break-words">
                             @if ($chunk['timeSec'] !== null && $task->youtubeUrl() !== null)
                                 @php
-                                    $m = intdiv($chunk['timeSec'], 60);
-                                    $s = $chunk['timeSec'] % 60;
-                                    $timecode = sprintf('%02d:%02d', $m, $s);
+                                    $sec = $chunk['timeSec'];
+                                    $h = intdiv($sec, 3600);
+                                    $m = intdiv($sec % 3600, 60);
+                                    $s = $sec % 60;
+                                    $timecode = $h > 0
+                                        ? sprintf('%d:%02d:%02d', $h, $m, $s)
+                                        : sprintf('%02d:%02d', $m, $s);
                                 @endphp
                                 <a
                                     href="https://youtube.com/watch?v={{ $task->youtubeUrl()->videoId()->value() }}&t={{ $chunk['timeSec'] }}"

@@ -57,9 +57,43 @@ export function useTranscription() {
     return summary;
   });
 
+  /**
+   * Regex for a timecoded transcript line: "[MM:SS] text" or "[HH:MM:SS] text".
+   * Groups: 1=hours (optional), 2=minutes, 3=seconds, 4=text.
+   */
+  const TIMECODED_LINE_RE = /^\[(?:(\d+):)?(\d{1,2}):(\d{2})\]\s*(.+)$/;
+
+  /**
+   * Parse a timecoded transcript (lines starting with "[MM:SS]" or "[HH:MM:SS]")
+   * into chunks with real timeSec values.
+   *
+   * @param {string} text
+   * @returns {{text: string, timeSec: number}[]}
+   */
+  function parseTimedTranscript(text) {
+    const chunks = [];
+    for (const line of text.split('\n')) {
+      const m = TIMECODED_LINE_RE.exec(line.trim());
+      if (!m) continue;
+      const hours  = m[1] ? parseInt(m[1], 10) : 0;
+      const mins   = parseInt(m[2], 10);
+      const secs   = parseInt(m[3], 10);
+      chunks.push({ text: m[4], timeSec: hours * 3600 + mins * 60 + secs });
+    }
+    return chunks;
+  }
+
   const groupedTranscript = computed(() => {
     const text = task.value?.result?.transcript ?? '';
     if (!text) return [];
+
+    // Detect embedded timecodes: check first non-empty line
+    const firstLine = text.split('\n').find(l => l.trim() !== '') ?? '';
+    if (TIMECODED_LINE_RE.test(firstLine.trim())) {
+      return parseTimedTranscript(text);
+    }
+
+    // Fallback: estimate timecodes from word position + video duration
     const CHUNK_SIZE = 80;
     const words = text.split(/\s+/);
     const totalWords = words.length;

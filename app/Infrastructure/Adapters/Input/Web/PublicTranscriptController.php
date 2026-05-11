@@ -52,8 +52,11 @@ final class PublicTranscriptController extends Controller
     }
 
     /**
-     * Split transcript into ~80-word chunks with estimated timecodes.
-     * Mirrors the groupedTranscript computed property in resources/js/App.vue.
+     * Split transcript into paragraphs.
+     *
+     * If the transcript contains embedded "[MM:SS]" or "[HH:MM:SS]" timecodes
+     * (produced by SrtParser or GroqWhisperAdapter), parse them directly.
+     * Otherwise fall back to ~80-word chunks with timecodes estimated from video duration.
      *
      * @return array<int, array{text: string, timeSec: int|null}>
      */
@@ -64,29 +67,59 @@ final class PublicTranscriptController extends Controller
             return [];
         }
 
+        // Detect embedded timecodes on the first non-empty line
+        $firstLine = '';
+        foreach (explode("\n", $text) as $l) {
+            $firstLine = trim($l);
+            if ($firstLine !== '') {
+                break;
+            }
+        }
+
+        if (preg_match('/^\[(?:\d+:)?\d{1,2}:\d{2}\]/', $firstLine)) {
+            return $this->parseTimedTranscript($text);
+        }
+
+        // Fallback: word-based chunks with estimated timecodes
         $words = preg_split('/\s+/', $text);
         if ($words === false) {
             return [];
         }
 
-        $totalWords = count($words);
+        $totalWords  = count($words);
         $durationSec = $task->durationSec() ?? 0;
-        $wordsPerSec = $durationSec > 0
-            ? $totalWords / $durationSec
-            : 0;
-
-        $chunkSize = 80;
-        $chunks = [];
+        $wordsPerSec = $durationSec > 0 ? $totalWords / $durationSec : 0;
+        $chunkSize   = 80;
+        $chunks      = [];
 
         for ($i = 0; $i < $totalWords; $i += $chunkSize) {
-            $timeSec = $wordsPerSec > 0
-                ? (int) round($i / $wordsPerSec)
-                : null;
-
+            $timeSec  = $wordsPerSec > 0 ? (int) round($i / $wordsPerSec) : null;
             $chunks[] = [
                 'text'    => implode(' ', array_slice($words, $i, $chunkSize)),
                 'timeSec' => $timeSec,
             ];
+        }
+
+        return $chunks;
+    }
+
+    /**
+     * Parse a timecoded transcript into chunks.
+     * Each line must start with "[MM:SS]" or "[HH:MM:SS]".
+     *
+     * @return array<int, array{text: string, timeSec: int}>
+     */
+    private function parseTimedTranscript(string $text): array
+    {
+        $chunks = [];
+
+        foreach (explode("\n", $text) as $line) {
+            $line = trim($line);
+            if (! preg_match('/^\[(?:(\d+):)?(\d{1,2}):(\d{2})\]\s*(.+)$/', $line, $m)) {
+                continue;
+            }
+            $timeSec  = (int) $m[1] * 3600 + (int) $m[2] * 60 + (int) $m[3];
+            $chunks[] = ['text' => $m[4], 'timeSec' => $timeSec];
         }
 
         return $chunks;
