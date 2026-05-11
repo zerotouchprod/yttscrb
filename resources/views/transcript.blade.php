@@ -80,35 +80,46 @@
     <main class="max-w-4xl mx-auto px-4 py-10">
 
         <!-- Video Info -->
-        <div class="mb-8">
-            <h1 class="text-3xl sm:text-4xl font-bold text-white mb-3 leading-tight">
-                {{ $task->title() }}
-            </h1>
-            <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                @if ($task->durationSec() !== null)
-                    <span>
-                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        {{ gmdate('G\h i\m', $task->durationSec()) }} video
-                    </span>
-                @endif
-                @if ($task->completedAt() !== null)
-                    <span>Transcribed {{ $task->completedAt()->format('M j, Y') }}</span>
-                @endif
-                <a
-                    href="https://www.youtube.com/watch?v={{ $task->youtubeUrl()->videoId()->value() }}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="text-red-400 hover:text-red-300 transition-colors"
-                >
-                    Watch on YouTube ↗
-                </a>
+        <div class="mb-8 flex gap-6 sm:gap-8 items-start">
+            @if ($task->youtubeUrl() !== null)
+                <img
+                    src="https://img.youtube.com/vi/{{ $task->youtubeUrl()->videoId()->value() }}/mqdefault.jpg"
+                    alt="{{ $task->title() }} thumbnail"
+                    class="w-[180px] sm:w-[220px] flex-shrink-0 rounded-lg object-cover bg-gray-700 hidden sm:block"
+                    style="aspect-ratio: 16/9"
+                    loading="lazy"
+                />
+            @endif
+            <div class="min-w-0 flex-1">
+                <h1 class="text-2xl sm:text-3xl font-bold text-white mb-3 leading-tight">
+                    {{ $task->title() }}
+                </h1>
+                <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                    @if ($task->durationSec() !== null)
+                        <span>
+                            <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            {{ gmdate('G\h i\m', $task->durationSec()) }} video
+                        </span>
+                    @endif
+                    @if ($task->completedAt() !== null)
+                        <span>Transcribed {{ $task->completedAt()->format('M j, Y') }}</span>
+                    @endif
+                    <a
+                        href="https://www.youtube.com/watch?v={{ $task->youtubeUrl()->videoId()->value() }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-red-400 hover:text-red-300 transition-colors"
+                    >
+                        Watch on YouTube ↗
+                    </a>
+                </div>
             </div>
         </div>
 
         <!-- AI Summary -->
-        @if ($task->summary() !== null)
+        @if ($renderedSummary !== null)
             <section class="bg-blue-900/20 border border-blue-700/40 rounded-xl p-6 mb-8">
                 <h2 class="text-xl font-semibold text-blue-300 mb-4 flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,15 +127,20 @@
                     </svg>
                     AI Summary
                 </h2>
-                <div class="text-gray-200 leading-relaxed prose-transcript">{{ $task->summary() }}</div>
+                <div class="text-gray-200 leading-relaxed prose prose-invert prose-sm max-w-none prose-headings:text-gray-100 prose-a:text-blue-400 prose-strong:text-gray-100 prose-code:text-gray-300 prose-code:bg-gray-800 prose-code:px-1 prose-code:rounded prose-li:text-gray-300">
+                    {!! $renderedSummary !!}
+                </div>
             </section>
         @endif
 
         <!-- Full Transcript -->
-        @if ($task->resultText() !== null)
+        @if (count($transcriptChunks) > 0)
             <section class="mb-10">
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xl font-semibold text-gray-200">Full Transcript</h2>
+                    <h2 class="text-xl font-semibold text-gray-200 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Full Transcript
+                    </h2>
                     <a
                         href="/api/transcribe/{{ $task->id() }}/download"
                         class="text-sm px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors flex items-center gap-1.5"
@@ -135,8 +151,26 @@
                         Download .txt
                     </a>
                 </div>
-                <div class="bg-gray-800/60 rounded-xl p-6 border border-gray-700/50 text-gray-300 text-sm prose-transcript leading-relaxed max-h-[600px] overflow-y-auto">
-                    {{ $task->resultText()->value() }}
+                <div class="bg-gray-800/60 rounded-xl p-6 border border-gray-700/50 text-gray-300 text-sm leading-relaxed max-h-[600px] overflow-y-auto">
+                    @foreach ($transcriptChunks as $chunk)
+                        <p class="mb-3 last:mb-0 break-words">
+                            @if ($chunk['timeSec'] !== null && $task->youtubeUrl() !== null)
+                                @php
+                                    $m = intdiv($chunk['timeSec'], 60);
+                                    $s = $chunk['timeSec'] % 60;
+                                    $timecode = sprintf('%02d:%02d', $m, $s);
+                                @endphp
+                                <a
+                                    href="https://youtube.com/watch?v={{ $task->youtubeUrl()->videoId()->value() }}&t={{ $chunk['timeSec'] }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="inline-block text-blue-400 hover:text-blue-300 font-mono text-xs mr-2 transition-colors shrink-0"
+                                    title="Open YouTube at {{ $timecode }}"
+                                >[{{ $timecode }}]</a>
+                            @endif
+                            {{ $chunk['text'] }}
+                        </p>
+                    @endforeach
                 </div>
             </section>
         @endif

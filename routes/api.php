@@ -7,18 +7,23 @@ use App\Infrastructure\Adapters\Input\Web\TranscribeVideoController;
 use Illuminate\Support\Facades\Route;
 
 // v1.0: all endpoints are public (no auth)
+// Rate limiting: disabled in local dev, active in staging/production
+
+$throttle = app()->environment('local') ? [] : ['throttle:30,1'];
+$searchThrottle = app()->environment('local') ? [] : ['throttle:60,1'];
+$adminThrottle = app()->environment('local') ? [] : ['throttle:10,1'];
 
 Route::post('/transcribe', [TranscribeVideoController::class, 'create'])
-    ->middleware('throttle:30,1');
+    ->middleware($throttle);
 // anti-abuse: 30 req/min per IP; business quota (10 completed/month) checked in controller
 
 Route::get('/transcribe/{id}', [TranscribeVideoController::class, 'status']);
 Route::get('/transcribe/{id}/download', [TranscribeVideoController::class, 'download']);
 Route::get('/search', [TranscribeVideoController::class, 'search'])
-    ->middleware('throttle:60,1');
+    ->middleware($searchThrottle);
 Route::get('/history', [TranscribeVideoController::class, 'history']);
 Route::get('/history/latest', [TranscribeVideoController::class, 'latest']);
 
 // Admin: DMCA takedown (protected by ADMIN_TOKEN env, no registration required)
 Route::post('/admin/tasks/{id}/dmca-remove', [AdminDmcaController::class, 'remove'])
-    ->middleware('throttle:10,1');
+    ->middleware($adminThrottle);
