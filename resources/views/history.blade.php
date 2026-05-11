@@ -143,17 +143,7 @@
 
     </main>
 
-    <!-- Footer -->
-    <footer class="border-t border-gray-800 py-8 mt-8">
-        <div class="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-600">
-            <p>© {{ date('Y') }} TubeSum. AI-powered YouTube transcription service.</p>
-            <div class="flex items-center gap-4">
-                <a href="/" class="hover:text-gray-400 transition-colors">Transcribe a video</a>
-                <a href="/history" class="hover:text-gray-400 transition-colors">Public Library</a>
-                <a href="/dmca" class="hover:text-gray-400 transition-colors">Content Removal / DMCA</a>
-            </div>
-        </div>
-    </footer>
+    @include('partials.footer')
 
 </body>
 </html>

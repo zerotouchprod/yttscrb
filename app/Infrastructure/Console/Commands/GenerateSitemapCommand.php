@@ -33,6 +33,18 @@ final class GenerateSitemapCommand extends Command
                 ->setChangeFrequency(Url::CHANGE_FREQUENCY_DAILY),
         );
 
+        $sitemap->add(
+            Url::create(url('/history'))
+                ->setPriority(0.7)
+                ->setChangeFrequency(Url::CHANGE_FREQUENCY_DAILY),
+        );
+
+        $sitemap->add(
+            Url::create(url('/pricing'))
+                ->setPriority(0.6)
+                ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY),
+        );
+
         // Public transcript landing pages via repository (no direct Eloquent access).
         foreach ($this->repository->findPublicSlugs() as $row) {
             $entry = Url::create(url('/v/' . $row['slug']))

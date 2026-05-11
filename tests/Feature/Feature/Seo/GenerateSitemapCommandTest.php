@@ -8,6 +8,7 @@ use App\Application\Ports\Output\MediaTaskRepositoryInterface;
 use App\Infrastructure\Adapters\Output\Persistence\MediaTaskModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\LazyCollection;
 use Tests\TestCase;
 
 /**
@@ -54,6 +55,8 @@ final class GenerateSitemapCommandTest extends TestCase
         $this->assertIsString($content);
         $this->assertStringContainsString('/v/first-video', $content);
         $this->assertStringContainsString('/v/second-video', $content);
+        $this->assertStringContainsString('/history', $content);
+        $this->assertStringContainsString('/pricing', $content);
     }
 
     public function testExcludesDmcaRemovedFromSitemap(): void
@@ -116,7 +119,7 @@ final class GenerateSitemapCommandTest extends TestCase
         // findPublicSlugs() must exist on the interface (compile-time guarantee).
         // Call it to verify it's implemented by the resolved adapter.
         $slugs = $repository->findPublicSlugs();
-        self::assertInstanceOf(\Illuminate\Support\LazyCollection::class, $slugs);
+        self::assertInstanceOf(LazyCollection::class, $slugs);
     }
 
     protected function tearDown(): void
