@@ -12,7 +12,7 @@ final readonly class YouTubeUrl
 
     public function __construct(private string $value)
     {
-        if (preg_match('#^(https?://)?(www\.)?(youtube\.com|youtu\.be)/.+$#', $value) !== 1) {
+        if (preg_match('#^(https?://)?(www\.|m\.)?(youtube\.com|youtu\.be)/.+$#', $value) !== 1) {
             throw new InvalidArgumentException('The provided URL is not a supported YouTube URL.');
         }
 
