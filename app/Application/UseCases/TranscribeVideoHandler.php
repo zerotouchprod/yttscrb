@@ -65,10 +65,10 @@ final readonly class TranscribeVideoHandler
         return $this->repository->findPublicCompletedPaginated($perPage, $page);
     }
 
-    public function countCompletedThisMonth(): int
+    public function countCompletedToday(): int
     {
-        $firstOfMonth = new \DateTimeImmutable('first day of this month 00:00:00');
+        $today = new \DateTimeImmutable('today 00:00:00');
 
-        return $this->repository->countCompletedSince($firstOfMonth);
+        return $this->repository->countCompletedSince($today);
     }
 }

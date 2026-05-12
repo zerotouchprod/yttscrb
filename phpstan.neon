@@ -7,8 +7,12 @@ parameters:
         # WorkflowStub test helpers (mock, assertDispatched, assertNotDispatched)
         # These methods exist at runtime but are not visible to static analysis
         - '#Call to an undefined static method Workflow\\WorkflowStub::(mock|assertDispatched|assertNotDispatched)\(\)#'
-        # Mockery dynamic methods (andReturn)
+        # Mockery dynamic methods (andReturn, shouldReceive, shouldNotReceive)
         - '#Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage::andReturn\(\)#'
+        - '#Call to an undefined method .*Interface::shouldReceive\(\)#'
+        - '#Call to an undefined method .*Interface::shouldNotReceive\(\)#'
+        # Mockery mocks assigned to typed properties in test classes
+        - '#Property .* does not accept Mockery\\MockInterface\.#'
         # Pest dynamic properties ($this->storedWorkflow, $this->tempDir, $this->parser etc.)
         - '#Access to an undefined property Pest\\PendingCalls\\TestCall::\$storedWorkflow#'
         - '#Access to an undefined property Pest\\PendingCalls\\TestCall::\$tempDir#'

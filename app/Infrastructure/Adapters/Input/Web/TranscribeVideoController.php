@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Adapters\Input\Web;
 
+use App\Application\Ports\Output\SubtitleProviderInterface;
 use App\Application\UseCases\TranscribeVideoHandler;
 use App\Domain\Entities\MediaTask;
 use App\Domain\ValueObjects\TranscriptionStatus;
@@ -22,6 +23,7 @@ final class TranscribeVideoController extends Controller
 {
     public function __construct(
         private readonly TranscribeVideoHandler $handler,
+        private readonly SubtitleProviderInterface $subtitleProvider,
     ) {
     }
 
@@ -50,24 +52,43 @@ final class TranscribeVideoController extends Controller
             );
         }
 
-        // Check free tier monthly quota (10 completed transcriptions/month).
+        // Check free tier daily quota (10 completed transcriptions/day).
         // Deduplication for existing video_id happens in handler->handle() below
         // and does NOT consume quota (PRD §9).
-        $completedThisMonth = $this->handler->countCompletedThisMonth();
-        if ($completedThisMonth >= 10) {
+        $completedToday = $this->handler->countCompletedToday();
+        if ($completedToday >= 10) {
             $now = new \DateTimeImmutable();
-            $firstOfNextMonth = $now->modify('first day of next month')->setTime(0, 0);
-            $retryAfter = $firstOfNextMonth->getTimestamp() - $now->getTimestamp();
+            $tomorrow = $now->modify('tomorrow 00:00:00');
+            $retryAfter = $tomorrow->getTimestamp() - $now->getTimestamp();
 
             return new JsonResponse([
                 'error' => [
                     'code' => 'RATE_LIMIT_EXCEEDED',
-                    'message' => 'Monthly limit of 10 transcriptions reached.',
-                    'details' => ['limit' => 10, 'used' => $completedThisMonth],
+                    'message' => 'Daily limit of 10 transcriptions reached. Come back tomorrow!',
+                    'details' => ['limit' => 10, 'used' => $completedToday],
                 ],
             ], Response::HTTP_TOO_MANY_REQUESTS, [
                 'Retry-After' => (string) $retryAfter,
             ]);
+        }
+
+        // Check video duration — reject videos longer than 30 minutes (1800 seconds)
+        // to protect against excessive API costs during free MVP phase.
+        // Duration is cached per video_id (1 week TTL) since YouTube durations never change.
+        $videoIdStr = $url->videoId()->value();
+        $durationSec = Cache::remember(
+            "yt_duration_{$videoIdStr}",
+            7 * 24 * 60 * 60,
+            fn (): ?int => $this->subtitleProvider->extractDuration($youtubeUrl),
+        );
+        if ($durationSec !== null && $durationSec > 1800) {
+            return new JsonResponse([
+                'error' => [
+                    'code' => 'VIDEO_TOO_LONG',
+                    'message' => 'Sorry, we currently only support videos up to 30 minutes long.',
+                    'details' => ['max_duration_sec' => 1800, 'video_duration_sec' => $durationSec],
+                ],
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $taskId = Uuid::uuid4()->toString();

@@ -95,7 +95,7 @@
                     {{ $task->title() }}
                 </h1>
                 <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                    @if ($task->durationSec() !== null)
+                    @if ($task->durationSec() > 0)
                         <span>
                             <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -224,7 +224,7 @@
     <div class="fixed bottom-0 inset-x-0 z-50 bg-gradient-to-r from-blue-700 to-blue-600 shadow-2xl" id="cta-banner">
         <div class="max-w-4xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p class="text-white text-sm font-medium text-center sm:text-left">
-                ⚡ Saved you <strong>{{ $task->durationSec() !== null ? gmdate('G\h i\m', $task->durationSec()) : 'time' }}</strong> reading this?
+                ⚡ Saved you <strong>{{ $task->durationSec() > 0 ? gmdate('G\h i\m', $task->durationSec()) : 'time' }}</strong> reading this?
                 Transcribe any YouTube video for free — no signup needed.
             </p>
             <div class="flex items-center gap-3 flex-shrink-0">

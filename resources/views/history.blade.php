@@ -78,7 +78,7 @@
                             <div class="min-w-0 flex-1 p-3 pl-0">
                                 <span class="text-sm font-semibold text-blue-400 hover:text-blue-300 line-clamp-2 mb-1 block">{{ $task->title() ?? 'Untitled' }}</span>
                                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-                                    @if ($task->durationSec() !== null)
+                                    @if ($task->durationSec() > 0)
                                         <span>{{ gmdate('G\h i\m', $task->durationSec()) }}</span>
                                     @endif
                                     @if ($task->completedAt() !== null)
