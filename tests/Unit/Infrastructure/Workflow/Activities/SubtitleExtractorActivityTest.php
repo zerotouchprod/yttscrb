@@ -21,7 +21,7 @@ afterEach(function (): void {
     Mockery::close();
 });
 
-it('returns subtitle text and title from provider', function (): void {
+it('returns subtitle text, title and duration from provider', function (): void {
     $provider = new class implements SubtitleProviderInterface {
         /** @phpstan-ignore return.unusedType */
         public function extract(string $youtubeUrl): ?string
@@ -34,6 +34,11 @@ it('returns subtitle text and title from provider', function (): void {
         {
             return 'Video Title';
         }
+
+        public function extractDuration(string $youtubeUrl): int
+        {
+            return 212;
+        }
     };
 
     Container::getInstance()->instance(SubtitleProviderInterface::class, $provider);
@@ -41,10 +46,14 @@ it('returns subtitle text and title from provider', function (): void {
     $url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
     $activity = new SubtitleExtractorActivity(0, 'now', $this->storedWorkflow, $url);
 
-    expect($activity->execute($url))->toBe(['subtitles' => 'subtitle text', 'title' => 'Video Title']);
+    expect($activity->execute($url))->toBe([
+        'subtitles' => 'subtitle text',
+        'title' => 'Video Title',
+        'duration_sec' => 212,
+    ]);
 });
 
-it('returns null subtitles and null title when provider returns null', function (): void {
+it('returns null subtitles, null title and null duration when provider returns null', function (): void {
     $provider = new class implements SubtitleProviderInterface {
         public function extract(string $youtubeUrl): ?string
         {
@@ -55,6 +64,11 @@ it('returns null subtitles and null title when provider returns null', function 
         {
             return null;
         }
+
+        public function extractDuration(string $youtubeUrl): ?int
+        {
+            return null;
+        }
     };
 
     Container::getInstance()->instance(SubtitleProviderInterface::class, $provider);
@@ -62,7 +76,11 @@ it('returns null subtitles and null title when provider returns null', function 
     $url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
     $activity = new SubtitleExtractorActivity(0, 'now', $this->storedWorkflow, $url);
 
-    expect($activity->execute($url))->toBe(['subtitles' => null, 'title' => null]);
+    expect($activity->execute($url))->toBe([
+        'subtitles' => null,
+        'title' => null,
+        'duration_sec' => null,
+    ]);
 });
 
 it('passes the youtube url to the subtitle provider', function (): void {
@@ -78,6 +96,11 @@ it('passes the youtube url to the subtitle provider', function (): void {
         }
 
         public function extractTitle(string $youtubeUrl): ?string
+        {
+            return null;
+        }
+
+        public function extractDuration(string $youtubeUrl): ?int
         {
             return null;
         }

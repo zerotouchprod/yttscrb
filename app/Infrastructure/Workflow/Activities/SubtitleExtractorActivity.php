@@ -11,7 +11,7 @@ use Workflow\Activity;
 final class SubtitleExtractorActivity extends Activity
 {
     /**
-     * @return array{subtitles: string|null, title: string|null}
+     * @return array{subtitles: string|null, title: string|null, duration_sec: int|null}
      */
     public function execute(string $youtubeUrl): array
     {
@@ -21,6 +21,7 @@ final class SubtitleExtractorActivity extends Activity
         return [
             'subtitles' => $provider->extract($youtubeUrl),
             'title' => $provider->extractTitle($youtubeUrl),
+            'duration_sec' => $provider->extractDuration($youtubeUrl),
         ];
     }
 }

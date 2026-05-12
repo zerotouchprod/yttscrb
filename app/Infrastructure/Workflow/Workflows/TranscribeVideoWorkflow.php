@@ -25,15 +25,17 @@ final class TranscribeVideoWorkflow extends Workflow
 {
     public function execute(string $taskId, string $youtubeUrl): Generator
     {
-        /** @var array{subtitles: string|null, title: string|null} $subtitleResult */
+        /** @var array{subtitles: string|null, title: string|null, duration_sec: int|null} $subtitleResult */
         $subtitleResult = yield activity(SubtitleExtractorActivity::class, $youtubeUrl);
+
+        $durationSec = $subtitleResult['duration_sec'] ?? 0;
 
         if ($subtitleResult['subtitles'] !== null) {
             yield sideEffect(fn () => $this->storeTranscript($taskId, $subtitleResult['subtitles']));
             if ($subtitleResult['title'] !== null) {
                 yield sideEffect(fn () => $this->storeTitle($taskId, $subtitleResult['title']));
             }
-            return yield from $this->summariseAndPersist($taskId, 0);
+            return yield from $this->summariseAndPersist($taskId, $durationSec);
         }
 
         try {
@@ -46,6 +48,8 @@ final class TranscribeVideoWorkflow extends Workflow
 
             /** @var WorkflowTranscriptionResult $transcription */
             $transcription = yield activity(GroqTranscriberActivity::class, $audio->path);
+
+            $durationSec = $transcription->durationSec;
         } catch (Throwable $th) {
             yield from $this->compensate();
             throw $th;
@@ -57,7 +61,7 @@ final class TranscribeVideoWorkflow extends Workflow
             yield sideEffect(fn () => $this->storeTitle($taskId, $subtitleResult['title']));
         }
 
-        return yield from $this->summariseAndPersist($taskId, $transcription->durationSec);
+        return yield from $this->summariseAndPersist($taskId, $durationSec);
     }
 
     private function summariseAndPersist(string $taskId, int $durationSec): Generator
