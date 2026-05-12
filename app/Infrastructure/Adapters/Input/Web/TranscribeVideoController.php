@@ -72,21 +72,22 @@ final class TranscribeVideoController extends Controller
             ]);
         }
 
-        // Check video duration — reject videos longer than 30 minutes (1800 seconds)
+        // Check video duration — reject videos longer than the configured maximum
         // to protect against excessive API costs during free MVP phase.
         // Duration is cached per video_id (1 week TTL) since YouTube durations never change.
+        $maxDurationSec = (int) config('services.max_video_duration_sec', 1800);
         $videoIdStr = $url->videoId()->value();
         $durationSec = Cache::remember(
             "yt_duration_{$videoIdStr}",
             7 * 24 * 60 * 60,
             fn (): ?int => $this->subtitleProvider->extractDuration($youtubeUrl),
         );
-        if ($durationSec !== null && $durationSec > 1800) {
+        if ($durationSec !== null && $durationSec > $maxDurationSec) {
             return new JsonResponse([
                 'error' => [
                     'code' => 'VIDEO_TOO_LONG',
                     'message' => 'Sorry, we currently only support videos up to 30 minutes long.',
-                    'details' => ['max_duration_sec' => 1800, 'video_duration_sec' => $durationSec],
+                    'details' => ['max_duration_sec' => $maxDurationSec, 'video_duration_sec' => $durationSec],
                 ],
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }

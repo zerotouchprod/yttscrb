@@ -33,4 +33,5 @@ return [
 
     'yt_dlp_binary' => env('YT_DLP_BINARY', 'yt-dlp'),
 
+    'max_video_duration_sec' => (int) env('MAX_VIDEO_DURATION_SEC', 7200),
 ];
