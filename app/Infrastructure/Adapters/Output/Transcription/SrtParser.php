@@ -88,13 +88,16 @@ final class SrtParser
 
             // Timestamp line: HH:MM:SS,mmm --> HH:MM:SS,mmm (SRT)
             //              or HH:MM:SS.mmm --> HH:MM:SS.mmm (VTT)
-            if ($startSec === null && preg_match(
-                '/^(\d{1,2}):(\d{2}):(\d{2})[,.]\d+\s*-->/',
-                $line,
-                $m,
-            )) {
-                $startSec = (int) $m[1] * 3600 + (int) $m[2] * 60 + (int) $m[3];
-                $inCue    = true;
+            if (
+                $startSec === null &&
+                preg_match(
+                    '/^(\d{1,2}):(\d{2}):(\d{2})[,.]\d+\s*-->/',
+                    $line,
+                    $m,
+                )
+            ) {
+                $startSec = (int)$m[1] * 3600 + (int)$m[2] * 60 + (int)$m[3];
+                $inCue = true;
                 continue;
             }
 
