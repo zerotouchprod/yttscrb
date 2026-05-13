@@ -1,32 +1,37 @@
-# AGENTS.md — Rules for AI Agents
+# AGENTS.md — Project Rules for AI Agents
 
-This file is mandatory for all AI agents working on this repository (Cline, Cursor, Codex, Loki-mode, Kilo Code, or any other agentic worker).
+These rules are mandatory for any AI agent working in this repository.
+
+---
 
 ## 1. Source of Truth
 
 1. The primary product and architecture specification is [`Prd.md`](Prd.md).
-2. If implementation requirements conflict with [`Prd.md`](Prd.md), stop and ask for clarification before coding.
-3. Do not invent architecture, providers, endpoints, folder structure, or infrastructure outside the PRD unless explicitly requested.
-4. Keep [`Prd.md`](Prd.md) updated when architectural decisions change.
+2. If a requested change conflicts with `Prd.md`, stop and ask for clarification before coding.
+3. Do not invent architecture, providers, endpoints, workflows, infrastructure, or folder structure outside what is already defined unless the user explicitly requests it.
+4. If behavior, API contract, architecture, or infrastructure changes, update the relevant documentation, including `Prd.md` when needed.
 
-## 2. Current Approved Stack
+---
+
+## 2. Current Project Baseline
 
 - Backend: Laravel 13.x, PHP 8.5.
 - Database: PostgreSQL 16+.
-- Queue: Redis 7+ with Laravel Horizon.
-- Long-running workflows: `durable-workflow/workflow` (standalone PHP workflow engine, **not** a separate Temporal cluster; uses Redis as backend via `WORKFLOW_CONNECTION=redis`).
-- Workflow UI: `durable-workflow/waterline` (embedded as a Laravel library, **no separate Docker service** required).
-- Local development: Docker Compose (services: app, postgres, redis, horizon, worker).
+- Queue and cache backend: Redis 7+.
+- Queue monitoring: Laravel Horizon.
+- Long-running workflows: `durable-workflow/workflow` using Redis backend.
+- Workflow UI: `durable-workflow/waterline`, embedded into the Laravel app.
+- Local development: Docker Compose.
 - Production: Kubernetes with Helm charts.
-- Fast transcription provider for v1: Groq Whisper API.
-- Zero-cost first step: `yt-dlp --write-auto-sub --skip-download`.
-- Slow/free v2 transcription: self-hosted `whisper.cpp` on Nocix / Phenom II X4 840.
-- Summary provider for v1: GPT-4o-mini.
 - Frontend: Vue 3 Composition API + TailwindCSS.
+
+Treat this baseline as the default runtime contract unless the user explicitly changes it.
+
+---
 
 ## 3. Architecture Rules
 
-The project uses Hexagonal Architecture / Ports & Adapters.
+The project follows Hexagonal Architecture / Ports & Adapters.
 
 Allowed dependency direction:
 
@@ -40,11 +45,11 @@ Application → Infrastructure is forbidden.
 
 Rules:
 
-1. Domain must not know Laravel, Eloquent, Redis, HTTP clients, filesystem, or external APIs.
-2. Application layer defines use cases and ports.
-3. Infrastructure implements adapters for persistence, external providers, HTTP controllers, queue workers, and workflow activities.
-4. External services must be hidden behind interfaces.
-5. Do not call Groq, OpenAI, yt-dlp, Redis, or PostgreSQL directly from Domain or Use Case code unless a PRD-approved port allows it.
+1. Domain must not depend on Laravel, Eloquent, Redis, HTTP clients, filesystem, or external APIs.
+2. Application defines use cases, DTOs, and ports.
+3. Infrastructure implements controllers, persistence, external service adapters, queue/workflow activities, and presentation serializers.
+4. External services must always be hidden behind Application ports.
+5. Do not bypass ports from Domain or Application code.
 
 Required ports include:
 
@@ -54,7 +59,9 @@ Required ports include:
 - `AudioExtractorInterface`
 - `MediaTaskRepositoryInterface`
 
-## 4. Hard Rules
+---
+
+## 4. Coding Rules
 
 Always follow:
 
@@ -64,175 +71,136 @@ Always follow:
 - KISS
 - Clean Code
 - Clean Architecture
-- TDD
+- Strong typing first
 
 Forbidden:
 
-1. Static Laravel facades in business code (`DB`, `Cache`, `Queue`, `Storage`, `Log`, etc.). Use dependency injection.
+1. Static Laravel facades in business code.
 2. Global helpers such as `app/helpers.php`.
 3. Untyped `mixed` unless strictly unavoidable and documented.
-4. God objects and large multi-responsibility services.
-5. Query Builder inside services/use cases. Use repositories.
-6. `dd()`, `dump()`, debug leftovers, or temporary logging in committed code.
-7. Hardcoded secrets, API keys, tokens, URLs, or credentials.
+4. God objects and multi-responsibility services.
+5. Query Builder inside use cases or business services; use repositories.
+6. `dd()`, `dump()`, debug leftovers, commented-out code, or temporary logging in committed code.
+7. Hardcoded secrets, API keys, tokens, credentials, or environment-specific URLs.
 8. Eloquent models outside Infrastructure.
-9. Provider-specific names in Application/Domain where provider-agnostic names are required.
-10. `goto` or flow-jumping constructs in workflow/use-case examples.
+9. Provider-specific naming leaking into Application or Domain where provider-agnostic names are expected.
+10. `goto` or similar flow-jumping constructs.
+11. Merge conflict markers, placeholder implementations, fake stubs presented as done, or unfinished TODO blocks in delivered work unless explicitly requested.
 
-## 5. Development Process
+---
 
-For every feature or bugfix:
+## 5. API and Presentation Rules
 
-1. Read [`Prd.md`](Prd.md) sections relevant to the task.
-2. Write tests first where code is involved.
-3. Implement the smallest change that passes tests.
-4. Refactor without changing behavior.
-5. Run quality checks.
-6. Update docs/PRD if behavior, API, infra, or architecture changed.
+1. Follow the API contract described in `Prd.md`.
+2. Do not silently change response shapes, field names, status names, or error structures.
+3. Error responses must use:
 
-Do not implement v1.1+ features unless explicitly requested. If v1.1+ support is mentioned in PRD, keep it as architecture-ready, not production code, unless the task asks for it.
-
-## 6. Testing and Quality Gates
-
-Required checks for PHP/Laravel work:
-
-```bash
-vendor/bin/phpstan analyse --level=9
-vendor/bin/phpcs --standard=PSR12 app/ tests/
-vendor/bin/deptrac analyze
-vendor/bin/pest --coverage --min=80
+```json
+{
+  "error": {
+    "code": "...",
+    "message": "...",
+    "details": {}
+  }
+}
 ```
 
-Coverage policy:
+4. Presentation-layer concerns belong to Infrastructure.
+5. Do not use Domain persistence-oriented serialization as an HTTP contract unless that is explicitly the intended public API contract.
+6. If multiple endpoints expose the same resource shape, prefer a shared presentation abstraction instead of duplicated manual arrays.
 
-- Domain: 100%.
-- Application: 100%.
-- Infrastructure: at least 70%.
-- Total CI threshold: 80%.
+---
 
-Testing rules:
+## 6. Workflow and Background Processing Rules
 
-1. Domain entities, value objects, enums, and state transitions require unit tests.
-2. Use cases require unit tests for every scenario.
-3. Controllers require feature tests for critical paths: 202, 400, 401, 404, 409, 429.
-4. External providers require contract tests with mocked clients.
-5. The full transcription workflow must have at least one full-cycle test with mocked activity adapters.
-6. Do not rely on real Groq/OpenAI/YouTube calls in normal CI.
+1. Long-running orchestration must use `durable-workflow/workflow` on Redis.
+2. Keep workflow code deterministic and explicit.
+3. Use `yield from` when delegating to private generator methods inside workflows.
+4. Activities must be idempotent where possible.
+5. Cleanup of temporary resources must always be considered in workflow design.
+6. Do not introduce a separate Temporal cluster or other workflow runtime unless explicitly requested.
 
-## 7. Workflow and Transcription Rules
+---
 
-The transcription workflow must follow the approved cascade:
-
-1. Step 0: Try subtitles with `SubtitleExtractorActivity` using yt-dlp auto subtitles.
-2. Step 1: If no subtitles, download audio with `AudioDownloaderActivity`.
-3. Step 2: Use `GroqTranscriberActivity` as v1 fast track.
-4. Step 3: Use `NocixWhisperActivity` only as v2 slow/free fallback or when explicitly requested.
-5. Step 4: Generate summary with `AiSummaryActivity`.
-6. Step 5: Persist result with `PersistResultActivity`.
-7. Always cleanup temporary audio with `CleanupActivity`.
-
-The workflow engine is `durable-workflow/workflow` running on Redis (`WORKFLOW_CONNECTION=redis`). For this repository's local v1 setup, background processing runs through Redis workers (`php artisan queue:work redis --queue=default`) and Horizon. There is **no separate Temporal server**.
-
-Workflow code rules:
-
-1. Use `yield from` when delegating to private generator methods.
-2. Do not use `goto`.
-3. Keep workflow steps explicit and deterministic.
-4. Use `WorkflowId = transcribe-{taskId}`.
-5. Use idempotent activities and request IDs where providers support them.
-6. For slow Nocix jobs, document and surface `estimated_completion_sec: 7200`.
-
-## 8. API Rules
-
-Follow the API contract in [`Prd.md`](Prd.md), especially:
-
-- `POST /api/transcribe`
-- `GET /api/transcribe/{id}`
-- `GET /api/transcribe/{id}/download`
-- `GET /api/history`
-- `GET /api/history/latest`
-
-Rules:
-
-1. v1.0 is public: endpoints do not require registration or `X-API-Key`.
-2. Responses must use the documented JSON shapes.
-3. Error responses must use `{ "error": { "code", "message", "details" } }`.
-4. Do not change status names without updating PRD and tests.
-5. History must support latest video display.
-6. Deduplication for public v1 must use completed `video_id`.
-
-## 9. Data and Business Rules
-
-1. Free tier limit: 10 completed transcriptions/month.
-2. Only `completed` tasks consume monthly quota.
-3. Failed/processing tasks do not consume quota.
-4. Same completed `video_id` returns existing result in public v1.
-5. Failed tasks can be retried.
-6. Temporary audio files must be deleted after workflow completion/failure.
-7. Transcript and summary retention follows PRD retention policy.
-8. `failed_at` and `completed_at` must be kept consistent with status transitions.
-
-## 10. Infrastructure Rules
+## 7. Infrastructure Rules
 
 Local development:
 
-1. Must run through Docker Compose.
-2. Required services: **app**, **postgres**, **redis**, **horizon**, **worker** (background queue worker, runs `php artisan queue:work redis --queue=default`).
-3. `waterline` UI is embedded in the app — **no separate Docker service** needed.
-4. Do **not** add a standalone Temporal server (`temporalio/auto-setup`) — the project uses `durable-workflow/workflow` directly on Redis.
-5. Do not require host-installed PostgreSQL, Redis, or a Temporal cluster.
+1. The project must run through Docker Compose.
+2. Required services are `app`, `postgres`, `redis`, `horizon`, and `worker`.
+3. `waterline` is embedded in the app and is not a separate container.
+4. Do not require host-installed PostgreSQL, Redis, or external workflow infrastructure.
 
 Production:
 
 1. Deploy through Kubernetes.
-2. Helm charts are required for app, horizon, workflow-worker, ingress, configmap, HPA, PDB.
-3. PostgreSQL and Redis must be represented as Kubernetes-managed services/subcharts or documented external managed services.
-4. The workflow engine worker (`php artisan workflow:work`) is a separate Kubernetes Deployment — not a Temporal cluster.
-5. Secrets must be Kubernetes Secrets, not ConfigMaps.
-6. App, Horizon, and workflow workers must be independently scalable.
+2. Helm charts are required for application components.
+3. Secrets must be stored as Kubernetes Secrets, not ConfigMaps.
+4. App, Horizon, and workflow workers must remain independently scalable.
 
-## 11. Provider Rules
+---
 
-Default v1 providers:
+## 8. Testing and Quality Gates
 
-- Transcription: Groq Whisper API.
-- Summary: OpenAI GPT-4o-mini.
-- Subtitles: yt-dlp auto subtitles.
+Every meaningful code change must preserve or improve test coverage and must not weaken static analysis or architecture boundaries.
 
-Rules:
+Primary acceptance rule:
 
-1. `TRANSCRIPTION_PROVIDER=groq` must work out of the box.
-2. Provider-specific code belongs in Infrastructure adapters only.
-3. Do not hardcode Deepgram as default.
-4. Do not add v1.1+ providers to runtime code unless explicitly requested. The DI `match` example in `Prd.md` section 2.1 shows **architectural reference** — in v1.0 only the `groq` branch must be implemented; v1.1+ branches (`whisper_api`, `runpod_whisper`, `assemblyai`) are stubs that throw `InvalidProviderException` until explicitly requested.
-5. `whisper.cpp` on Phenom II X4 840 must be built without AVX/AVX2:
+- `composer check` **must always pass**.
+- A task is **not complete** if `composer check` fails.
+- Treat a green `composer check` as a mandatory acceptance criterion, not an optional cleanup step.
+
+`composer check` currently runs:
 
 ```bash
-LLAMA_NO_AVX=1 LLAMA_NO_AVX2=1
+@php vendor/bin/phpstan analyse --level=9 --no-progress
+@php vendor/bin/phpcs --standard=PSR12 app/ tests/
+@php vendor/bin/deptrac analyze
+@php vendor/bin/pest --compact
 ```
 
-## 12. Completion Checklist
+Additional rules:
 
-Before claiming work is complete, verify:
+1. Add or update tests when behavior changes.
+2. Do not claim success without running relevant verification or explicitly stating why it could not be run.
+3. Fix root causes, not only test symptoms.
+4. Keep Domain and Application highly covered; do not accept regressions lightly.
+5. If a quality gate fails and the fix is not obvious, stop and surface it clearly.
 
-- [ ] Relevant PRD sections were followed.
-- [ ] Tests were added/updated.
-- [ ] Quality commands were run or explicitly documented as not runnable.
-- [ ] No hardcoded secrets.
-- [ ] No Laravel facades in business code.
-- [ ] No provider-specific leakage into Domain/Application.
-- [ ] API responses still match PRD.
-- [ ] Workflow remains deterministic and uses `yield from` correctly.
-- [ ] Docker/Helm changes are reflected in documentation when infra changes.
-- [ ] [`Prd.md`](Prd.md) updated if behavior or architecture changed.
+---
 
-## 13. When to Stop
+## 9. Git / PR / Commit Rules
+
+1. Prefer small, atomic, reviewable changes.
+2. Keep commits logically grouped by purpose.
+3. Do not mix unrelated refactors with feature or bugfix work unless necessary and explained.
+4. Before considering work ready for review or merge, ensure the branch contains no debug code, no dead experimental files, and no unresolved conflicts.
+5. Do not describe work as finished, merged-ready, or production-ready if verification is still failing.
+6. If documentation, config, or tests must change together with code, include them in the same change set.
+7. Preserve a clean diff: avoid gratuitous formatting churn and unrelated file edits.
+
+---
+
+## 10. When to Stop and Ask
 
 Stop and ask the user before proceeding if:
 
-1. A requirement contradicts [`Prd.md`](Prd.md).
-2. A change requires choosing between multiple providers or deployment strategies.
-3. A v1.1+ feature is needed to complete a v1 task.
-4. A quality gate fails and the fix is not obvious.
-5. You need real API credentials or external service access.
-6. You would need to delete or rewrite large parts of the architecture.
+1. A request contradicts `Prd.md`.
+2. A change requires a product or architecture decision that is not already settled.
+3. Real credentials, external access, or deployment access are required.
+4. A quality gate fails and the correct fix is unclear.
+5. The task would require large-scale deletion or architectural rewrites beyond the stated scope.
+6. You cannot preserve the public contract without a visible product decision.
+
+---
+
+## 11. Definition of Done
+
+Do not consider a task complete until all of the following are true:
+
+- Relevant `Prd.md` constraints were respected.
+- Architecture boundaries were preserved.
+- Tests were added or updated where needed.
+- Documentation was updated when behavior or contracts changed.
+- No debug leftovers or temporary hacks remain.
+- `composer check` passes.
