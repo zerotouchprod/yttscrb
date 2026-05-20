@@ -563,7 +563,7 @@ CREATE TABLE api_tokens (
 
 - v1.0 полностью публичный — все запросы без аутентификации.
 - Регистрация и API-ключи запланированы на v1.1+.
-- Гостевой лимит: 10 транскрипций в месяц с одного IP-адреса.
+- Гостевой лимит: 10 транскрипций в день с одного IP-адреса.
 
 #### Retention Policy
 
@@ -744,7 +744,17 @@ class TranscribeVideoWorkflowImpl implements TranscribeVideoWorkflow
     "duration_sec": 212,
     "result": {
         "transcript": "We're no strangers to love...",
-        "summary": "A classic 80s pop song about devotion and commitment.",
+        "summary": {
+            "introduction": "A classic 80s pop song about devotion and commitment.",
+            "key_points": [
+                {
+                    "timecode": "00:00:30",
+                    "title": "Never gonna give you up",
+                    "details": "The core message of the song — unwavering loyalty."
+                }
+            ],
+            "conclusion": "The song became an iconic internet meme."
+        },
         "word_count": 283
     },
     "created_at": "2026-05-07T12:00:00Z",
@@ -807,7 +817,7 @@ class TranscribeVideoWorkflowImpl implements TranscribeVideoWorkflow
 | 401 | `UNAUTHORIZED` | Отсутствует или неверный API-ключ |
 | 404 | `TASK_NOT_FOUND` | Задача с таким ID не найдена |
 | 409 | `TASK_ALREADY_EXISTS` | Задача для этого video_id уже существует (deduplication) |
-| 429 | `RATE_LIMIT_EXCEEDED` | Превышен месячный лимит (10/мес) |
+| 429 | `RATE_LIMIT_EXCEEDED` | Превышен дневной лимит (10/день) |
 | 500 | `INTERNAL_ERROR` | Внутренняя ошибка сервера |
 
 ### 7.3 Polling (v1.0)
@@ -886,7 +896,17 @@ class TranscribeVideoWorkflowImpl implements TranscribeVideoWorkflow
     "duration_sec": 212,
     "result": {
         "transcript": "We're no strangers to love...",
-        "summary": "A classic 80s pop song about devotion and commitment.",
+        "summary": {
+            "introduction": "A classic 80s pop song about devotion and commitment.",
+            "key_points": [
+                {
+                    "timecode": "00:00:30",
+                    "title": "Never gonna give you up",
+                    "details": "The core message of the song — unwavering loyalty."
+                }
+            ],
+            "conclusion": "The song became an iconic internet meme."
+        },
         "word_count": 283
     },
     "created_at": "2026-05-07T12:00:00Z",
@@ -1092,7 +1112,7 @@ cache:
 | Задача | DoD | Зависимости |
 |---|---|---|
 | Error handling (все исключения) | Все ошибки имеют user-friendly сообщение | Эпик 2 |
-| Rate limiting (10/мес для free) | После 10 — 429 Too Many Requests | Эпик 2 |
+| Rate limiting (10/день для free) | После 10 — 429 Too Many Requests | Эпик 2 |
 | PHPStan level 9 — zero warnings | 0 errors | Всё |
 | Тестовое покрытие по слоям | `pest --coverage --min=80` проходит | Всё |
 | Deptrac — zero violations | 0 violations | Всё |

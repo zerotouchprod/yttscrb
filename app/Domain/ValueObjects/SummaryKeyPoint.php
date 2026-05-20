@@ -26,6 +26,9 @@ final readonly class SummaryKeyPoint
     }
 
     /**
+     * @internal Used only by persistence layer. HTTP serialization is handled by
+     *           {@see \App\Infrastructure\Adapters\Input\Web\Resources\SummaryResource}.
+     *
      * @return array{timecode: string, title: string, details: string}
      */
     public function toArray(): array

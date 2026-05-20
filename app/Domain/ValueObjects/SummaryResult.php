@@ -37,6 +37,9 @@ final readonly class SummaryResult
     /**
      * Сериализация для хранения в JSONB-колонке.
      *
+     * @internal Used only by persistence layer. HTTP serialization is handled by
+     *           {@see \App\Infrastructure\Adapters\Input\Web\Resources\SummaryResource}.
+     *
      * @return array{
      *     introduction: string,
      *     key_points: array<int, array{timecode: string, title: string, details: string}>,

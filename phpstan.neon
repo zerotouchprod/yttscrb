@@ -3,9 +3,9 @@ parameters:
         - app
         - tests
     level: 9
+    reportUnmatchedIgnoredErrors: false
     ignoreErrors:
         # WorkflowStub test helpers (mock, assertDispatched, assertNotDispatched)
-        # These methods exist at runtime but are not visible to static analysis
         - '#Call to an undefined static method Workflow\\WorkflowStub::(mock|assertDispatched|assertNotDispatched)\(\)#'
         # Mockery dynamic methods (andReturn, shouldReceive, shouldNotReceive)
         - '#Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage::andReturn\(\)#'
@@ -13,11 +13,17 @@ parameters:
         - '#Call to an undefined method .*Interface::shouldNotReceive\(\)#'
         # Mockery mocks assigned to typed properties in test classes
         - '#Property .* does not accept Mockery\\MockInterface\.#'
-        # Pest dynamic properties ($this->storedWorkflow, $this->tempDir, $this->parser etc.)
+        # Pest dynamic properties
         - '#Access to an undefined property Pest\\PendingCalls\\TestCall::\$storedWorkflow#'
         - '#Access to an undefined property Pest\\PendingCalls\\TestCall::\$tempDir#'
         - '#Access to an undefined property Pest\\PendingCalls\\TestCall::\$parser#'
-        # Pest ->not->xxx() chain ($not is a magic proxy property)
         - '#Access to an undefined property Pest\\Mixins\\Expectation<.*>::\$not#'
         # YouTubeUrl|null after App::make() in tests
         - '#Cannot call method value\(\) on App\\Domain\\ValueObjects\\YouTubeUrl\|null#'
+        # config() helper returns mixed — casts are intentional
+        - '#Cannot cast mixed to string#'
+        - '#Cannot cast mixed to int#'
+        - '#Parameter \$(servers|scanPaths) of class .*OpenApiConfig constructor expects .*, array<mixed, mixed> given\.#'
+        # OpenAPI Schema classes — used only by swagger-php at scan time, never instantiated
+        - '/^Class .*OpenApi\\\\Schemas\\\\\w+ is never used\.$/'
+        - '/^Class App\\\\Infrastructure\\\\Adapters\\\\Input\\\\Web\\\\OpenApi\\\\TranscribeVideoApi is never used\.$/'

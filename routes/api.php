@@ -27,3 +27,19 @@ Route::get('/history/latest', [TranscribeVideoController::class, 'latest']);
 // Admin: DMCA takedown (protected by ADMIN_TOKEN env, no registration required)
 Route::post('/admin/tasks/{id}/dmca-remove', [AdminDmcaController::class, 'remove'])
     ->middleware($adminThrottle);
+
+// OpenAPI specification — generated from #[OA\*] attributes at runtime
+Route::get('/docs/openapi.json', function () {
+    $config = \App\Infrastructure\Adapters\Input\Web\OpenApi\OpenApiConfig::fromArray(config('openapi'));
+
+    $generator = new \OpenApi\Generator();
+    $openapi = $generator->generate($config->scanPaths);
+
+    if ($openapi === null) {
+        return response()->json(['error' => 'Failed to generate OpenAPI spec'], 500);
+    }
+
+    return response($openapi->toJson(), 200, [
+        'Content-Type' => 'application/json',
+    ])->header('Access-Control-Allow-Origin', '*');
+})->name('api.openapi');

@@ -10,6 +10,10 @@ use App\Domain\Entities\MediaTask;
 use App\Domain\ValueObjects\TranscriptionStatus;
 use App\Domain\ValueObjects\YouTubeUrl;
 use App\Infrastructure\Adapters\Input\Web\Requests\TranscribeVideoRequest;
+use App\Infrastructure\Adapters\Input\Web\Resources\LatestMediaTaskResource;
+use App\Infrastructure\Adapters\Input\Web\Resources\MediaTaskCollection;
+use App\Infrastructure\Adapters\Input\Web\Resources\MediaTaskCreatedResource;
+use App\Infrastructure\Adapters\Input\Web\Resources\MediaTaskResource;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -100,38 +104,16 @@ final class TranscribeVideoController extends Controller
         if ($storedTask->id() !== $task->id()) {
             // Return full completed payload (same shape as status()) so the frontend
             // can render immediately without an extra polling round-trip.
-            return new JsonResponse([
-                'task_id'      => $storedTask->id(),
-                'status'       => $storedTask->status()->value,
-                'youtube_url'  => $storedTask->youtubeUrl()->value(),
-                'video_id'     => $storedTask->youtubeUrl()->videoId()->value(),
-                'title'        => $storedTask->title(),
-                'duration_sec' => $storedTask->durationSec(),
-                'result'       => [
-                    'transcript' => $storedTask->resultText()?->value(),
-                    'summary'    => $storedTask->summary()?->toArray(),
-                    'word_count' => $storedTask->resultText()?->wordCount(),
-                ],
-                'completed_at' => $storedTask->completedAt()?->format('c'),
-                '_links'       => array_filter([
-                    'self'         => "/api/transcribe/{$storedTask->id()}",
-                    'download_txt' => "/api/transcribe/{$storedTask->id()}/download",
-                    'public_page'  => ($storedTask->slug() !== null && ! $storedTask->isDmcaRemoved())
-                        ? '/v/' . $storedTask->slug()
-                        : null,
-                ]),
-            ], Response::HTTP_OK);
+            return new JsonResponse(
+                new MediaTaskResource($storedTask)->toArray(request()),
+                Response::HTTP_OK,
+            );
         }
 
-        return new JsonResponse([
-            'task_id' => $storedTask->id(),
-            'status' => $storedTask->status()->value,
-            'youtube_url' => $storedTask->youtubeUrl()->value(),
-            'created_at' => $storedTask->createdAt()->format('c'),
-            '_links' => [
-                'status' => "/api/transcribe/{$storedTask->id()}",
-            ],
-        ], Response::HTTP_ACCEPTED);
+        return new JsonResponse(
+            new MediaTaskCreatedResource($storedTask)->toArray(request()),
+            Response::HTTP_ACCEPTED,
+        );
     }
 
     public function status(string $id): JsonResponse
@@ -147,43 +129,7 @@ final class TranscribeVideoController extends Controller
             );
         }
 
-        $response = [
-            'task_id' => $task->id(),
-            'status' => $task->status()->value,
-            'youtube_url' => $task->youtubeUrl()->value(),
-            'video_id' => $task->youtubeUrl()->videoId()->value(),
-            'title' => $task->title(),
-            'created_at' => $task->createdAt()->format('c'),
-            '_links' => [
-                'self' => "/api/transcribe/{$task->id()}",
-            ],
-        ];
-
-        if ($task->status() === TranscriptionStatus::Completed) {
-            $response['duration_sec'] = $task->durationSec();
-            $response['result'] = [
-                'transcript' => $task->resultText()?->value(),
-                'summary' => $task->summary()?->toArray(),
-                'word_count' => $task->resultText()?->wordCount(),
-            ];
-            $response['completed_at'] = $task->completedAt()?->format('c');
-            $response['_links']['download_txt'] = "/api/transcribe/{$task->id()}/download";
-
-            if ($task->slug() !== null && ! $task->isDmcaRemoved()) {
-                $response['_links']['public_page'] = '/v/' . $task->slug();
-            }
-        }
-
-        if ($task->status() === TranscriptionStatus::Processing) {
-            $response['estimated_completion_sec'] = 90;
-        }
-
-        if ($task->status() === TranscriptionStatus::Failed) {
-            $response['error_message'] = $task->errorMessage();
-            $response['failed_at'] = $task->failedAt()?->format('c');
-        }
-
-        return new JsonResponse($response);
+        return new JsonResponse(new MediaTaskResource($task)->toArray(request()));
     }
 
     public function download(string $id): Response
@@ -236,42 +182,7 @@ final class TranscribeVideoController extends Controller
 
             /** @var \Illuminate\Pagination\LengthAwarePaginator<int, \App\Domain\Entities\MediaTask> $paginator */
 
-            /** @var list<array{task_id: string, youtube_url: string, video_id: string, title: string|null, status: string, duration_sec: int|null, created_at: string|null, completed_at: string|null, _links: array<string, string|null>}> $data */
-            $data = [];
-            foreach ($paginator->getCollection() as $task) {
-                /** @var \App\Domain\Entities\MediaTask $task */
-                $data[] = array_filter([
-                    'task_id'      => $task->id(),
-                    'youtube_url'  => $task->youtubeUrl()->value(),
-                    'video_id'     => $task->youtubeUrl()->videoId()->value(),
-                    'title'        => $task->title(),
-                    'status'       => $task->status()->value,
-                    'duration_sec' => $task->durationSec(),
-                    'created_at'   => $task->createdAt()->format('c'),
-                    'completed_at' => $task->completedAt()?->format('c'),
-                    '_links'       => array_filter([
-                        'public_page' => ($task->slug() !== null && ! $task->isDmcaRemoved())
-                            ? '/v/' . $task->slug()
-                            : null,
-                    ]),
-                ]);
-            }
-
-            return [
-                'data' => $data,
-                'meta' => [
-                    'current_page' => $paginator->currentPage(),
-                    'last_page'    => $paginator->lastPage(),
-                    'per_page'     => $paginator->perPage(),
-                    'total'        => $paginator->total(),
-                ],
-                '_links' => [
-                    'first' => '/api/history?page=1',
-                    'prev'  => $paginator->previousPageUrl(),
-                    'next'  => $paginator->nextPageUrl(),
-                    'last'  => '/api/history?page=' . $paginator->lastPage(),
-                ],
-            ];
+            return new MediaTaskCollection($paginator)->toArray(request());
         };
 
         if ($isPublic) {
@@ -297,23 +208,7 @@ final class TranscribeVideoController extends Controller
             ]);
         }
 
-        return new JsonResponse([
-            'task_id' => $task->id(),
-            'youtube_url' => $task->youtubeUrl()->value(),
-            'title' => $task->title(),
-            'status' => $task->status()->value,
-            'duration_sec' => $task->durationSec(),
-            'result' => [
-                'transcript' => $task->resultText()?->value(),
-                'summary' => $task->summary(),
-                'word_count' => $task->resultText()?->wordCount(),
-            ],
-            'created_at' => $task->createdAt()->format('c'),
-            'completed_at' => $task->completedAt()?->format('c'),
-            '_links' => [
-                'download_txt' => "/api/transcribe/{$task->id()}/download",
-            ],
-        ]);
+        return new JsonResponse(new LatestMediaTaskResource($task)->toArray(request()));
     }
 
     public function search(Request $request): JsonResponse
@@ -365,44 +260,9 @@ final class TranscribeVideoController extends Controller
 
         $paginator = $this->handler->searchByTitle($query, $perPage, $page);
 
-        /** @var list<array{task_id: string, title: string|null, youtube_url: string, duration_sec: int|null, completed_at: string|null, _links: array<string, string|null>}> $data */
-        $data = [];
-        foreach ($paginator->getCollection() as $task) {
-            /** @var \App\Domain\Entities\MediaTask $task */
-            $data[] = array_filter([
-                'task_id'      => $task->id(),
-                'title'        => $task->title(),
-                'youtube_url'  => $task->youtubeUrl()->value(),
-                'duration_sec' => $task->durationSec(),
-                'completed_at' => $task->completedAt()?->format('c'),
-                '_links'       => array_filter([
-                    'public_page' => $task->slug() !== null ? '/v/' . $task->slug() : null,
-                ]),
-            ]);
-        }
-
-        $currentPage = $paginator->currentPage();
-        $lastPage = $paginator->lastPage();
-        $hasMorePages = $currentPage < $lastPage;
-
-        $baseUrl = '/api/search?q=' . urlencode($query) . '&per_page=' . $perPage;
-
-        return new JsonResponse([
-            'data' => $data,
-            'meta' => [
-                'current_page' => $currentPage,
-                'last_page'    => $lastPage,
-                'per_page'     => $paginator->perPage(),
-                'total'        => $paginator->total(),
-                'query'        => $query,
-            ],
-            '_links' => [
-                'first' => $baseUrl . '&page=1',
-                'prev'  => $currentPage > 1 ? $baseUrl . '&page=' . ($currentPage - 1) : null,
-                'next'  => $hasMorePages ? $baseUrl . '&page=' . ($currentPage + 1) : null,
-                'last'  => $baseUrl . '&page=' . $lastPage,
-            ],
-        ]);
+        return new JsonResponse(
+            new MediaTaskCollection($paginator, ['query' => $query], $query)->toArray(request()),
+        );
     }
 
     public function historyPage(Request $request): View
