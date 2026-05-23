@@ -42,15 +42,12 @@ final class PublicTranscriptController extends Controller
         // Chunk transcript into paragraphs with estimated timecodes (matching SPA logic)
         $transcriptChunks = $this->chunkTranscript($task);
 
-        $similar = $this->repository->findSimilar($task->id(), limit: 5);
-
         return view('transcript', [
             'task'             => $task,
             'metaDescription'  => $metaDescription,
             'canonicalUrl'     => $canonicalUrl,
             'renderedSummary'  => $renderedSummary,
             'transcriptChunks' => $transcriptChunks,
-            'similarVideos'    => $similar,
         ]);
     }
 
