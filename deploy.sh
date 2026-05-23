@@ -89,6 +89,23 @@ create_secret_if_missing() {
                     -p "{\"data\":{\"SENTRY_DSN\":\"$(echo -n "$sentry_dsn" | base64 -w0)\"}}"
             fi
         fi
+        # Ensure TELEGRAM keys exist
+        local telegram_token="${YTSCRB_TELEGRAM_BOT_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}"
+        local telegram_chat="${YTSCRB_TELEGRAM_CHAT_ID:-${TELEGRAM_CHAT_ID:-}}"
+        if [[ -n "$telegram_token" ]]; then
+            if ! kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data.TELEGRAM_BOT_TOKEN}" >/dev/null 2>&1; then
+                echo "=== Adding TELEGRAM_BOT_TOKEN to existing secret ==="
+                kubectl patch secret "$SECRET_NAME" -n "$NAMESPACE" \
+                    -p "{\"data\":{\"TELEGRAM_BOT_TOKEN\":\"$(echo -n "$telegram_token" | base64 -w0)\"}}"
+            fi
+        fi
+        if [[ -n "$telegram_chat" ]]; then
+            if ! kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data.TELEGRAM_CHAT_ID}" >/dev/null 2>&1; then
+                echo "=== Adding TELEGRAM_CHAT_ID to existing secret ==="
+                kubectl patch secret "$SECRET_NAME" -n "$NAMESPACE" \
+                    -p "{\"data\":{\"TELEGRAM_CHAT_ID\":\"$(echo -n "$telegram_chat" | base64 -w0)\"}}"
+            fi
+        fi
         return 0
     fi
 
@@ -99,6 +116,8 @@ create_secret_if_missing() {
     local openai_key="${YTSCRB_OPENAI_API_KEY:-${OPENAI_API_KEY:-}}"
     local deepseek_key="${YTSCRB_DEEPSEEK_API_KEY:-${DEEPSEEK_API_KEY:-}}"
     local sentry_dsn="${YTSCRB_SENTRY_DSN:-${SENTRY_DSN:-}}"
+    local telegram_token="${YTSCRB_TELEGRAM_BOT_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}"
+    local telegram_chat="${YTSCRB_TELEGRAM_CHAT_ID:-${TELEGRAM_CHAT_ID:-}}"
 
     local missing_vars=()
     if [[ -z "$groq_key" ]]; then
@@ -151,6 +170,8 @@ create_secret_if_missing() {
         --from-literal=OPENAI_API_KEY="$openai_key" \
         --from-literal=DEEPSEEK_API_KEY="$deepseek_key" \
         --from-literal=SENTRY_DSN="$sentry_dsn" \
+        --from-literal=TELEGRAM_BOT_TOKEN="$telegram_token" \
+        --from-literal=TELEGRAM_CHAT_ID="$telegram_chat" \
         --dry-run=client -o yaml | kubectl apply -f -
 
     echo "=== Secret '$SECRET_NAME' created successfully ==="
