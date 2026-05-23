@@ -40,6 +40,22 @@ final class YoutubeSummarizerAgent implements Agent, HasStructuredOutput
         - Write a brief conclusion if the transcript has a clear takeaway.
         - Respond entirely in English.
         - Do not invent content not present in the transcript.
+
+        ## Resource Extraction
+        - Scan the transcript for mentions of books, tools, libraries, services, software, people
+          (authors, speakers, experts), and external links. Extract each into the "resources" array.
+        - For each resource, classify it as one of: "book", "tool", "service", "person", "link".
+        - If a URL is explicitly mentioned or strongly implied (e.g. "github.com/foo"), include it
+          in the "url" field. Otherwise set url to null.
+        - Only include resources explicitly referenced by the speakers. Do not invent.
+
+        ## Clickbait Assessment (only if a video title is provided below)
+        - If a "Video Title" is present in the prompt, compare it against the actual transcript content.
+        - Score from 0 to 100: 0 = total clickbait / title lies completely, 100 = title perfectly
+          matches content. If no title is provided, omit the clickbait_verdict field entirely.
+        - Write a one-sentence verdict comment that is sharp and specific. If the title is misleading,
+          explain why in a witty, quotable way. If the title is honest, acknowledge it.
+        - The verdict comment should be under 150 characters and suitable for sharing as a screenshot.
         PROMPT;
     }
 
@@ -61,6 +77,23 @@ final class YoutubeSummarizerAgent implements Agent, HasStructuredOutput
                 ]),
             )->required(),
             'conclusion' => $schema->string(),
+            'resources'  => $schema->array()->items(
+                $schema->object(fn (JsonSchema $s): array => [
+                    'type' => $s->string()->description(
+                        'One of: book, tool, service, person, link',
+                    )->required(),
+                    'name' => $s->string()->required(),
+                    'url'  => $s->string()->nullable(),
+                ]),
+            )->required(),
+            'clickbait_verdict' => $schema->object(fn (JsonSchema $s): array => [
+                'score'   => $s->integer()->minimum(0)->maximum(100)
+                    ->description('0 = pure clickbait, 100 = title perfectly matches content')
+                    ->required(),
+                'comment' => $s->string()->maxLength(150)
+                    ->description('One-sentence verdict, witty and shareable')
+                    ->required(),
+            ]),
         ];
     }
 }
