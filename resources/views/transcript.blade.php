@@ -220,12 +220,13 @@
                             ];
                             $icon = $typeIcons[$resource->type] ?? $typeIcons['link'];
                         @endphp
-                        @if ($resource->url !== null)
-                            <a href="{{ $resource->url }}" target="_blank" rel="noopener noreferrer"
-                               class="flex items-center gap-2.5 rounded-lg p-2.5 border border-gray-700 bg-gray-800/60 hover:border-emerald-500/40 hover:bg-gray-800 transition-all text-sm">
-                        @else
-                            <span class="flex items-center gap-2.5 rounded-lg p-2.5 border border-gray-700/50 bg-gray-800/40 text-sm">
-                        @endif
+                        @php
+                            $resourceHref = $resource->url !== null
+                                ? $resource->url
+                                : 'https://www.google.com/search?q=' . urlencode($resource->name);
+                        @endphp
+                        <a href="{{ $resourceHref }}" target="_blank" rel="noopener noreferrer"
+                           class="flex items-center gap-2.5 rounded-lg p-2.5 border border-gray-700 bg-gray-800/60 hover:border-emerald-500/40 hover:bg-gray-800 transition-all text-sm">
                             <span class="shrink-0 w-7 h-7 flex items-center justify-center rounded-md bg-gray-700/60 text-xs">
                                 {!! $icon !!}
                             </span>
@@ -233,12 +234,8 @@
                                 <p class="text-gray-200 font-medium truncate">{{ $resource->name }}</p>
                                 <p class="text-gray-500 text-xs capitalize">{{ $resource->type }}</p>
                             </div>
-                            @if ($resource->url !== null)
-                                <svg class="w-3 h-3 text-gray-600 shrink-0 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                            </a>
-                        @else
-                            </span>
-                        @endif
+                            <svg class="w-3 h-3 text-gray-600 shrink-0 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                        </a>
                     @endforeach
                 </div>
             </section>

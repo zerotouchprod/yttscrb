@@ -11,36 +11,85 @@
       <a
         v-for="(item, index) in resources"
         :key="index"
-        :href="item.url || undefined"
-        :target="item.url ? '_blank' : undefined"
-        :rel="item.url ? 'noopener noreferrer' : undefined"
-        :class="[
-          'flex items-center gap-2.5 rounded-lg p-2.5 border transition-all text-sm',
-          item.url
-            ? 'bg-gray-800/60 border-gray-700 hover:border-emerald-500/40 hover:bg-gray-800 cursor-pointer'
-            : 'bg-gray-800/40 border-gray-700/50'
-        ]"
+        :href="resourceLink(item)"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="flex items-center p-3 transition-colors border border-gray-700 rounded-lg bg-gray-800/50 hover:bg-gray-700 hover:border-blue-500 group"
       >
-        <!-- Icon by type -->
-        <span class="shrink-0 w-7 h-7 flex items-center justify-center rounded-md bg-gray-700/60 text-xs">
-          <svg v-if="item.type === 'book'" class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-          <svg v-else-if="item.type === 'tool'" class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-          <svg v-else-if="item.type === 'service'" class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
-          <svg v-else-if="item.type === 'person'" class="w-3.5 h-3.5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-          <svg v-else-if="item.type === 'link'" class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-        </span>
-        <div class="min-w-0">
-          <p class="text-gray-200 font-medium truncate">{{ item.name }}</p>
-          <p class="text-gray-500 text-xs capitalize">{{ item.type }}</p>
+        <!-- Category icon -->
+        <div class="flex items-center justify-center w-10 h-10 mr-4 rounded-md bg-gray-900 group-hover:bg-gray-800 transition-colors"
+             :class="iconColorClass(item.type)">
+          <!-- tool icon -->
+          <svg v-if="item.type === 'tool'" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.08 5.09a1.41 1.41 0 01-2-2l5.09-5.08m1.99-1.99l4.24-4.24m-9.9-4.24a4.002 4.002 0 015.66 5.66l-5.66-5.66zm10.97 2.47l-4.24 4.24m1.41-5.65l-5.65 5.65"/>
+          </svg>
+          <!-- person icon -->
+          <svg v-else-if="item.type === 'person'" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+          </svg>
+          <!-- book icon -->
+          <svg v-else-if="item.type === 'book'" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
+          </svg>
+          <!-- service icon -->
+          <svg v-else-if="item.type === 'service'" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z"/>
+          </svg>
+          <!-- link / default icon -->
+          <svg v-else class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/>
+          </svg>
         </div>
-        <svg v-if="item.url" class="w-3 h-3 text-gray-600 shrink-0 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+
+        <div class="min-w-0 flex-1">
+          <h4 class="font-medium text-gray-200 group-hover:text-white transition-colors truncate">
+            {{ item.name }}
+          </h4>
+          <p class="text-xs text-gray-500 capitalize">
+            {{ item.type }}
+          </p>
+        </div>
+
+        <!-- External link / search indicator -->
+        <svg class="w-4 h-4 ml-auto text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
+        </svg>
       </a>
     </div>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   resources: { type: Array, required: true },
-});
+})
+
+/**
+ * Smart link fallback:
+ * - If LLM returned an exact URL → use it directly.
+ * - If URL is null → fall back to a Google search for the resource name.
+ * This gives users a useful click target even when the speaker didn't dictate a full URL.
+ */
+function resourceLink(item) {
+  if (item.url) {
+    return item.url
+  }
+  return `https://www.google.com/search?q=${encodeURIComponent(item.name)}`
+}
+
+/**
+ * Color mapping per resource type — matches icon container styling.
+ */
+function iconColorClass(type) {
+  switch (type) {
+    case 'tool':    return 'text-blue-400'
+    case 'person':  return 'text-pink-400'
+    case 'book':    return 'text-amber-400'
+    case 'service': return 'text-purple-400'
+    case 'link':    return 'text-cyan-400'
+    default:        return 'text-gray-400'
+  }
+}
 </script>
