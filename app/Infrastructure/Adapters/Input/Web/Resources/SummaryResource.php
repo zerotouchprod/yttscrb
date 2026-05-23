@@ -17,7 +17,9 @@ final class SummaryResource extends JsonResource
      * @return array{
      *     introduction: string,
      *     key_points: array<int, array{timecode: string, title: string, details: string}>,
-     *     conclusion: string|null
+     *     conclusion: string|null,
+     *     resources: array<int, array{type: string, name: string, url: string|null}>,
+     *     clickbait_verdict: array{score: int, comment: string}|null
      * }
      */
     public function toArray(Request $request): array
@@ -32,7 +34,16 @@ final class SummaryResource extends JsonResource
                 ],
                 $this->resource->keyPoints(),
             ),
-            'conclusion' => $this->resource->conclusion(),
+            'conclusion'       => $this->resource->conclusion(),
+            'resources'        => array_map(
+                fn (\App\Domain\ValueObjects\ResourceItem $r) => [
+                    'type' => $r->type,
+                    'name' => $r->name,
+                    'url'  => $r->url,
+                ],
+                $this->resource->resources(),
+            ),
+            'clickbait_verdict' => $this->resource->clickbaitVerdict()?->toArray(),
         ];
     }
 }

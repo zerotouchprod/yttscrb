@@ -8,7 +8,7 @@ use OpenApi\Attributes as OA;
 
 #[OA\Schema(
     schema: 'Summary',
-    required: ['introduction', 'key_points', 'conclusion'],
+    required: ['introduction', 'key_points', 'conclusion', 'resources'],
     properties: [
         new OA\Property(property: 'introduction', type: 'string'),
         new OA\Property(
@@ -25,6 +25,29 @@ use OpenApi\Attributes as OA;
             ),
         ),
         new OA\Property(property: 'conclusion', type: 'string', nullable: true),
+        new OA\Property(
+            property: 'resources',
+            type: 'array',
+            items: new OA\Items(
+                required: ['type', 'name'],
+                properties: [
+                    new OA\Property(property: 'type', type: 'string', example: 'book'),
+                    new OA\Property(property: 'name', type: 'string', example: 'Clean Code'),
+                    new OA\Property(property: 'url', type: 'string', nullable: true, example: 'https://example.com'),
+                ],
+                type: 'object',
+            ),
+        ),
+        new OA\Property(
+            property: 'clickbait_verdict',
+            required: ['score', 'comment'],
+            properties: [
+                new OA\Property(property: 'score', type: 'integer', example: 85),
+                new OA\Property(property: 'comment', type: 'string', example: 'Title matches content well.'),
+            ],
+            type: 'object',
+            nullable: true,
+        ),
     ],
 )]
 final class SummarySchema
