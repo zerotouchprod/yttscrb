@@ -70,10 +70,12 @@
       <div class="flex gap-1 mb-5 bg-gray-700/40 rounded-lg p-1" role="tablist">
         <button @click="activeTab = 'summary'" :class="activeTab === 'summary' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'" class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-150" role="tab" :aria-selected="activeTab === 'summary'" aria-controls="panel-summary"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> AI Summary</button>
         <button @click="activeTab = 'transcript'" :class="activeTab === 'transcript' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'" class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-150" role="tab" :aria-selected="activeTab === 'transcript'" aria-controls="panel-transcript"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Transcript</button>
+        <button v-if="renderedSummary?.resources?.length" @click="activeTab = 'resources'" :class="activeTab === 'resources' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'" class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-150" role="tab" :aria-selected="activeTab === 'resources'" aria-controls="panel-resources"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg> Mentioned</button>
       </div>
 
       <!-- Summary tab -->
       <div v-show="activeTab === 'summary'" id="panel-summary" role="tabpanel">
+        <ClickbaitVerdict :verdict="renderedSummary?.clickbait_verdict ?? null" class="mb-5" />
         <SummaryResult
           v-if="renderedSummary && typeof renderedSummary === 'object'"
           :summary="renderedSummary"
@@ -113,6 +115,11 @@
         </div>
       </div>
 
+      <!-- Resources tab -->
+      <div v-show="activeTab === 'resources'" id="panel-resources" role="tabpanel">
+        <ResourceCatcher :resources="renderedSummary?.resources ?? []" class="mb-5" />
+      </div>
+
     </div>
 
     <!-- failed state -->
@@ -127,6 +134,8 @@
 <script setup>
 import { ref } from 'vue';
 import SummaryResult from './SummaryResult.vue';
+import ResourceCatcher from './ResourceCatcher.vue';
+import ClickbaitVerdict from './ClickbaitVerdict.vue';
 import { formatDuration, formatTimecode } from '../composables/useFormatting.js';
 
 defineProps({
