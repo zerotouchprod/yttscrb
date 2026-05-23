@@ -168,8 +168,51 @@ curl -s -o /dev/null -w '%{http_code}' https://tubesum.app/
 # 3. API returns 200
 curl -s -o /dev/null -w '%{http_code}' https://tubesum.app/api/history
 
-# 4. No ERROR in recent logs
+# 4. No ERROR in recent logs (all 3 deployments)
 kubectl logs -n prod deployment/yttscrb-app --tail=20 | grep -c ERROR
+kubectl logs -n prod deployment/yttscrb-worker --tail=20 | grep -ci error || true
+kubectl logs -n prod deployment/yttscrb-horizon --tail=20 | grep -ci error || true
+
+# 5. Sentry — no new issues since deploy
+#    (requires SENTRY_AUTH_TOKEN env var, see tubesumapp-sentry-debug skill)
+./check-sentry.sh
+```
+
+### Sentry Post-Deploy Check
+
+After every deploy, verify Sentry is not receiving new errors from the new code:
+
+```bash
+# Quick check: unresolved issues in last 1h
+TOKEN="${SENTRY_AUTH_TOKEN}"
+ORG="4510580181827584"
+PROJ="4510580205879376"
+BASE="https://sentry.io/api/0"
+
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "$BASE/projects/$ORG/$PROJ/issues/?limit=10&query=is:unresolved&statsPeriod=1h" | \
+  python3 -c "
+import sys,json
+issues = json.load(sys.stdin)
+if not issues:
+    print('✓ Sentry: no new issues')
+else:
+    print(f'⚠ Sentry: {len(issues)} unresolved issues in last hour:')
+    for i in issues[:5]:
+        print(f'  [{i[\"status\"]}] events={i[\"count\"]} {i[\"title\"][:120]}')
+"
+```
+
+If `SENTRY_AUTH_TOKEN` is not available locally, fall back to checking pod logs directly:
+
+```bash
+ssh root@154.47.146.43 '
+  export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+  for dep in yttscrb-app yttscrb-worker yttscrb-horizon; do
+    errors=$(kubectl logs -n prod deployment/$dep --tail=50 2>/dev/null | grep -ci "ERROR\|FatalError\|Exception" || echo 0)
+    echo "$dep: $errors errors in recent logs"
+  done
+'
 ```
 
 ## Troubleshooting Flowchart

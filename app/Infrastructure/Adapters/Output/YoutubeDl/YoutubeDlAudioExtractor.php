@@ -7,6 +7,7 @@ namespace App\Infrastructure\Adapters\Output\YoutubeDl;
 use App\Application\Ports\Output\AudioExtractorInterface;
 use App\Domain\ValueObjects\AudioFile;
 use App\Domain\ValueObjects\YouTubeUrl;
+use App\Shared\Exceptions\VideoNotAvailableException;
 use RuntimeException;
 
 final class YoutubeDlAudioExtractor implements AudioExtractorInterface
@@ -82,14 +83,14 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
                     $reason = trim($matches[1]);
                 }
 
-                throw new RuntimeException(sprintf(
+                throw new VideoNotAvailableException(sprintf(
                     'Cannot download video: %s',
                     $reason,
                 ));
             }
 
             if (str_contains($errorOutput, 'Private video') || str_contains($errorOutput, 'video is private')) {
-                throw new RuntimeException('Cannot download video: This is a private video.');
+                throw new VideoNotAvailableException('Cannot download video: This is a private video.');
             }
 
             throw new RuntimeException(sprintf(
