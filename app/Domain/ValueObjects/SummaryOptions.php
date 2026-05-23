@@ -9,6 +9,7 @@ final readonly class SummaryOptions
     public function __construct(
         private string $style = 'concise',
         private int $maxWords = 250,
+        private ?string $videoTitle = null,
     ) {
     }
 
@@ -20,5 +21,10 @@ final readonly class SummaryOptions
     public function maxWords(): int
     {
         return $this->maxWords;
+    }
+
+    public function videoTitle(): ?string
+    {
+        return $this->videoTitle;
     }
 }
