@@ -73,10 +73,29 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
         $exitCode = proc_close($process);
 
         if ($exitCode !== 0) {
+            $errorOutput = $stderr ?: $stdout;
+
+            if (str_contains($errorOutput, 'Video unavailable')) {
+                // Extract the reason from YouTube's error message
+                $reason = 'This video is unavailable.';
+                if (preg_match('/Video unavailable\.?\s*(.*)/i', $errorOutput, $matches)) {
+                    $reason = trim($matches[1]);
+                }
+
+                throw new RuntimeException(sprintf(
+                    'Cannot download video: %s',
+                    $reason,
+                ));
+            }
+
+            if (str_contains($errorOutput, 'Private video') || str_contains($errorOutput, 'video is private')) {
+                throw new RuntimeException('Cannot download video: This is a private video.');
+            }
+
             throw new RuntimeException(sprintf(
                 'yt-dlp failed with exit code %d: %s',
                 $exitCode,
-                $stderr ?: $stdout,
+                $errorOutput,
             ));
         }
 

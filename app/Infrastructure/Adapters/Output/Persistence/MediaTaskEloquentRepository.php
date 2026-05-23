@@ -22,6 +22,23 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
 {
     public function save(MediaTask $mediaTask): void
     {
+        // Prevent duplicate completed records for the same video
+        // (partial unique index idx_media_tasks_video_completed enforces one completed row per video_id)
+        if (
+            $mediaTask->status() === TranscriptionStatus::Completed
+            && $mediaTask->youtubeUrl() !== null
+        ) {
+            $existingCompleted = MediaTaskModel::query()
+                ->where('video_id', $mediaTask->youtubeUrl()->videoId()->value())
+                ->where('status', TranscriptionStatus::Completed->value)
+                ->where('id', '!=', $mediaTask->id())
+                ->exists();
+
+            if ($existingCompleted) {
+                return;
+            }
+        }
+
         $data = $this->toArray($mediaTask);
 
         // Auto-generate slug when task completes and has a title but no slug yet.
