@@ -71,4 +71,9 @@ final readonly class TranscribeVideoHandler
 
         return $this->repository->countCompletedSince($today, $userIdentifier);
     }
+
+    public function saveUserIdentifier(string $taskId, string $userIdentifier): void
+    {
+        $this->repository->saveUserIdentifier($taskId, $userIdentifier);
+    }
 }

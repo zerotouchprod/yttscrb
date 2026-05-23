@@ -103,6 +103,12 @@ final class TranscribeVideoController extends Controller
 
         $storedTask = $this->handler->handle($task);
 
+        // Store user identifier AFTER handler (which may return existing completed task).
+        // Only persist for newly created tasks (same id === no dedup).
+        if ($storedTask->id() === $task->id()) {
+            $this->handler->saveUserIdentifier($taskId, $userIdentifier);
+        }
+
         if ($storedTask->id() !== $task->id()) {
             // Return full completed payload (same shape as status()) so the frontend
             // can render immediately without an extra polling round-trip.

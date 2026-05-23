@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $duration_sec
  * @property string|null $error_message
  * @property int|null $user_id
+ * @property string|null $user_identifier
  * @property Carbon|null $completed_at
  * @property Carbon|null $failed_at
  * @property Carbon|null $dmca_removed_at
@@ -47,6 +48,7 @@ class MediaTaskModel extends Model
         'duration_sec',
         'error_message',
         'user_id',
+        'user_identifier',
         'completed_at',
         'failed_at',
         'dmca_removed_at',

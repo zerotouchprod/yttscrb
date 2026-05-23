@@ -57,6 +57,13 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
         );
     }
 
+    public function saveUserIdentifier(string $taskId, string $userIdentifier): void
+    {
+        MediaTaskModel::query()->where('id', $taskId)->update([
+            'user_identifier' => $userIdentifier,
+        ]);
+    }
+
     public function findById(string $id): ?MediaTask
     {
         $model = MediaTaskModel::query()->find($id);

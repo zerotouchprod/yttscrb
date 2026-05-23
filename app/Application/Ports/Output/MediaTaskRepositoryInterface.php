@@ -14,6 +14,12 @@ interface MediaTaskRepositoryInterface
 {
     public function save(MediaTask $mediaTask): void;
 
+    /**
+     * Store the anonymous user identifier (SHA-256 IP hash) for a newly created task.
+     * Called immediately after save() by the controller.
+     */
+    public function saveUserIdentifier(string $taskId, string $userIdentifier): void;
+
     public function findById(string $id): ?MediaTask;
 
     public function findBySlug(string $slug): ?MediaTask;
