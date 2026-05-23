@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Infrastructure\Adapters\Input\Web\AdminDmcaController;
+use App\Infrastructure\Adapters\Input\Web\FeedbackController;
 use App\Infrastructure\Adapters\Input\Web\TranscribeVideoController;
 use Illuminate\Support\Facades\Route;
 
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 $throttle = app()->environment('local') ? [] : ['throttle:30,1'];
 $searchThrottle = app()->environment('local') ? [] : ['throttle:60,1'];
 $adminThrottle = app()->environment('local') ? [] : ['throttle:10,1'];
+$feedbackThrottle = app()->environment('local') ? [] : ['throttle:3,1'];
 
 Route::post('/transcribe', [TranscribeVideoController::class, 'create'])
     ->middleware($throttle);
@@ -23,6 +25,10 @@ Route::get('/search', [TranscribeVideoController::class, 'search'])
     ->middleware($searchThrottle);
 Route::get('/history', [TranscribeVideoController::class, 'history']);
 Route::get('/history/latest', [TranscribeVideoController::class, 'latest']);
+
+// Feedback: send via Telegram (no auth, anti-abuse throttled)
+Route::post('/feedback', [FeedbackController::class, 'send'])
+    ->middleware($feedbackThrottle);
 
 // Admin: DMCA takedown (protected by ADMIN_TOKEN env, no registration required)
 Route::post('/admin/tasks/{id}/dmca-remove', [AdminDmcaController::class, 'remove'])

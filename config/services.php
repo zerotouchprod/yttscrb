@@ -34,4 +34,9 @@ return [
     'yt_dlp_binary' => env('YT_DLP_BINARY', 'yt-dlp'),
 
     'max_video_duration_sec' => (int) env('MAX_VIDEO_DURATION_SEC', 7200),
+
+    'telegram' => [
+        'token' => env('TELEGRAM_BOT_TOKEN'),
+        'chat_id' => env('TELEGRAM_CHAT_ID'),
+    ],
 ];
