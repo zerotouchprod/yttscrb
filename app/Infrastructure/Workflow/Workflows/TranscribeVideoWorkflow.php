@@ -52,6 +52,7 @@ final class TranscribeVideoWorkflow extends Workflow
             $durationSec = $transcription->durationSec;
         } catch (Throwable $th) {
             yield from $this->compensate();
+            yield sideEffect(fn () => $this->failTask($taskId, $th->getMessage()));
             throw $th;
         }
 
@@ -91,5 +92,17 @@ final class TranscribeVideoWorkflow extends Workflow
         /** @var MediaTaskRepositoryInterface $repository */
         $repository = Container::getInstance()->make(MediaTaskRepositoryInterface::class);
         $repository->storeTitle($taskId, $title);
+    }
+
+    private function failTask(string $taskId, string $errorMessage): void
+    {
+        /** @var MediaTaskRepositoryInterface $repository */
+        $repository = Container::getInstance()->make(MediaTaskRepositoryInterface::class);
+        $task = $repository->findById($taskId);
+
+        if ($task !== null) {
+            $task->fail($errorMessage);
+            $repository->save($task);
+        }
     }
 }
