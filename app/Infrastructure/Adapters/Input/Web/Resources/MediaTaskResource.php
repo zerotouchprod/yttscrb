@@ -15,11 +15,26 @@ use Illuminate\Http\Resources\Json\JsonResource;
 final class MediaTaskResource extends JsonResource
 {
     /**
-     * @param array<int, array{task_id: string, video_id: string, title: string, slug: string|null, similarity: float}> $similar
+     * @var array<int, array{task_id: string, video_id: string, title: string, slug: string|null, similarity: float}>
      */
-    public function __construct($resource, private array $similar = [])
+    private array $similar = [];
+
+    /**
+     * @param mixed $resource
+     */
+    public function __construct($resource)
     {
         parent::__construct($resource);
+    }
+
+    /**
+     * @param array<int, array{task_id: string, video_id: string, title: string, slug: string|null, similarity: float}> $similar
+     */
+    public function withSimilar(array $similar): static
+    {
+        $this->similar = $similar;
+
+        return $this;
     }
 
     /**

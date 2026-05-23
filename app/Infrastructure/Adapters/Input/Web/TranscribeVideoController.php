@@ -117,7 +117,7 @@ final class TranscribeVideoController extends Controller
             $similar = $this->mediaTaskRepository->findSimilar($storedTask->id(), limit: 5);
 
             return new JsonResponse(
-                new MediaTaskResource($storedTask, similar: $similar)->toArray(request()),
+                (new MediaTaskResource($storedTask))->withSimilar($similar)->toArray(request()),
                 Response::HTTP_OK,
             );
         }
@@ -143,7 +143,9 @@ final class TranscribeVideoController extends Controller
 
         $similar = $this->mediaTaskRepository->findSimilar($task->id(), limit: 5);
 
-        return new JsonResponse(new MediaTaskResource($task, similar: $similar)->toArray(request()));
+        return new JsonResponse(
+            (new MediaTaskResource($task))->withSimilar($similar)->toArray(request()),
+        );
     }
 
     public function download(string $id): Response
