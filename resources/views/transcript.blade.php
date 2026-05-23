@@ -172,6 +172,78 @@
             </section>
         @endif
 
+        <!-- Clickbait Verdict -->
+        @if ($renderedSummary !== null && $renderedSummary->clickbaitVerdict() !== null)
+            @php $verdict = $renderedSummary->clickbaitVerdict(); @endphp
+            <section class="bg-gray-800/60 rounded-xl p-5 border border-gray-700 mb-8">
+                <div class="flex items-center gap-3 mb-3">
+                    <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Clickbait Check</h2>
+                    @php
+                        $scoreColor = $verdict->score >= 80 ? 'bg-green-900/60 text-green-400 border-green-700/40'
+                            : ($verdict->score >= 50 ? 'bg-yellow-900/60 text-yellow-400 border-yellow-700/40'
+                            : 'bg-red-900/60 text-red-400 border-red-700/40');
+                        $gaugeColor = $verdict->score >= 80 ? 'bg-gradient-to-r from-green-600 to-green-400'
+                            : ($verdict->score >= 50 ? 'bg-gradient-to-r from-yellow-600 to-yellow-400'
+                            : 'bg-gradient-to-r from-red-600 to-red-400');
+                    @endphp
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-full border {{ $scoreColor }}">
+                        {{ $verdict->score }}% Legit
+                    </span>
+                </div>
+                <div class="h-2 bg-gray-700 rounded-full overflow-hidden mb-3">
+                    <div class="h-full rounded-full {{ $gaugeColor }}" style="width: {{ $verdict->score }}%"></div>
+                </div>
+                <p class="text-gray-300 text-sm leading-relaxed italic">
+                    "{{ $verdict->comment }}"
+                </p>
+            </section>
+        @endif
+
+        <!-- Resources -->
+        @if ($renderedSummary !== null && count($renderedSummary->resources()) > 0)
+            <section class="mb-8">
+                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+                    <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                    </svg>
+                    Mentioned in this Video
+                </h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    @foreach ($renderedSummary->resources() as $resource)
+                        @php
+                            $typeIcons = [
+                                'book' => '<svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>',
+                                'tool' => '<svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>',
+                                'service' => '<svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>',
+                                'person' => '<svg class="w-3.5 h-3.5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>',
+                                'link' => '<svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>',
+                            ];
+                            $icon = $typeIcons[$resource->type] ?? $typeIcons['link'];
+                        @endphp
+                        @if ($resource->url !== null)
+                            <a href="{{ $resource->url }}" target="_blank" rel="noopener noreferrer"
+                               class="flex items-center gap-2.5 rounded-lg p-2.5 border border-gray-700 bg-gray-800/60 hover:border-emerald-500/40 hover:bg-gray-800 transition-all text-sm">
+                        @else
+                            <span class="flex items-center gap-2.5 rounded-lg p-2.5 border border-gray-700/50 bg-gray-800/40 text-sm">
+                        @endif
+                            <span class="shrink-0 w-7 h-7 flex items-center justify-center rounded-md bg-gray-700/60 text-xs">
+                                {!! $icon !!}
+                            </span>
+                            <div class="min-w-0">
+                                <p class="text-gray-200 font-medium truncate">{{ $resource->name }}</p>
+                                <p class="text-gray-500 text-xs capitalize">{{ $resource->type }}</p>
+                            </div>
+                            @if ($resource->url !== null)
+                                <svg class="w-3 h-3 text-gray-600 shrink-0 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                            </a>
+                        @else
+                            </span>
+                        @endif
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
         <!-- Full Transcript -->
         @if (count($transcriptChunks) > 0)
             <section class="mb-10">
