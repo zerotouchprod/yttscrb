@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Adapters\Input\Web;
 
+use App\Application\Ports\Output\MediaTaskRepositoryInterface;
 use App\Application\Ports\Output\SubtitleProviderInterface;
 use App\Application\UseCases\TranscribeVideoHandler;
 use App\Domain\Entities\MediaTask;
@@ -28,6 +29,7 @@ final class TranscribeVideoController extends Controller
     public function __construct(
         private readonly TranscribeVideoHandler $handler,
         private readonly SubtitleProviderInterface $subtitleProvider,
+        private readonly MediaTaskRepositoryInterface $mediaTaskRepository,
     ) {
     }
 
@@ -112,8 +114,10 @@ final class TranscribeVideoController extends Controller
         if ($storedTask->id() !== $task->id()) {
             // Return full completed payload (same shape as status()) so the frontend
             // can render immediately without an extra polling round-trip.
+            $similar = $this->mediaTaskRepository->findSimilar($storedTask->id(), limit: 5);
+
             return new JsonResponse(
-                new MediaTaskResource($storedTask)->toArray(request()),
+                new MediaTaskResource($storedTask, similar: $similar)->toArray(request()),
                 Response::HTTP_OK,
             );
         }
@@ -137,7 +141,9 @@ final class TranscribeVideoController extends Controller
             );
         }
 
-        return new JsonResponse(new MediaTaskResource($task)->toArray(request()));
+        $similar = $this->mediaTaskRepository->findSimilar($task->id(), limit: 5);
+
+        return new JsonResponse(new MediaTaskResource($task, similar: $similar)->toArray(request()));
     }
 
     public function download(string $id): Response

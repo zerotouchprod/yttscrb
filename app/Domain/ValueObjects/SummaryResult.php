@@ -10,6 +10,7 @@ final readonly class SummaryResult
      * @param SummaryKeyPoint[] $keyPoints
      * @param ResourceItem[]    $resources
      * @param TutorialStep[]    $tutorialSteps
+     * @param SummaryChapter[]  $chapters
      */
     public function __construct(
         private string $introduction,
@@ -18,6 +19,7 @@ final readonly class SummaryResult
         private array $resources = [],
         private ?ClickbaitVerdict $clickbaitVerdict = null,
         private array $tutorialSteps = [],
+        private array $chapters = [],
     ) {
     }
 
@@ -61,6 +63,14 @@ final readonly class SummaryResult
     }
 
     /**
+     * @return SummaryChapter[]
+     */
+    public function chapters(): array
+    {
+        return $this->chapters;
+    }
+
+    /**
      * Сериализация для хранения в JSONB-колонке.
      *
      * @internal Used only by persistence layer. HTTP serialization is handled by
@@ -72,7 +82,8 @@ final readonly class SummaryResult
      *     conclusion: string|null,
      *     resources: array<int, array{type: string, name: string, url: string|null}>,
      *     clickbait_verdict: array{score: int, comment: string}|null,
-     *     tutorial_steps: array<int, array{step: int, time: string, action: string}>
+     *     tutorial_steps: array<int, array{step: int, time: string, action: string}>,
+     *     chapters: array<int, array{title: string, start_timecode: string, end_timecode: string}>
      * }
      */
     public function toArray(): array
@@ -84,6 +95,7 @@ final readonly class SummaryResult
             'resources'         => array_map(fn (ResourceItem $r) => $r->toArray(), $this->resources),
             'clickbait_verdict' => $this->clickbaitVerdict?->toArray(),
             'tutorial_steps'    => array_map(fn (TutorialStep $s) => $s->toArray(), $this->tutorialSteps),
+            'chapters'          => array_map(fn (SummaryChapter $ch) => $ch->toArray(), $this->chapters),
         ];
     }
 
@@ -96,7 +108,8 @@ final readonly class SummaryResult
      *     conclusion?: string|null,
      *     resources?: array<int, array{type: string, name: string, url?: string|null}>,
      *     clickbait_verdict?: array{score: int, comment: string}|null,
-     *     tutorial_steps?: array<int, array{step: int, time: string, action: string}>
+     *     tutorial_steps?: array<int, array{step: int, time: string, action: string}>,
+     *     chapters?: array<int, array{title: string, start_timecode: string, end_timecode: string}>
      * } $data
      */
     public static function fromArray(array $data): self
@@ -118,6 +131,10 @@ final readonly class SummaryResult
             tutorialSteps: array_map(
                 fn (array $s) => TutorialStep::fromArray($s),
                 $data['tutorial_steps'] ?? [],
+            ),
+            chapters: array_map(
+                fn (array $ch) => SummaryChapter::fromArray($ch),
+                $data['chapters'] ?? [],
             ),
         );
     }

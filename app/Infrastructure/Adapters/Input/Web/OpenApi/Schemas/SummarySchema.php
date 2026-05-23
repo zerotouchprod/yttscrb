@@ -8,7 +8,7 @@ use OpenApi\Attributes as OA;
 
 #[OA\Schema(
     schema: 'Summary',
-    required: ['introduction', 'key_points', 'conclusion', 'resources', 'tutorial_steps'],
+    required: ['introduction', 'key_points', 'conclusion', 'resources', 'tutorial_steps', 'chapters'],
     properties: [
         new OA\Property(property: 'introduction', type: 'string'),
         new OA\Property(
@@ -57,6 +57,19 @@ use OpenApi\Attributes as OA;
                     new OA\Property(property: 'step', type: 'integer', example: 1),
                     new OA\Property(property: 'time', type: 'string', example: '03:45'),
                     new OA\Property(property: 'action', type: 'string', example: 'composer require laravel/horizon'),
+                ],
+                type: 'object',
+            ),
+        ),
+        new OA\Property(
+            property: 'chapters',
+            type: 'array',
+            items: new OA\Items(
+                required: ['title', 'start_timecode', 'end_timecode'],
+                properties: [
+                    new OA\Property(property: 'title', type: 'string', example: 'Introduction'),
+                    new OA\Property(property: 'start_timecode', type: 'string', example: '00:00:00'),
+                    new OA\Property(property: 'end_timecode', type: 'string', example: '00:05:30'),
                 ],
                 type: 'object',
             ),

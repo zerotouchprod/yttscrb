@@ -15,6 +15,14 @@ use Illuminate\Http\Resources\Json\JsonResource;
 final class MediaTaskResource extends JsonResource
 {
     /**
+     * @param array<int, array{task_id: string, video_id: string, title: string, slug: string|null, similarity: float}> $similar
+     */
+    public function __construct($resource, private array $similar = [])
+    {
+        parent::__construct($resource);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
@@ -45,6 +53,19 @@ final class MediaTaskResource extends JsonResource
 
             if ($this->resource->slug() !== null && ! $this->resource->isDmcaRemoved()) {
                 $data['_links']['public_page'] = '/v/' . $this->resource->slug();
+            }
+
+            if (count($this->similar) > 0) {
+                $data['similar'] = array_map(fn (array $t) => [
+                    'task_id'    => $t['task_id'],
+                    'video_id'   => $t['video_id'],
+                    'title'      => $t['title'],
+                    'similarity' => $t['similarity'],
+                    '_links'     => array_filter([
+                        'public_page' => $t['slug'] !== null ? '/v/' . $t['slug'] : null,
+                        'youtube'     => 'https://youtube.com/watch?v=' . $t['video_id'],
+                    ]),
+                ], $this->similar);
             }
         }
 

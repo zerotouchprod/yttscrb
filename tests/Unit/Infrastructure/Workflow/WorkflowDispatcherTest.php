@@ -104,6 +104,15 @@ it('starts durable workflow and stores returned workflow id', function (): void 
         {
             return new LengthAwarePaginator([], 0, $perPage, $page);
         }
+
+        public function findSimilar(string $taskId, int $limit = 5): array
+        {
+            return [];
+        }
+
+        public function saveUserIdentifier(string $taskId, string $userIdentifier): void
+        {
+        }
     };
 
     $dispatcher = new WorkflowDispatcher($launcher, $repository);

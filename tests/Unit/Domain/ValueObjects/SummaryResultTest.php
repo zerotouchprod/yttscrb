@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\ValueObjects\SummaryChapter;
 use App\Domain\ValueObjects\SummaryKeyPoint;
 use App\Domain\ValueObjects\SummaryResult;
 use App\Domain\ValueObjects\TutorialStep;
@@ -35,6 +36,7 @@ it('serializes to array via toArray()', function (): void {
         'resources'         => [],
         'clickbait_verdict' => null,
         'tutorial_steps'    => [],
+        'chapters'          => [],
     ]);
 });
 
@@ -101,6 +103,83 @@ it('defaults tutorialSteps to empty array', function (): void {
     $result = new SummaryResult('Intro', []);
 
     expect($result->tutorialSteps())->toBe([]);
+});
+
+it('stores and retrieves chapters', function (): void {
+    $chapter = new SummaryChapter(
+        title: 'Introduction',
+        startTimecode: '00:00',
+        endTimecode: '05:30',
+    );
+    $result = new SummaryResult('Intro', [], chapters: [$chapter]);
+
+    expect($result->chapters())->toHaveCount(1)
+        ->and($result->chapters()[0]->title)->toBe('Introduction')
+        ->and($result->chapters()[0]->startTimecode)->toBe('00:00')
+        ->and($result->chapters()[0]->endTimecode)->toBe('05:30');
+});
+
+it('defaults chapters to empty array', function (): void {
+    $result = new SummaryResult('Intro', []);
+
+    expect($result->chapters())->toBe([]);
+});
+
+it('serializes chapters in toArray', function (): void {
+    $chapter = new SummaryChapter(
+        title: 'Core',
+        startTimecode: '05:30',
+        endTimecode: '12:00',
+    );
+    $result = new SummaryResult('Intro', [], chapters: [$chapter]);
+
+    expect($result->toArray()['chapters'])->toBe([
+        ['title' => 'Core', 'start_timecode' => '05:30', 'end_timecode' => '12:00'],
+    ]);
+});
+
+it('deserializes chapters from fromArray', function (): void {
+    $data = [
+        'introduction' => 'Intro',
+        'key_points'   => [],
+        'chapters'     => [
+            ['title' => 'Wrap Up', 'start_timecode' => '12:00', 'end_timecode' => '15:00'],
+        ],
+    ];
+
+    $result = SummaryResult::fromArray($data);
+
+    expect($result->chapters())->toHaveCount(1)
+        ->and($result->chapters()[0]->title)->toBe('Wrap Up')
+        ->and($result->chapters()[0]->startTimecode)->toBe('12:00')
+        ->and($result->chapters()[0]->endTimecode)->toBe('15:00');
+});
+
+it('fromArray handles missing chapters key', function (): void {
+    $data = [
+        'introduction' => 'No chapters',
+        'key_points'   => [],
+    ];
+
+    $result = SummaryResult::fromArray($data);
+
+    expect($result->chapters())->toBe([]);
+});
+
+it('round-trips chapters through toArray and fromArray', function (): void {
+    $chapter = new SummaryChapter(
+        title: 'Setup',
+        startTimecode: '00:00',
+        endTimecode: '03:00',
+    );
+    $original = new SummaryResult('Intro', [], chapters: [$chapter]);
+
+    $roundTrip = SummaryResult::fromArray($original->toArray());
+
+    expect($roundTrip->chapters())->toHaveCount(1)
+        ->and($roundTrip->chapters()[0]->title)->toBe('Setup')
+        ->and($roundTrip->chapters()[0]->startTimecode)->toBe('00:00')
+        ->and($roundTrip->chapters()[0]->endTimecode)->toBe('03:00');
 });
 
 it('serializes tutorial steps in toArray', function (): void {

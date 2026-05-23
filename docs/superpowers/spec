@@ -1,0 +1,1302 @@
+# Feature Roadmap Design — YTTSCRB v1.1+
+
+> **Дата:** 2026-05-23
+> **Статус:** Draft
+> **Контекст:** Дизайн-документ для фич, предложенных в анализе feature-плана. Покрывает как оригинальные предложения (с пересмотренными приоритетами), так и собственные находки (A-F).
+
+---
+
+## Сводка приоритетов
+
+| # | Фича | Ценность | Сложность | Статус |
+|---|------|----------|-----------|--------|
+| 🔴 | **BUG: Глобальный daily limit → per-user** | КРИТИЧНО | Низкая | 🐛 Баг |
+| 1 | Resource Catcher | ⭐⭐⭐⭐⭐ | Низкая | 🔄 В процессе |
+| 2 | Clickbait Reality Check | ⭐⭐⭐⭐⭐ | Низкая | 🔄 В процессе |
+| 3 | Tutorial Checklist | ⭐⭐⭐⭐⭐ | Низкая | 🔄 В процессе |
+| 4 | Автоглавы + Таймлайн видео | ⭐⭐⭐⭐⭐ | Низкая | 📋 План |
+| 5 | Читаемый транскрипт | ⭐⭐⭐⭐⭐ | Средняя | 📋 План |
+| 6 | Content Remix | ⭐⭐⭐⭐⭐ | Низкая | 📋 План |
+| 7 | Поиск по транскрипциям | ⭐⭐⭐⭐ | Низкая | 📋 План |
+| 8 | Похожие видео | ⭐⭐⭐⭐ | Низкая | 📋 План |
+| 9 | Когортная аналитика | ⭐⭐⭐⭐ | Низкая | 📋 План |
+| 10 | Дашборд статистики | ⭐⭐⭐⭐ | Низкая | 📋 План |
+| 11 | Экспорт PDF/SRT | ⭐⭐⭐⭐ | Низкая | 📋 План |
+| 12 | Публичные SEO-страницы | ⭐⭐⭐⭐ | Низкая | ✅ Частично |
+| 13 | Chat with Video | ⭐⭐⭐ | Высокая | 📋 План |
+| 14 | Telegram-бот | ⭐⭐⭐ | Низкая | 📋 План |
+| 15 | Подписки Stripe | ⭐⭐⭐ | Средняя | 📋 План |
+| 16 | Пакетные плейлисты | ⭐⭐⭐ | Высокая | 📋 План |
+| 17 | Export to Notion | ⭐⭐⭐ | Низкая | 📋 План |
+| 18 | Speaker Diarization | ⭐⭐⭐ | Высокая | 📋 План |
+| 19 | Мониторинг каналов | ⭐⭐⭐ | Средняя | 📋 План |
+| 20 | Webhooks / Public API | ⭐⭐ | Средняя | 📋 План |
+| 21 | Diff Transcripts | ⭐⭐ | Низкая | 📋 План |
+| 22 | Browser Extension | ⭐⭐ | Высокая | 📋 План |
+
+---
+
+## 1. Автоглавы + Таймлайн видео
+
+### 1.1 Что делает
+
+AI разбивает транскрипт на тематические главы (chapters) с заголовками и таймкодами. На фронтенде — визуальная горизонтальная шкала (timeline bar) с отметками глав и key_points. Клик на отметку → переход к фрагменту транскрипта / открытие YouTube на таймкоде.
+
+### 1.2 Подходы
+
+**Вариант A: AI-кластеризация key_points (рекомендован)**
+
+Существующие `key_points` уже содержат timecode + title + details. AI-промпт расширяется: дополнить key_points группировкой в главы.
+
+Промпт-инструкция:
+```
+Group the key points into logical chapters. Each chapter has a title and a time range.
+Return as "chapters": [{"title": "...", "start_timecode": "00:00:00", "end_timecode": "00:05:30"}]
+```
+
+**Плюсы:** не требует нового вызова AI, результат — часть существующего SummaryResult.
+**Минусы:** качество глав зависит от качества key_points.
+
+**Вариант B: Отдельный AI-вызов на полном транскрипте**
+
+Новый метод `chapterize()` на `SummaryProviderInterface` или отдельный `ChapterDetectorInterface`.
+
+**Плюсы:** более точные главы, не зависит от key_points.
+**Минусы:** дополнительный вызов AI = стоимость + latency. Новый порт.
+
+**Решение:** Вариант A. Добавляем поле `chapters` в `SummaryResult` и в промпт YoutubeSummarizerAgent. Главы генерируются в том же вызове, что и summary.
+
+### 1.3 Модель данных
+
+#### SummaryChapter (новый Value Object)
+
+```php
+// app/Domain/ValueObjects/SummaryChapter.php
+final readonly class SummaryChapter
+{
+    public function __construct(
+        private string $title,
+        private string $startTimecode,  // "00:00:00"
+        private string $endTimecode,    // "00:05:30"
+    ) {}
+
+    public function toArray(): array
+    {
+        return [
+            'title'          => $this->title,
+            'start_timecode' => $this->startTimecode,
+            'end_timecode'   => $this->endTimecode,
+        ];
+    }
+
+    public static function fromArray(array $data): self { /* ... */ }
+}
+```
+
+#### Изменения в SummaryResult
+
+```diff
+  final readonly class SummaryResult
+  {
+      public function __construct(
+          private string $introduction,
+          private array $keyPoints,
+          private ?string $conclusion = null,
+          private array $resources = [],
+          private ?ClickbaitVerdict $clickbaitVerdict = null,
+          private array $tutorialSteps = [],
++         private array $chapters = [],
+      ) {}
+  }
+```
+
+Поле `chapters` опциональное (может быть пустым для старых транскрипций). Добавляется в `toArray()` и `fromArray()` с ключом `chapters`.
+
+### 1.4 Таймлайн (Vue-компонент)
+
+**Компонент:** `resources/js/components/TimelineBar.vue`
+
+```
+┌─────────────────────────────────────────────────┐
+│ Chapter 1   │ Chapter 2    │ Chapter 3          │
+│ ████████████│████████████  │████████████████████ │
+│ 00:00    03:20         07:45              15:30 │
+│   ● key_point_1  ● kp_2     ● kp_3  ● kp_4     │
+└─────────────────────────────────────────────────┘
+```
+
+- Горизонтальный flex-контейнер с секциями пропорционально длительности
+- Круглые маркеры (●) на позициях key_points
+- Клик по главе → скролл к фрагменту транскрипта
+- Клик по маркеру → открытие YouTube `?t=123`
+- Цветовая индикация текущей главы при скролле
+
+**Данные для компонента:**
+```json
+{
+  "chapters": [
+    {"title": "Introduction", "start_timecode": "00:00:00", "end_timecode": "00:03:20"},
+    {"title": "Main argument", "start_timecode": "00:03:20", "end_timecode": "00:07:45"}
+  ],
+  "key_points": [
+    {"timecode": "00:01:30", "title": "Definition of X", "details": "..."},
+    {"timecode": "00:05:00", "title": "Example of Y", "details": "..."}
+  ],
+  "duration_sec": 930
+}
+```
+
+### 1.5 Изменения в коде
+
+| Файл | Действие |
+|------|----------|
+| `app/Domain/ValueObjects/SummaryChapter.php` | Создать |
+| `app/Domain/ValueObjects/SummaryResult.php` | +поле `chapters`, +`toArray`/`fromArray` |
+| `app/Infrastructure/Adapters/Output/Summary/LaravelAiSummaryAdapter.php` | +парсинг `chapters` из ответа AI |
+| `app/Ai/Agents/YoutubeSummarizerAgent.php` | +`chapters` в structured output schema |
+| `app/Infrastructure/Adapters/Input/Web/Resources/SummaryResource.php` | +сериализация `chapters` |
+| `app/Infrastructure/Adapters/Input/Web/OpenApi/Schemas/SummarySchema.php` | +схема `chapters` |
+| `resources/js/components/TimelineBar.vue` | Создать |
+| `resources/js/components/SummaryResult.vue` | Интегрировать `TimelineBar` |
+| `resources/views/transcript.blade.php` | Добавить таймлайн на публичную страницу |
+
+### 1.6 Тестирование
+
+- Unit: `SummaryChapterTest` — создание, toArray, fromArray
+- Unit: `SummaryResultTest` — chapters в сериализации (дополнить существующий)
+- Feature: `SummaryResourceTest` — chapters в JSON-ответе
+- Контрактный: `LaravelAiSummaryAdapterTest` — chapters из mocked-ответа AI
+
+---
+
+## 2. Читаемый транскрипт (AI Readable Transcript)
+
+### 2.1 Что делает
+
+Текущий транскрипт Whisper — стена текста без знаков препинания и разбивки на параграфы. AI-постобработка форматирует текст: добавляет пунктуацию, разбивает на параграфы по смыслу, НЕ меняя слов.
+
+### 2.2 Подходы
+
+**Вариант A: Совмещённый вызов с summary (рекомендован)**
+
+В том же вызове GPT-4o-mini, что делает summary, добавить поле `formatted_transcript`. AI уже имеет контекст транскрипта.
+
+Промпт-дополнение:
+```
+Also return "formatted_transcript": the full transcript with proper punctuation
+and paragraph breaks. Do NOT change any words — only add punctuation and
+paragraph breaks for readability.
+```
+
+**Плюсы:** ноль дополнительных AI-вызовов. Бесплатно.
+**Минусы:** увеличивает размер ответа. Для транскриптов >30 мин может не влезть в output token limit.
+
+**Вариант B: Отдельный AI-вызов**
+
+Новая Activity `FormatTranscriptActivity` после транскрипции.
+
+**Плюсы:** не влияет на summary, можно включать/отключать независимо.
+**Минусы:** дополнительная стоимость ~$0.002 на транскрипт.
+
+**Решение:** Вариант A для транскриптов <=30 мин. Вариант B как fallback для длинных. Результат сохраняется в отдельную колонку `formatted_text` в `media_tasks`.
+
+### 2.3 Модель данных
+
+#### Миграция
+
+```sql
+ALTER TABLE media_tasks ADD COLUMN formatted_text TEXT;
+```
+
+#### Хранение
+
+Поле `formatted_text` — nullable. Если null — фронтенд показывает `result_text` как есть.
+
+### 2.4 API-контракт
+
+В ответ `GET /api/transcribe/{id}` добавляется поле:
+
+```json
+{
+  "result": {
+    "transcript": "raw text...",
+    "formatted_transcript": "Formatted text with punctuation.\n\nParagraph breaks here.",
+    "summary": { ... }
+  }
+}
+```
+
+Поле `formatted_transcript` — nullable.
+
+### 2.5 Изменения в коде
+
+| Файл | Действие |
+|------|----------|
+| `database/migrations/...add_formatted_text.php` | Создать |
+| `app/Domain/Entities/MediaTask.php` | +`formattedText()` геттер, +`setFormattedText()` |
+| `app/Infrastructure/Adapters/Output/Persistence/MediaTaskEloquentRepository.php` | +`storeFormattedText()` |
+| `app/Infrastructure/Workflow/Activities/AiSummaryActivity.php` | +извлечение `formatted_transcript` из ответа AI |
+| `app/Infrastructure/Workflow/Activities/PersistResultActivity.php` | +сохранение `formatted_text` |
+| `app/Infrastructure/Adapters/Input/Web/Resources/MediaTaskResource.php` | +`formatted_transcript` в ответ |
+
+### 2.6 Архитектурное решение
+
+**Финальное решение:** Добавить `?string $formattedTranscript = null` в `SummaryResult`. Поле заполняется адаптером при совмещённом вызове. Второй метод `formatTranscript()` на `SummaryProviderInterface` для fallback-сценария.
+
+```php
+interface SummaryProviderInterface
+{
+    public function summarize(TranscriptionText $transcriptText, SummaryOptions $options): SummaryResult;
+    public function formatTranscript(TranscriptionText $transcriptText): TranscriptionText;
+}
+```
+
+---
+
+## 3. Content Remix
+
+### 3.1 Что делает
+
+На основе одного транскрипта — несколько AI-выводов по выбору пользователя:
+- **LinkedIn post** — профессиональный пост
+- **X/Twitter thread** — тред твитов
+- **Email newsletter** — рассылка
+- **Show notes** — заметки для подкаста
+- **Blog outline** — структура статьи
+
+### 3.2 Подходы
+
+**Вариант A: Расширение SummaryOptions.mode (рекомендован)**
+
+```php
+final readonly class SummaryOptions
+{
+    public function __construct(
+        private string $style = 'concise',
+        private int $maxWords = 250,
+        private ?string $videoTitle = null,
+        private string $mode = 'summary',
+    ) {}
+}
+```
+
+**Плюсы:** минимальные изменения, один интерфейс.
+**Минусы:** `SummaryResult` должен поддерживать разные форматы вывода.
+
+**Вариант B: Отдельный порт `ContentRemixProviderInterface`**
+
+**Плюсы:** чистый контракт.
+**Минусы:** много нового кода, дублирование AI-вызовов.
+
+**Решение:** Вариант A. `SummaryOptions.mode` определяет системный промпт. `SummaryResult` получает поле `contentRemix: ?string` — сырой markdown/text для нестандартных режимов.
+
+### 3.3 Модель данных
+
+```diff
+  final readonly class SummaryOptions
+  {
+      public function __construct(
+          private string $style = 'concise',
+          private int $maxWords = 250,
+          private ?string $videoTitle = null,
++         private string $mode = 'summary',
+      ) {}
+  }
+
+  final readonly class SummaryResult
+  {
+      public function __construct(
+          // ... existing fields ...
++         private ?string $contentRemix = null,
+      ) {}
+  }
+```
+
+### 3.4 API-контракт
+
+`POST /api/transcribe` принимает новый опциональный параметр:
+
+```json
+{
+    "youtube_url": "...",
+    "output_mode": "linkedin_post"
+}
+```
+
+`GET /api/transcribe/{id}` в ответе:
+
+```json
+{
+    "result": {
+        "transcript": "...",
+        "summary": { "introduction": "...", "key_points": [...], "conclusion": "..." },
+        "content_remix": "# Why X Matters\n\nIn the video...\n\n## Key Takeaway\n\n...",
+        "output_mode": "linkedin_post"
+    }
+}
+```
+
+### 3.5 UI
+
+Кнопки выбора режима ПОСЛЕ получения результата (не до):
+
+```
+[Summary] [LinkedIn Post] [Twitter Thread] [Email] [Show Notes] [Blog Outline]
+```
+
+Нажатие → `POST /api/transcribe/{id}/remix` с `mode` → новый AI-вызов → замена контента.
+
+### 3.6 Новый endpoint
+
+```
+POST /api/transcribe/{id}/remix
+```
+
+**Request:** `{"mode": "linkedin_post"}`
+**Response:** 202 Accepted или 200 с готовым результатом.
+
+### 3.7 Изменения в коде
+
+| Файл | Действие |
+|------|----------|
+| `app/Domain/ValueObjects/SummaryOptions.php` | +поле `mode` |
+| `app/Domain/ValueObjects/SummaryResult.php` | +поле `contentRemix` |
+| `app/Infrastructure/Adapters/Output/Summary/LaravelAiSummaryAdapter.php` | +промпты для каждого mode |
+| `app/Infrastructure/Adapters/Input/Web/TranscribeVideoController.php` | +`remix` метод |
+| `app/Infrastructure/Workflow/Activities/AiSummaryActivity.php` | поддержка mode |
+| `resources/js/components/SummaryResult.vue` | Кнопки выбора режима |
+
+---
+
+## 4. Поиск по транскрипциям
+
+### 4.1 Что делает
+
+Пользователь ищет фразу по всем своим транскрипциям. Результаты: список видео с контекстом и таймкодом.
+
+### 4.2 Реализация
+
+Уже частично готово: [`SearchRequest.php`](app/Infrastructure/Adapters/Input/Web/Requests/SearchRequest.php), миграция `add_title_trgm_index`.
+
+#### Подход: PostgreSQL Full-Text Search + tsvector
+
+**Шаг 1: Миграция — generated column**
+
+```sql
+ALTER TABLE media_tasks
+ADD COLUMN search_vector tsvector
+GENERATED ALWAYS AS (to_tsvector('english', coalesce(result_text, '') || ' ' || coalesce((summary->>'introduction'), '')))
+STORED;
+
+CREATE INDEX idx_media_tasks_search ON media_tasks USING GIN(search_vector);
+```
+
+**Шаг 2: Запрос в репозитории**
+
+```php
+public function search(string $query): array
+{
+    return MediaTaskModel::where('status', 'completed')
+        ->whereRaw("search_vector @@ plainto_tsquery('english', ?)", [$query])
+        ->select('task_id', 'video_id', 'title', 'result_text', 'summary')
+        ->selectRaw("ts_rank(search_vector, plainto_tsquery('english', ?)) as rank", [$query])
+        ->orderBy('rank', 'desc')
+        ->limit(20)
+        ->get();
+}
+```
+
+**Шаг 3: API endpoint**
+
+```
+GET /api/search?q=deadline+for+project
+```
+
+**Response:**
+```json
+{
+    "data": [
+        {
+            "task_id": "...",
+            "video_id": "dQw4w9WgXcQ",
+            "title": "Project Management 101",
+            "snippet": "...the deadline for the project is next Friday...",
+            "timecode": "00:12:34",
+            "rank": 0.85
+        }
+    ],
+    "meta": { "total": 3, "query": "deadline for project" }
+}
+```
+
+### 4.3 Изменения в коде
+
+| Файл | Действие |
+|------|----------|
+| `database/migrations/...add_search_vector.php` | Создать |
+| `app/Infrastructure/Adapters/Output/Persistence/MediaTaskEloquentRepository.php` | +`search()` метод |
+| `app/Application/Ports/Output/MediaTaskRepositoryInterface.php` | +`search(string $query): array` |
+| `app/Infrastructure/Adapters/Input/Web/TranscribeVideoController.php` | +`search` метод |
+| `resources/js/components/SearchBar.vue` | Создать |
+
+---
+
+## 5. Похожие видео (Semantic Recommendations)
+
+### 5.1 Что делает
+
+После просмотра транскрипта — блок «Similar Transcriptions» с другими видео похожего содержания.
+
+### 5.2 Реализация
+
+**Чистый SQL через `pg_trgm`** (уже установлен):
+
+```sql
+SELECT task_id, video_id, title,
+       similarity(result_text, $current_transcript) AS sim
+FROM media_tasks
+WHERE status = 'completed'
+  AND task_id != $current_task_id
+  AND result_text IS NOT NULL
+ORDER BY sim DESC
+LIMIT 5;
+```
+
+Индекс:
+```sql
+CREATE INDEX idx_media_tasks_text_trgm ON media_tasks USING GIN (result_text gin_trgm_ops);
+```
+
+### 5.3 API-контракт
+
+В ответ `GET /api/transcribe/{id}`:
+
+```json
+{
+    "similar": [
+        {
+            "task_id": "...",
+            "video_id": "...",
+            "title": "Advanced Project Management",
+            "similarity": 0.87,
+            "_links": {
+                "public_page": "/v/advanced-project-management"
+            }
+        }
+    ]
+}
+```
+
+### 5.4 Изменения в коде
+
+| Файл | Действие |
+|------|----------|
+| `database/migrations/...add_text_trgm_index.php` | Создать |
+| `app/Infrastructure/Adapters/Output/Persistence/MediaTaskEloquentRepository.php` | +`findSimilar()` |
+| `app/Application/Ports/Output/MediaTaskRepositoryInterface.php` | +`findSimilar(string $taskId, int $limit = 5): array` |
+| `app/Infrastructure/Adapters/Input/Web/Resources/MediaTaskResource.php` | +`similar` блок |
+| `resources/js/components/SimilarVideos.vue` | Создать |
+
+---
+
+## 6. Когортная аналитика
+
+### 6.1 Что делает
+
+Сбор событий: DAU, WAU, retention D1/D7/D30, конверсия в повторное использование.
+
+### 6.2 Модель данных
+
+```sql
+CREATE TABLE user_events (
+    id BIGSERIAL PRIMARY KEY,
+    user_identifier VARCHAR(64) NOT NULL,
+    event_type VARCHAR(50) NOT NULL,
+    task_id UUID,
+    metadata JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_user_events_identifier ON user_events(user_identifier);
+CREATE INDEX idx_user_events_type ON user_events(event_type);
+CREATE INDEX idx_user_events_created ON user_events(created_at);
+```
+
+Типы событий: `transcription_requested`, `transcription_completed`, `transcript_viewed`, `transcript_downloaded`, `remix_generated`, `search_performed`.
+
+### 6.3 Сбор событий
+
+Horizon-job `RecordUserEvent`:
+
+```php
+RecordUserEvent::dispatch($ipHash, 'transcription_requested', $taskId);
+```
+
+### 6.4 Дашборд
+
+Blade-дашборд `/admin/analytics`:
+
+```sql
+-- DAU
+SELECT DATE(created_at), COUNT(DISTINCT user_identifier)
+FROM user_events
+WHERE created_at >= NOW() - INTERVAL '30 days'
+GROUP BY DATE(created_at);
+
+-- Retention D1
+WITH first_use AS (
+    SELECT user_identifier, MIN(DATE(created_at)) AS first_date
+    FROM user_events GROUP BY user_identifier
+)
+SELECT COUNT(DISTINCT e.user_identifier) * 100.0 / COUNT(DISTINCT f.user_identifier)
+FROM first_use f
+LEFT JOIN user_events e ON e.user_identifier = f.user_identifier
+    AND DATE(e.created_at) = f.first_date + INTERVAL '1 day'
+WHERE f.first_date = CURRENT_DATE - INTERVAL '7 days';
+```
+
+### 6.5 Изменения в коде
+
+| Файл | Действие |
+|------|----------|
+| `database/migrations/...create_user_events_table.php` | Создать |
+| `app/Infrastructure/Console/Commands/RecordUserEvent.php` | Horizon-job |
+| `app/Infrastructure/Adapters/Input/Web/AdminAnalyticsController.php` | Дашборд |
+| `resources/views/admin/analytics.blade.php` | Blade-вьюха |
+
+---
+
+## 7. Chat with Video (Q&A по транскрипту)
+
+### 7.1 Что делает
+
+Пользователь задаёт вопросы к содержимому видео в чат-интерфейсе. RAG: транскрипт как контекст + GPT-4o-mini.
+
+### 7.2 Архитектура
+
+```
+┌──────────┐    POST /api/transcribe/{id}/chat     ┌─────────────────┐
+│  Vue SPA │ ──────────────────────────────────────▶│  ChatController  │
+│  Chat UI │                                        └──────┬──────────┘
+└──────────┘                                               │
+                                                ┌──────────▼───────────┐
+                                                │ ChatProviderInterface │
+                                                └──────────┬───────────┘
+                                                           │
+                                                ┌──────────▼───────────┐
+                                                │   OpenAiChatAdapter   │
+                                                └──────────────────────┘
+```
+
+### 7.3 Подход: прямой prompting (без embeddings)
+
+Для транскриптов <=30 мин (~8000 токенов) — полный текст в контекстном окне.
+
+```php
+interface ChatProviderInterface
+{
+    /** @param ChatMessage[] $history */
+    public function ask(TranscriptionText $transcript, array $history, string $question): string;
+}
+```
+
+### 7.4 API-контракт
+
+```
+POST /api/transcribe/{id}/chat
+```
+
+**Request:** `{"question": "What tool did they recommend?", "history": [...]}`
+**Response:** `{"answer": "...", "source_quote": "...", "source_timecode": "00:14:22"}`
+
+### 7.5 Ограничения
+
+- Лимит: 20 вопросов на транскрипт
+- История держится на клиенте (не персистируется)
+- Без стриминга для v1
+
+### 7.6 Изменения в коде
+
+| Файл | Действие |
+|------|----------|
+| `app/Application/Ports/Output/ChatProviderInterface.php` | Создать |
+| `app/Infrastructure/Adapters/Output/Chat/OpenAiChatAdapter.php` | Создать |
+| `app/Infrastructure/Adapters/Input/Web/ChatController.php` | Создать |
+| `app/Providers/AppServiceProvider.php` | +bind |
+| `resources/js/components/ChatPanel.vue` | Создать |
+
+---
+
+## 8. Пакетные плейлисты
+
+### 8.1 Что делает
+
+Пользователь вставляет ссылку на плейлист → все видео в очередь.
+
+### 8.2 Архитектура
+
+```
+POST /api/transcribe/playlist
+  → yt-dlp --flat-playlist --dump-json {playlist_url}
+  → Для каждого video_id: dedup → check limit → MediaTask → Workflow
+  → Вернуть список task_id
+```
+
+### 8.3 Ограничения
+
+- Только для auth-пользователей (v1.1+)
+- Throttling: 3 одновременных workflow на пользователя
+- Макс 50 видео за раз
+
+---
+
+## 9. Export to Notion
+
+### 9.1 Что делает
+
+Кнопка «Send to Notion» — создаёт страницу с транскриптом и summary.
+
+### 9.2 Архитектура
+
+```
+POST /api/transcribe/{id}/export/notion
+  → NotionExportActivity (Horizon job)
+  → Notion API: POST /v1/pages
+  → Возврат URL страницы
+```
+
+### 9.3 Для MVP
+
+Пользователь указывает Notion API-ключ в настройках. OAuth — позже.
+
+---
+
+## 10. Speaker Diarization
+
+### 10.1 Что делает
+
+«Кто это сказал?» — разметка транскрипта по спикерам.
+
+### 10.2 Подход
+
+Новый порт `DiarizationProviderInterface`:
+
+```php
+interface DiarizationProviderInterface
+{
+    public function diarize(AudioFile $audioFile): DiarizedTranscript;
+}
+```
+
+Deepgram Nova-2 как первый адаптер. Опциональная Activity в workflow. Результат в JSONB `diarization`.
+
+---
+
+## 11. Мониторинг каналов
+
+### 11.1 Что делает
+
+Автоматическая транскрипция новых видео с канала.
+
+### 11.2 Архитектура
+
+```
+Cron (каждые 6 часов) → ChannelMonitorJob
+  → yt-dlp --flat-playlist --dump-json {channel_url}
+  → Новые video_id → MediaTask + Workflow
+```
+
+### 11.3 Модель
+
+```sql
+CREATE TABLE channel_monitors (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id),
+    channel_url VARCHAR(500) NOT NULL,
+    channel_name VARCHAR(255),
+    last_checked_at TIMESTAMPTZ,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+Только для платных пользователей. Макс 3 канала.
+
+---
+
+## 12. Telegram-бот
+
+### 12.1 Что делает
+
+Отправил ссылку → получил транскрипт и summary.
+
+### 12.2 Архитектура
+
+Уже есть [`TelegramFeedbackNotifier.php`](app/Infrastructure/Adapters/Output/Telegram/TelegramFeedbackNotifier.php). Новый `TelegramWebhookController`:
+
+```
+POST /api/telegram/webhook
+  → Извлечение YouTube URL
+  → TranscribeVideoWorkflow
+  → При завершении: sendMessage с результатом
+```
+
+### 12.3 Формат ответа
+
+```
+📹 Video: {title}
+⏱ Duration: {duration}
+
+📝 Summary:
+{introduction}
+
+Key Points:
+• {kp1}
+• {kp2}
+
+🔗 Full transcript: {public_url}
+```
+
+---
+
+## 13. Diff Transcripts
+
+### 13.1 Что делает
+
+Сравнение двух транскриптов одного видео (разные провайдеры/опции).
+
+### 13.2 Реализация
+
+```php
+use SebastianBergmann\Diff\Differ;
+$differ = new Differ();
+$diff = $differ->diff($oldTranscript, $newTranscript);
+```
+
+### 13.3 API
+
+```
+GET /api/transcribe/{id}/diff?compare={other_task_id}
+```
+
+---
+
+## 14. Browser Extension
+
+### 14.1 Что делает
+
+Кнопка «Transcribe» на странице YouTube.
+
+### 14.2 Архитектура
+
+- Chrome/Firefox extension (Manifest V3)
+- Content script добавляет кнопку
+- `POST /api/transcribe` → попап с результатом
+
+**Низкий приоритет** — дорого в разработке и поддержке.
+
+---
+
+## 15. Resource Catcher (Ловец ресурсов)
+
+### 15.1 Что делает
+
+AI извлекает из транскрипта упомянутые ресурсы: книги, инструменты, сервисы, людей, ссылки. Каждый ресурс — тип, название, URL (опционально). Рендерится как виджет «Mentioned in this video» с группировкой по типам.
+
+### 15.2 Подход
+
+**Zero-cost**: расширение JSON-схемы `YoutubeSummarizerAgent`. Никаких дополнительных AI-вызовов.
+
+Промпт-дополнение:
+```
+Extract all mentioned resources from the transcript:
+- Books, tools, services, people, links
+- For each: type ("book"|"tool"|"service"|"person"|"link"), name, url (if mentioned)
+- Return as "resources" array
+```
+
+### 15.3 Модель данных
+
+#### ResourceItem (новый Value Object) — уже реализован
+
+```php
+// app/Domain/ValueObjects/ResourceItem.php
+final readonly class ResourceItem
+{
+    /** @param 'book'|'tool'|'service'|'person'|'link' $type */
+    public function __construct(
+        public string $type,
+        public string $name,
+        public ?string $url,
+    ) {}
+}
+```
+
+Поле `resources` уже добавлено в [`SummaryResult.php`](app/Domain/ValueObjects/SummaryResult.php).
+
+### 15.4 API-контракт
+
+В ответе `GET /api/transcribe/{id}` поле `summary.resources`:
+
+```json
+{
+  "summary": {
+    "resources": [
+      {"type": "book", "name": "Clean Architecture", "url": "https://example.com"},
+      {"type": "tool", "name": "Laravel", "url": "https://laravel.com"},
+      {"type": "person", "name": "Robert C. Martin", "url": null}
+    ]
+  }
+}
+```
+
+### 15.5 UI
+
+**Компонент:** `resources/js/components/ResourceCatcher.vue` (новый)
+
+- Группировка ресурсов по типу (Books, Tools, People, Links)
+- Иконки для каждого типа
+- Кликабельные ссылки (если URL указан)
+- Кнопка копирования названия
+
+### 15.6 Изменения в коде
+
+| Файл | Действие | Статус |
+|------|----------|--------|
+| `app/Domain/ValueObjects/ResourceItem.php` | Создать VO | ✅ Готово |
+| `app/Domain/ValueObjects/SummaryResult.php` | +поле `resources` | ✅ Готово |
+| `app/Ai/Agents/YoutubeSummarizerAgent.php` | +`resources` в schema | В процессе |
+| `app/Infrastructure/Adapters/Output/Summary/LaravelAiSummaryAdapter.php` | +парсинг `resources` | В процессе |
+| `app/Infrastructure/Adapters/Input/Web/Resources/SummaryResource.php` | +сериализация `resources` | В процессе |
+| `app/Infrastructure/Adapters/Input/Web/OpenApi/Schemas/SummarySchema.php` | +схема `resources` | В процессе |
+| `resources/js/components/ResourceCatcher.vue` | Создать | План |
+| `resources/js/components/TaskStatusCard.vue` | +вкладка Resources | План |
+
+---
+
+## 16. Clickbait Reality Check
+
+### 16.1 Что делает
+
+AI сравнивает заголовок видео с фактическим содержанием и выставляет оценку «кликбейтности» (0-100). Результат: score + однострочный вердикт. Рендерится как цветной gauge (зелёный/жёлтый/красный).
+
+### 16.2 Подход
+
+**Zero-cost**: расширение JSON-схемы `YoutubeSummarizerAgent`. Заголовок видео передаётся через `SummaryOptions.videoTitle` (уже хранится в БД к моменту вызова AI).
+
+Промпт-дополнение:
+```
+Compare the video title "{title}" with the actual transcript content.
+Rate how clickbaity/misleading the title is on a scale of 0-100:
+- 0-30: Title accurately reflects content (legit)
+- 31-60: Title slightly exaggerated but mostly honest
+- 61-100: Title is misleading clickbait
+Return as "clickbait_verdict": {"score": 85, "comment": "The title promises X but the video is mostly about Y."}
+```
+
+### 16.3 Модель данных
+
+#### ClickbaitVerdict (новый Value Object) — уже реализован
+
+```php
+// app/Domain/ValueObjects/ClickbaitVerdict.php
+final readonly class ClickbaitVerdict
+{
+    public int $score;     // 0-100, clamped
+    public string $comment;
+}
+```
+
+Поле `clickbaitVerdict` (nullable) уже добавлено в [`SummaryResult.php`](app/Domain/ValueObjects/SummaryResult.php).
+
+#### Расширение SummaryOptions
+
+```php
+final readonly class SummaryOptions
+{
+    public function __construct(
+        private string $style = 'concise',
+        private int $maxWords = 250,
+        private ?string $videoTitle = null,
+    ) {}
+}
+```
+
+### 16.4 API-контракт
+
+В ответе `GET /api/transcribe/{id}` поле `summary.clickbait_verdict`:
+
+```json
+{
+  "summary": {
+    "clickbait_verdict": {
+      "score": 85,
+      "comment": "The title promises secret hacks but the video is a basic tutorial."
+    }
+  }
+}
+```
+
+Поле `null` если заголовок недоступен.
+
+### 16.5 UI
+
+**Компонент:** `resources/js/components/ClickbaitVerdict.vue` (новый)
+
+- Цветной gauge: зелёный (0-30), жёлтый (31-60), красный (61-100)
+- Однострочный вердикт под gauge
+- Встраивается в Summary-вкладку (не отдельная вкладка)
+
+### 16.6 Изменения в коде
+
+| Файл | Действие | Статус |
+|------|----------|--------|
+| `app/Domain/ValueObjects/ClickbaitVerdict.php` | Создать VO | ✅ Готово |
+| `app/Domain/ValueObjects/SummaryResult.php` | +поле `clickbaitVerdict` | ✅ Готово |
+| `app/Domain/ValueObjects/SummaryOptions.php` | +поле `videoTitle` | В процессе |
+| `app/Ai/Agents/YoutubeSummarizerAgent.php` | +`clickbait_verdict` в schema | В процессе |
+| `app/Infrastructure/Adapters/Output/Summary/LaravelAiSummaryAdapter.php` | +парсинг | В процессе |
+| `app/Infrastructure/Workflow/Activities/AiSummaryActivity.php` | +передача title | В процессе |
+| `app/Infrastructure/Adapters/Input/Web/Resources/SummaryResource.php` | +сериализация | В процессе |
+| `app/Infrastructure/Adapters/Input/Web/OpenApi/Schemas/SummarySchema.php` | +схема | В процессе |
+| `resources/js/components/ClickbaitVerdict.vue` | Создать | План |
+| `resources/js/components/TaskStatusCard.vue` | Встроить в Summary | План |
+
+---
+
+## 17. Tutorial Step-by-Step Checklist
+
+### 17.1 Что делает
+
+AI определяет, является ли видео туториалом/how-to. Если да — извлекает последовательные шаги с таймкодами. Результат рендерится как интерактивный чеклист: можно отмечать выполненные шаги, прогресс сохраняется в localStorage, клик по таймкоду — переход к фрагменту.
+
+### 17.2 Подход
+
+**Zero-cost**: расширение JSON-схемы `YoutubeSummarizerAgent`. Один LLM-вызов, расширенная схема.
+
+Промпт-дополнение:
+```
+## Tutorial Step Extraction
+- If the video is a tutorial or how-to, extract sequential actionable steps into 'tutorial_steps'.
+- Each step MUST have: step number, nearest timecode, concise action description.
+- Steps should be directly executable — include exact commands, config keys, URLs.
+- If conversational (podcast, interview, vlog), return EMPTY 'tutorial_steps' array.
+```
+
+### 17.3 Модель данных
+
+#### TutorialStep (новый Value Object) — уже реализован
+
+```php
+// app/Domain/ValueObjects/TutorialStep.php
+final readonly class TutorialStep
+{
+    public function __construct(
+        public int $step,
+        public string $time,
+        public string $action,
+    ) {}
+}
+```
+
+Поле `tutorialSteps` (массив, всегда присутствует, пустой для не-туториалов) уже добавлено в [`SummaryResult.php`](app/Domain/ValueObjects/SummaryResult.php).
+
+### 17.4 API-контракт
+
+В ответе `GET /api/transcribe/{id}` поле `summary.tutorial_steps`:
+
+```json
+{
+  "summary": {
+    "tutorial_steps": [
+      {"step": 1, "time": "03:45", "action": "composer require laravel/horizon"},
+      {"step": 2, "time": "05:10", "action": "Publish config: php artisan horizon:install"}
+    ]
+  }
+}
+```
+
+Для не-туториалов — пустой массив `[]`.
+
+### 17.5 UI
+
+**Компонент:** `resources/js/components/TutorialChecklist.vue` (новый)
+
+- Показывается только при `tutorialSteps.length > 0`
+- Чекбоксы с сохранением в localStorage по `taskId`
+- Выполненные шаги — зачёркнутый текст + серый цвет
+- Клик по таймкоду → `onSeek` к YouTube-плееру
+- Счётчик прогресса: «3/12 steps completed»
+
+### 17.6 Изменения в коде
+
+| Файл | Действие | Статус |
+|------|----------|--------|
+| `app/Domain/ValueObjects/TutorialStep.php` | Создать VO | ✅ Готово |
+| `app/Domain/ValueObjects/SummaryResult.php` | +поле `tutorialSteps` | ✅ Готово |
+| `app/Ai/Agents/YoutubeSummarizerAgent.php` | +`tutorial_steps` в schema | В процессе |
+| `app/Infrastructure/Adapters/Output/Summary/LaravelAiSummaryAdapter.php` | +парсинг | В процессе |
+| `app/Infrastructure/Adapters/Input/Web/Resources/SummaryResource.php` | +сериализация | В процессе |
+| `app/Infrastructure/Adapters/Input/Web/OpenApi/Schemas/SummarySchema.php` | +схема | В процессе |
+| `resources/js/components/TutorialChecklist.vue` | Создать | План |
+| `resources/js/components/TaskStatusCard.vue` | +вкладка Checklist | План |
+| `resources/views/transcript.blade.php` | +секция Checklist | План |
+
+---
+
+## 18. Экспорт PDF и SRT
+
+### 18.1 Что делает
+
+Пользователь скачивает транскрипт в форматах PDF и SRT (субтитры). PDF — читаемый документ с транскриптом и summary. SRT — файл субтитров с таймкодами для видеоплееров.
+
+### 18.2 Подход
+
+**PDF:** PHP-библиотека (Dompdf или Barryvdh/Laravel-Dompdf). Blade-шаблон → HTML → PDF.
+
+**SRT:** Генерация из существующего транскрипта. Whisper/Groq возвращает текст с таймкодами (SRT или VTT), которые парсятся `SrtParser` (уже существует). Для SRT-экспорта — обратная конвертация из результата транскрипции.
+
+### 18.3 API-контракт
+
+```
+GET /api/transcribe/{id}/export/pdf
+GET /api/transcribe/{id}/export/srt
+```
+
+**Response:** `Content-Disposition: attachment; filename="transcript-{video_id}.pdf"`
+
+### 18.4 Изменения в коде
+
+| Файл | Действие |
+|------|----------|
+| `app/Infrastructure/Adapters/Input/Web/ExportController.php` | Создать |
+| `resources/views/exports/pdf-transcript.blade.php` | Создать |
+| `app/Infrastructure/Adapters/Output/Transcription/SrtGenerator.php` | Создать |
+| `composer.json` | +`barryvdh/laravel-dompdf` |
+
+---
+
+## 19. Подписки и платежи (Stripe)
+
+### 19.1 Что делает
+
+Монетизация через подписки. Free tier: 10 транскрипций/день, макс. 30 мин. Pro tier: безлимит, длинные видео, премиум-фичи.
+
+### 19.2 Модель
+
+```sql
+CREATE TABLE subscriptions (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id),
+    stripe_subscription_id VARCHAR(255),
+    stripe_customer_id VARCHAR(255),
+    plan VARCHAR(50) NOT NULL DEFAULT 'free',
+    status VARCHAR(50) NOT NULL DEFAULT 'active',
+    current_period_ends_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+### 19.3 Планы
+
+| План | Транскрипций/день | Макс. длительность | Chat | Плейлисты | Каналы | Цена |
+|------|-------------------|-------------------|------|-----------|--------|------|
+| Free | 10 | 30 мин | ❌ | ❌ | ❌ | $0 |
+| Pro | ∞ | 4 часа | ✅ (20 вопр.) | ✅ (50 видео) | ✅ (3 канала) | $9/мес |
+| Team | ∞ | 4 часа | ✅ | ✅ | ✅ (10 каналов) | $29/мес |
+
+### 19.4 Архитектура
+
+```
+Stripe Checkout → Webhook → StripeWebhookController
+  → Subscription обновляется
+  → User получает роль/план
+  → Middleware проверяет лимиты
+```
+
+### 19.5 Изменения в коде
+
+| Файл | Действие |
+|------|----------|
+| `database/migrations/...create_subscriptions_table.php` | Создать |
+| `app/Infrastructure/Adapters/Output/Payment/StripeAdapter.php` | Создать |
+| `app/Infrastructure/Adapters/Input/Web/StripeWebhookController.php` | Создать |
+| `app/Infrastructure/Http/Middleware/CheckSubscriptionLimits.php` | Создать |
+| `config/services.php` | +stripe config |
+
+### 19.6 🐛 Текущий баг: глобальный (не per-user) лимит
+
+**Проблема:** [`countCompletedSince()`](app/Infrastructure/Adapters/Output/Persistence/MediaTaskEloquentRepository.php:166) считает ВСЕ completed транскрипции глобально, без фильтрации по `user_identifier` (хешу IP). В результате лимит 10/день — на всё приложение, а не per user.
+
+**Где именно:** [`TranscribeVideoController::create()`](app/Infrastructure/Adapters/Input/Web/TranscribeVideoController.php:62) → `countCompletedToday()` → `countCompletedSince($today)`.
+
+**Как должно быть:** `countCompletedSince` должен принимать `user_identifier` и фильтровать по нему:
+
+```php
+// Интерфейс (порт)
+public function countCompletedSince(DateTimeImmutable $since, ?string $userIdentifier = null): int;
+
+// Вызов из контроллера
+$userIdentifier = hash('sha256', $request->ip());
+$completedToday = $this->handler->countCompletedToday($userIdentifier);
+```
+
+**План фикса:**
+1. Расширить сигнатуру `MediaTaskRepositoryInterface::countCompletedSince()` — добавить `?string $userIdentifier = null`
+2. Обновить `MediaTaskEloquentRepository` — добавить `where('user_identifier', $userIdentifier)` если передан
+3. Обновить `TranscribeVideoHandler::countCompletedToday()` — принимать и пробрасывать `userIdentifier`
+4. В контроллере вычислять `user_identifier` из `$request->ip()` и передавать в `countCompletedToday()`
+5. Добавить тест: два разных IP — каждый имеет свои 10 транскрипций
+
+---
+
+## 20. Webhooks и Public API
+
+### 20.1 Что делает
+
+API для программного доступа: создание транскрипций, получение результатов, webhooks при завершении.
+
+### 20.2 API-контракт
+
+```
+POST /api/v1/transcribe
+Authorization: Bearer {api_key}
+```
+
+**Request:**
+```json
+{
+  "youtube_url": "...",
+  "webhook_url": "https://myapp.com/hooks/transcribe",
+  "output_mode": "summary"
+}
+```
+
+**Response:** `{"task_id": "...", "status": "queued"}`
+
+При завершении — `POST {webhook_url}` с результатом.
+
+### 20.3 Модель
+
+```sql
+CREATE TABLE api_keys (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id),
+    key VARCHAR(64) UNIQUE NOT NULL,
+    name VARCHAR(255),
+    last_used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+### 20.4 Изменения в коде
+
+| Файл | Действие |
+|------|----------|
+| `database/migrations/...create_api_keys_table.php` | Создать |
+| `app/Infrastructure/Adapters/Input/Api/ApiTranscribeController.php` | Создать |
+| `app/Infrastructure/Http/Middleware/ApiKeyAuth.php` | Создать |
+| `app/Infrastructure/Workflow/Activities/WebhookNotifierActivity.php` | Создать |
+
+---
+
+## 21. Дашборд статистики
+
+### 21.1 Что делает
+
+Страница `/dashboard` для пользователя: количество транскрипций, оставшиеся лимиты, история, график использования.
+
+### 21.2 Архитектура
+
+Blade-дашборд (v1.1) → Vue SPA дашборд (v1.2):
+
+```
+GET /dashboard
+  → Статистика пользователя из БД
+  → График использования (Chart.js)
+  → Лимиты и прогресс
+```
+
+### 21.3 Модель (агрегаты из существующих данных)
+
+```sql
+-- Использование за 30 дней
+SELECT DATE(created_at), COUNT(*)
+FROM media_tasks
+WHERE user_identifier = ?
+  AND created_at >= NOW() - INTERVAL '30 days'
+GROUP BY DATE(created_at);
+```
+
+### 21.4 Изменения в коде
+
+| Файл | Действие |
+|------|----------|
+| `app/Infrastructure/Adapters/Input/Web/DashboardController.php` | Создать |
+| `resources/views/dashboard.blade.php` | Создать |
+| `resources/js/components/UsageChart.vue` | Создать |
+
+---
+
+## 22. План внедрения по спринтам (обновлённый)
+
+```mermaid
+gantt
+    title YTTSCRB Feature Rollout
+    dateFormat  YYYY-MM-DD
+    section Sprint 0 - Now
+    BUG: per-user daily limit    :a0, 2026-05-23, 1d
+    Resource Catcher            :a1, after a0, 2d
+    Clickbait Check             :a2, after a1, 2d
+    Tutorial Checklist          :a3, after a2, 2d
+    section Sprint 1 - Foundation
+    Когортная аналитика         :b1, after a2, 2d
+    Поиск по транскрипциям      :b2, after b1, 2d
+    section Sprint 2 - Core Value
+    Читаемый транскрипт         :c1, after b2, 3d
+    Автоглавы + Таймлайн        :c2, after c1, 2d
+    section Sprint 3 - Engagement
+    Content Remix               :d1, after c2, 3d
+    Похожие видео                :d2, after d1, 1d
+    section Sprint 4 - Distribution
+    Telegram-бот                :e1, after d2, 2d
+    Export to Notion            :e2, after e1, 2d
+    section Sprint 5 - Monetization
+    Подписки Stripe             :f1, after e2, 3d
+    Дашборд статистики          :f2, after f1, 2d
+    section Sprint 6 - Premium
+    Chat with Video             :g1, after f2, 4d
+    Пакетные плейлисты          :g2, after g1, 3d
+    section Sprint 7 - Advanced
+    Экспорт PDF/SRT             :h1, after g2, 2d
+    Speaker Diarization         :h2, after h1, 4d
+    Мониторинг каналов           :h3, after h2, 3d
+    section Sprint 8 - Platform
+    Webhooks / Public API       :i1, after h3, 3d
+    section Later
+    Browser Extension           :j1, after i1, 5d
+    Diff Transcripts            :j2, after j1, 1d
+```
+
+---
+
+## 23. Метрики успеха
+
+| Метрика | Как измеряем | Целевое значение |
+|---------|-------------|-----------------|
+| DAU | `user_events` | Рост от baseline |
+| Retention D7 | Когортный анализ | >20% |
+| Resource Catcher usage | % транскрипций с ресурсами | >40% видео содержат ресурсы |
+| Clickbait verdict views | % пользователей, видящих вердикт | >80% (при наличии title) |
+| Tutorial checklist completions | Среднее кол-во отмеченных шагов | >60% шагов отмечены |
+| Remix usage | % транскрипций с повторным remix | >30% |
+| Search usage | % пользователей, использующих поиск | >15% |
+| PDF/SRT exports | Кол-во экспортов в неделю | >50 |
+| Stripe conversion | % пользователей → платный план | >5% |
+| API usage | Кол-во запросов через API | Рост месяц к месяцу |
+| Public page views | Google Analytics / server logs | Рост месяц к месяцу |
+| Chat sessions | Среднее кол-во вопросов на сессию | >3 |
+
+---
+
+*Документ живой. Все изменения — через PR с обновлением этого файла.*

@@ -83,4 +83,11 @@ interface MediaTaskRepositoryInterface
      * @return LengthAwarePaginator<int, MediaTask>
      */
     public function findPublicCompletedPaginated(int $perPage, int $page): LengthAwarePaginator;
+
+    /**
+     * Find similar completed transcriptions based on text similarity (pg_trgm).
+     *
+     * @return array<int, array{task_id: string, video_id: string, title: string, slug: string|null, similarity: float}>
+     */
+    public function findSimilar(string $taskId, int $limit = 5): array;
 }

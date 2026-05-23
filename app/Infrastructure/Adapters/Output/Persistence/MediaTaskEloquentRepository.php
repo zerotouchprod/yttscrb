@@ -269,6 +269,37 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
         );
     }
 
+    public function findSimilar(string $taskId, int $limit = 5): array
+    {
+        $task = $this->findById($taskId);
+
+        if ($task === null || $task->resultText() === null) {
+            return [];
+        }
+
+        $currentText = $task->resultText()->value();
+
+        return MediaTaskModel::query()
+            ->where('status', 'completed')
+            ->where('id', '!=', $taskId)
+            ->whereNotNull('result_text')
+            ->whereNull('dmca_removed_at')
+            ->select('id as task_id', 'video_id', 'title', 'slug')
+            ->selectRaw('similarity(result_text, ?) as sim', [$currentText])
+            ->whereRaw('similarity(result_text, ?) > 0.05', [$currentText])
+            ->orderBy('sim', 'desc')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($row) => [
+                'task_id'    => $row->task_id,
+                'video_id'   => $row->video_id,
+                'title'      => $row->title,
+                'slug'       => $row->slug,
+                'similarity' => round((float) $row->sim, 4),
+            ])
+            ->all();
+    }
+
     private function generateUniqueSlug(string $title, string $taskId): string
     {
         $base = Str::slug($title);

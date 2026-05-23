@@ -91,6 +91,13 @@ final class TranscribeVideoHandlerSearchTest extends TestCase
             {
                 return new LengthAwarePaginator(collect(), 0, $perPage, $page);
             }
+            public function findSimilar(string $taskId, int $limit = 5): array
+            {
+                return [];
+            }
+            public function saveUserIdentifier(string $taskId, string $userIdentifier): void
+            {
+            }
         };
 
         $dispatcher = new class () implements WorkflowDispatcherInterface {
@@ -180,6 +187,13 @@ final class TranscribeVideoHandlerSearchTest extends TestCase
             public function findPublicCompletedPaginated(int $perPage, int $page): LengthAwarePaginator
             {
                 return new LengthAwarePaginator(collect(), 0, $perPage, $page);
+            }
+            public function findSimilar(string $taskId, int $limit = 5): array
+            {
+                return [];
+            }
+            public function saveUserIdentifier(string $taskId, string $userIdentifier): void
+            {
             }
         };
 

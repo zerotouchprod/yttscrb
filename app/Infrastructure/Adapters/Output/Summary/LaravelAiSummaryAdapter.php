@@ -8,6 +8,7 @@ use App\Ai\Agents\YoutubeSummarizerAgent;
 use App\Application\Ports\Output\SummaryProviderInterface;
 use App\Domain\ValueObjects\ClickbaitVerdict;
 use App\Domain\ValueObjects\ResourceItem;
+use App\Domain\ValueObjects\SummaryChapter;
 use App\Domain\ValueObjects\SummaryKeyPoint;
 use App\Domain\ValueObjects\SummaryOptions;
 use App\Domain\ValueObjects\SummaryResult;
@@ -133,6 +134,27 @@ final class LaravelAiSummaryAdapter implements SummaryProviderInterface
                 );
             }
 
+            // Parse chapters
+            Assert::keyExists($data, 'chapters', 'Missing key: chapters.');
+            Assert::isArray($data['chapters'], 'chapters must be an array.');
+
+            $chapters = [];
+            foreach ($data['chapters'] as $index => $ch) {
+                Assert::isArray($ch, sprintf('chapters[%d] must be an array.', $index));
+                Assert::keyExists($ch, 'title', sprintf('chapters[%d] missing title.', $index));
+                Assert::keyExists($ch, 'start_timecode', sprintf('chapters[%d] missing start_timecode.', $index));
+                Assert::keyExists($ch, 'end_timecode', sprintf('chapters[%d] missing end_timecode.', $index));
+                Assert::string($ch['title'], sprintf('chapters[%d].title must be a string.', $index));
+                Assert::string($ch['start_timecode'], sprintf('chapters[%d].start_timecode must be a string.', $index));
+                Assert::string($ch['end_timecode'], sprintf('chapters[%d].end_timecode must be a string.', $index));
+
+                $chapters[] = new SummaryChapter(
+                    title: $ch['title'],
+                    startTimecode: $ch['start_timecode'],
+                    endTimecode: $ch['end_timecode'],
+                );
+            }
+
             return new SummaryResult(
                 introduction: $data['introduction'],
                 keyPoints: $keyPoints,
@@ -140,6 +162,7 @@ final class LaravelAiSummaryAdapter implements SummaryProviderInterface
                 resources: $resources,
                 clickbaitVerdict: $clickbaitVerdict,
                 tutorialSteps: $tutorialSteps,
+                chapters: $chapters,
             );
         } catch (RuntimeException $e) {
             throw new SummaryFailedException(

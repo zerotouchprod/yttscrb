@@ -72,6 +72,13 @@ final class TranscribeVideoHandlerDailyLimitTest extends TestCase
             {
                 return new LengthAwarePaginator(collect(), 0, $perPage, $page);
             }
+            public function findSimilar(string $taskId, int $limit = 5): array
+            {
+                return [];
+            }
+            public function saveUserIdentifier(string $taskId, string $userIdentifier): void
+            {
+            }
         };
 
         $dispatcher = new class () implements WorkflowDispatcherInterface {

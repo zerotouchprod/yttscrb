@@ -20,7 +20,8 @@ final class SummaryResource extends JsonResource
      *     conclusion: string|null,
      *     resources: array<int, array{type: string, name: string, url: string|null}>,
      *     clickbait_verdict: array{score: int, comment: string}|null,
-     *     tutorial_steps: array<int, array{step: int, time: string, action: string}>
+     *     tutorial_steps: array<int, array{step: int, time: string, action: string}>,
+     *     chapters: array<int, array{title: string, start_timecode: string, end_timecode: string}>
      * }
      */
     public function toArray(Request $request): array
@@ -52,6 +53,14 @@ final class SummaryResource extends JsonResource
                     'action' => $s->action,
                 ],
                 $this->resource->tutorialSteps(),
+            ),
+            'chapters' => array_map(
+                fn (\App\Domain\ValueObjects\SummaryChapter $ch) => [
+                    'title'          => $ch->title,
+                    'start_timecode' => $ch->startTimecode,
+                    'end_timecode'   => $ch->endTimecode,
+                ],
+                $this->resource->chapters(),
             ),
         ];
     }

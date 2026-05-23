@@ -25,42 +25,38 @@ final class YoutubeSummarizerAgent implements Agent, HasStructuredOutput
     public function instructions(): string
     {
         return <<<'PROMPT'
-        You are an expert assistant that summarizes YouTube video transcripts.
+        You are an expert content analyzer and technical extractor. Your task is to analyze the provided video transcript and its title, and extract highly structured, actionable information.
 
-        Rules:
-        - Write a concise introduction paragraph (2-4 sentences).
-        - The transcript contains real timecodes in [MM:SS] or [HH:MM:SS] format embedded at the
-          start of each paragraph. You MUST use ONLY these exact timecodes when referencing moments
-          in the video. Never invent, approximate, or interpolate timecodes.
-        - Extract 5-10 key points that represent the most important moments in the transcript.
-          For each key point, copy the nearest timecode that precedes the relevant content.
-          For videos under 1 hour use MM:SS format (e.g. "03:45").
-          For videos 1 hour or longer use HH:MM:SS format (e.g. "01:15:30").
-        - Each key point must have: timecode (MM:SS or HH:MM:SS), a short title, and a 1-2 sentence detail.
-        - Write a brief conclusion if the transcript has a clear takeaway.
-        - Respond entirely in English.
-        - Do not invent content not present in the transcript.
+        You must return a valid JSON object strictly adhering to the requested schema.
 
-        ## Resource Extraction
-        - Scan the transcript for mentions of books, tools, libraries, services, software, people
-          (authors, speakers, experts), and external links. Extract each into the "resources" array.
-        - For each resource, classify it as one of: "book", "tool", "service", "person", "link".
-        - If a URL is explicitly mentioned or strongly implied (e.g. "github.com/foo"), include it
-          in the "url" field. Otherwise set url to null.
-        - Only include resources explicitly referenced by the speakers. Do not invent.
+        ### Core Instructions:
 
-        ## Clickbait Assessment (only if a video title is provided below)
-        - If a "Video Title" is present in the prompt, compare it against the actual transcript content.
-        - Score from 0 to 100: 0 = total clickbait / title lies completely, 100 = title perfectly
-          matches content. If no title is provided, omit the clickbait_verdict field entirely.
-        - Write a one-sentence verdict comment that is sharp and specific. If the title is misleading,
-          explain why in a witty, quotable way. If the title is honest, acknowledge it.
-        - The verdict comment should be under 150 characters and suitable for sharing as a screenshot.
-        ## Tutorial Step Extraction
-        - If the video is a tutorial/how-to, extract sequential steps into tutorial_steps.
-        - Each step: step number, nearest timecode, concise action description.
-        - Include exact commands, config keys, URLs.
-        - If conversational (podcast, interview), return EMPTY tutorial_steps array.
+        1. SUMMARY:
+        - "introduction": A concise 2-3 sentence overview of the video's core topic.
+        - "key_points": Extract the most valuable insights. Each point must include the nearest 'timecode', a short 'title', and specific 'details'.
+        - The transcript contains real timecodes in [MM:SS] or [HH:MM:SS] format embedded at the start of each paragraph. You MUST use ONLY these exact timecodes. Never invent, approximate, or interpolate.
+        - "conclusion": A 1-2 sentence final takeaway.
+
+        2. CLICKBAIT REALITY CHECK:
+        - Compare the provided "Video Title" with the actual transcript content.
+        - "clickbait_verdict.score": Rate how misleading the title is from 0 to 100. (0-30 = honest, 31-60 = slightly exaggerated, 61-100 = pure clickbait).
+        - "clickbait_verdict.comment": A sharp, one-sentence verdict explaining why.
+
+        3. RESOURCE CATCHER:
+        - Extract all mentioned tools, books, services, people, and external links.
+        - "resources": Array of objects. "type" MUST be one of: ["book", "tool", "service", "person", "link"]. Provide the "name" and the "url" (if explicitly mentioned, otherwise null).
+
+        4. TUTORIAL CHECKLIST:
+        - Determine if the video is an instructional tutorial/how-to.
+        - If YES: Extract sequential, executable steps into "tutorial_steps" (include step number, nearest timecode, and concise action). Include exact commands or settings if mentioned.
+        - If NO (e.g., podcast, vlog, opinion piece): Return an empty array [] for "tutorial_steps".
+
+        5. AUTO-CHAPTERS:
+        - Group the "key_points" into 3 to 8 logical, thematic chapters.
+        - Chapters must cover the entire video sequentially without time gaps.
+        - "chapters": Array of objects with "title", "start_timecode", and "end_timecode". Use format MM:SS or HH:MM:SS.
+
+        Respond entirely in English. Do not invent content not present in the transcript.
         PROMPT;
     }
 
@@ -104,6 +100,19 @@ final class YoutubeSummarizerAgent implements Agent, HasStructuredOutput
                     'step'   => $s->integer()->required(),
                     'time'   => $s->string()->required(),
                     'action' => $s->string()->required(),
+                ]),
+            )->required(),
+            'chapters' => $schema->array()->items(
+                $schema->object(fn (JsonSchema $s): array => [
+                    'title'          => $s->string()->description(
+                        'Format MM:SS or HH:MM:SS',
+                    )->required(),
+                    'start_timecode' => $s->string()->description(
+                        'Format MM:SS or HH:MM:SS',
+                    )->required(),
+                    'end_timecode'   => $s->string()->description(
+                        'Format MM:SS or HH:MM:SS',
+                    )->required(),
                 ]),
             )->required(),
         ];
