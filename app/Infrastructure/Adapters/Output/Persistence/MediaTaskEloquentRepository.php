@@ -290,7 +290,7 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
         $this->setPrivate($task, 'workflowId', $model->workflow_id);
 
         if ($model->summary !== null) {
-            /** @var array{introduction: string, key_points: array<int, array{timecode: string, title: string, details: string}>, conclusion?: string|null} $summaryData */
+            /** @var array{introduction: string, key_points: array<int, array{timecode: string, title: string, details: string}>, conclusion?: string|null, resources?: array<int, array{type: string, name: string, url?: string|null}>, clickbait_verdict?: array{score: int, comment: string}|null} $summaryData */
             $summaryData = $model->summary;
             $this->setPrivate($task, 'summary', SummaryResult::fromArray($summaryData));
         }

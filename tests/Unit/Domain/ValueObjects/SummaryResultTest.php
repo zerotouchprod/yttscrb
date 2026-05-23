@@ -26,11 +26,13 @@ it('serializes to array via toArray()', function (): void {
     $result = new SummaryResult('Introduction text', [$kp], 'Closing remark');
 
     expect($result->toArray())->toBe([
-        'introduction' => 'Introduction text',
-        'key_points'   => [
+        'introduction'      => 'Introduction text',
+        'key_points'        => [
             ['timecode' => '03:15', 'title' => 'Setup', 'details' => 'How to set up.'],
         ],
-        'conclusion' => 'Closing remark',
+        'conclusion'        => 'Closing remark',
+        'resources'         => [],
+        'clickbait_verdict' => null,
     ]);
 });
 
@@ -77,5 +79,7 @@ it('round-trips through toArray and fromArray', function (): void {
     expect($roundTrip->introduction())->toBe($original->introduction())
         ->and($roundTrip->conclusion())->toBe($original->conclusion())
         ->and($roundTrip->keyPoints()[0]->timecode)->toBe('10:00')
-        ->and($roundTrip->keyPoints()[0]->title)->toBe('Chapter');
+        ->and($roundTrip->keyPoints()[0]->title)->toBe('Chapter')
+        ->and($roundTrip->resources())->toBe([])
+        ->and($roundTrip->clickbaitVerdict())->toBeNull();
 });
