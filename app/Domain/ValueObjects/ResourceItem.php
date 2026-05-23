@@ -7,7 +7,7 @@ namespace App\Domain\ValueObjects;
 final readonly class ResourceItem
 {
     /**
-     * @param 'book'|'tool'|'service'|'person'|'link' $type
+     * @param string $type One of: book, tool, service, person, link
      */
     public function __construct(
         public string $type,

@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 final class ResourceItemTest extends TestCase
 {
-    public function test_creates_valid_resource_item(): void
+    public function testCreatesValidResourceItem(): void
     {
         $item = new ResourceItem(
             type: 'book',
@@ -22,7 +22,7 @@ final class ResourceItemTest extends TestCase
         $this->assertSame('https://example.com', $item->url);
     }
 
-    public function test_url_can_be_null(): void
+    public function testUrlCanBeNull(): void
     {
         $item = new ResourceItem(
             type: 'person',
@@ -33,7 +33,7 @@ final class ResourceItemTest extends TestCase
         $this->assertNull($item->url);
     }
 
-    public function test_to_array_output(): void
+    public function testToArrayOutput(): void
     {
         $item = new ResourceItem('tool', 'Laravel', 'https://laravel.com');
 
@@ -44,7 +44,7 @@ final class ResourceItemTest extends TestCase
         ], $item->toArray());
     }
 
-    public function test_from_array_hydration(): void
+    public function testFromArrayHydration(): void
     {
         $data = ['type' => 'book', 'name' => 'Domain-Driven Design', 'url' => null];
         $item = ResourceItem::fromArray($data);

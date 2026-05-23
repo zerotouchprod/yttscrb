@@ -87,11 +87,11 @@ final class YoutubeSummarizerAgent implements Agent, HasStructuredOutput
                 ]),
             )->required(),
             'clickbait_verdict' => $schema->object(fn (JsonSchema $s): array => [
-                'score'   => $s->integer()->minimum(0)->maximum(100)
-                    ->description('0 = pure clickbait, 100 = title perfectly matches content')
+                'score'   => $s->integer()
+                    ->description('0 = pure clickbait, 100 = title perfectly matches content. Score between 0 and 100.')
                     ->required(),
-                'comment' => $s->string()->maxLength(150)
-                    ->description('One-sentence verdict, witty and shareable')
+                'comment' => $s->string()
+                    ->description('One-sentence verdict, witty and shareable, under 150 characters.')
                     ->required(),
             ]),
         ];

@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 final class ClickbaitVerdictTest extends TestCase
 {
-    public function test_creates_valid_verdict(): void
+    public function testCreatesValidVerdict(): void
     {
         $verdict = new ClickbaitVerdict(score: 85, comment: 'The title accurately reflects the content.');
 
@@ -17,19 +17,19 @@ final class ClickbaitVerdictTest extends TestCase
         $this->assertSame('The title accurately reflects the content.', $verdict->comment);
     }
 
-    public function test_score_clamped_to_zero(): void
+    public function testScoreClampedToZero(): void
     {
         $verdict = new ClickbaitVerdict(score: -5, comment: 'test');
         $this->assertSame(0, $verdict->score);
     }
 
-    public function test_score_clamped_to_hundred(): void
+    public function testScoreClampedToHundred(): void
     {
         $verdict = new ClickbaitVerdict(score: 150, comment: 'test');
         $this->assertSame(100, $verdict->score);
     }
 
-    public function test_to_array_output(): void
+    public function testToArrayOutput(): void
     {
         $verdict = new ClickbaitVerdict(42, 'Mostly legit.');
 
@@ -39,7 +39,7 @@ final class ClickbaitVerdictTest extends TestCase
         ], $verdict->toArray());
     }
 
-    public function test_from_array_hydration(): void
+    public function testFromArrayHydration(): void
     {
         $verdict = ClickbaitVerdict::fromArray(['score' => 95, 'comment' => 'Legit.']);
 
