@@ -25,12 +25,15 @@ final class AiSummaryActivity extends Activity
             throw new RuntimeException("Transcript not found for task: {$taskId}");
         }
 
+        $task = $repository->findById($taskId);
+        $title = $task?->title();
+
         /** @var SummaryProviderInterface $provider */
         $provider = Container::getInstance()->make(SummaryProviderInterface::class);
 
         $result = $provider->summarize(
             new TranscriptionText($transcript),
-            new SummaryOptions(),
+            new SummaryOptions(videoTitle: $title),
         );
 
         return json_encode($result->toArray(), JSON_THROW_ON_ERROR);
