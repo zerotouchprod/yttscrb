@@ -20,7 +20,7 @@ final class TranscribeVideoHandlerDailyLimitTest extends TestCase
         $repository = new class () implements MediaTaskRepositoryInterface {
             public DateTimeImmutable $receivedSince;
 
-            public function countCompletedSince(DateTimeImmutable $since): int
+            public function countCompletedSince(DateTimeImmutable $since, ?string $userIdentifier = null): int
             {
                 $this->receivedSince = $since;
 

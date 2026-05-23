@@ -29,9 +29,10 @@ interface MediaTaskRepositoryInterface
 
     /**
      * Count completed transcriptions since the given date (inclusive).
-     * Used for free tier quota enforcement (10 completed/day).
+     * When $userIdentifier is provided, counts only that user's completions.
+     * Used for free tier quota enforcement (10 completed/day per user).
      */
-    public function countCompletedSince(DateTimeImmutable $since): int;
+    public function countCompletedSince(DateTimeImmutable $since, ?string $userIdentifier = null): int;
 
     /**
      * Store intermediate transcript text for the given task.

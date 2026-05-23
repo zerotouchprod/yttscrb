@@ -56,10 +56,12 @@ final class TranscribeVideoController extends Controller
             );
         }
 
-        // Check free tier daily quota (10 completed transcriptions/day).
+        // Check free tier daily quota (10 completed transcriptions/day per user).
+        // User identified by SHA-256 hash of IP address (no auth in v1.0).
         // Deduplication for existing video_id happens in handler->handle() below
         // and does NOT consume quota (PRD §9).
-        $completedToday = $this->handler->countCompletedToday();
+        $userIdentifier = hash('sha256', $request->ip() ?? '127.0.0.1');
+        $completedToday = $this->handler->countCompletedToday($userIdentifier);
         if ($completedToday >= 10) {
             $now = new \DateTimeImmutable();
             $tomorrow = $now->modify('tomorrow 00:00:00');

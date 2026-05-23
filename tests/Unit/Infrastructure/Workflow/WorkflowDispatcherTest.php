@@ -82,7 +82,7 @@ it('starts durable workflow and stores returned workflow id', function (): void 
             return null;
         }
 
-        public function countCompletedSince(DateTimeImmutable $since): int
+        public function countCompletedSince(DateTimeImmutable $since, ?string $userIdentifier = null): int
         {
             return 0;
         }

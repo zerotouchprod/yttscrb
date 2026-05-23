@@ -78,7 +78,7 @@ final class TranscribeVideoHandlerSearchTest extends TestCase
             {
                 return null;
             }
-            public function countCompletedSince(DateTimeImmutable $since): int
+            public function countCompletedSince(DateTimeImmutable $since, ?string $userIdentifier = null): int
             {
                 return 0;
             }
@@ -168,7 +168,7 @@ final class TranscribeVideoHandlerSearchTest extends TestCase
             {
                 return null;
             }
-            public function countCompletedSince(DateTimeImmutable $since): int
+            public function countCompletedSince(DateTimeImmutable $since, ?string $userIdentifier = null): int
             {
                 return 0;
             }
