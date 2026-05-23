@@ -39,7 +39,7 @@ final class YoutubeSummarizerAgent implements Agent, HasStructuredOutput
 
         2. CLICKBAIT REALITY CHECK:
         - Compare the provided "Video Title" with the actual transcript content.
-        - "clickbait_verdict.score": Rate how misleading the title is from 0 to 100. (0-30 = honest, 31-60 = slightly exaggerated, 61-100 = pure clickbait).
+        - "clickbait_verdict.score": Rate how legit/honest the title is from 0 to 100. (0 = pure clickbait / title completely lies, 1-30 = mostly misleading, 31-60 = slightly exaggerated, 61-100 = title perfectly matches content — the video delivers exactly what the title promises).
         - "clickbait_verdict.comment": A sharp, one-sentence verdict explaining why.
 
         3. RESOURCE CATCHER:
@@ -89,7 +89,7 @@ final class YoutubeSummarizerAgent implements Agent, HasStructuredOutput
             )->required(),
             'clickbait_verdict' => $schema->object(fn (JsonSchema $s): array => [
                 'score'   => $s->integer()
-                    ->description('0 = pure clickbait, 100 = title perfectly matches content. Score between 0 and 100.')
+                    ->description('0 = pure clickbait / title lies, 100 = title perfectly matches content (the video delivers what the title promises). Score between 0 and 100.')
                     ->required(),
                 'comment' => $s->string()
                     ->description('One-sentence verdict, witty and shareable, under 150 characters.')
