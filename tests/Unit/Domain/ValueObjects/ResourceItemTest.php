@@ -53,4 +53,25 @@ final class ResourceItemTest extends TestCase
         $this->assertSame('Domain-Driven Design', $item->name);
         $this->assertNull($item->url);
     }
+
+    public function testUrlWithoutProtocolGetsHttpsPrefix(): void
+    {
+        $item = new ResourceItem('tool', 'Hot Ones', 'hotones.com');
+
+        $this->assertSame('https://hotones.com', $item->url);
+    }
+
+    public function testUrlWithHttpKeptAsIs(): void
+    {
+        $item = new ResourceItem('link', 'Example', 'http://example.com');
+
+        $this->assertSame('http://example.com', $item->url);
+    }
+
+    public function testUrlWithHttpsKeptAsIs(): void
+    {
+        $item = new ResourceItem('link', 'Example', 'https://example.com');
+
+        $this->assertSame('https://example.com', $item->url);
+    }
 }
