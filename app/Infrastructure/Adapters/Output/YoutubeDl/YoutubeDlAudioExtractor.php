@@ -29,19 +29,13 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
         }
 
         $command = sprintf(
-            '%s -x --audio-format mp3 -o %s --no-playlist --print filename %s 2>&1',
+            '%s -x --audio-format mp3 -o %s --no-playlist %s 2>&1',
             escapeshellcmd($this->binaryPath),
             escapeshellarg($this->outputDir . '/' . self::OUTPUT_TEMPLATE),
             escapeshellarg($youtubeUrl->value()),
         );
 
-        $output = $this->executeCommand($command);
-
-        $actualPath = trim($output);
-
-        if ($actualPath !== '' && file_exists($actualPath)) {
-            return new AudioFile($actualPath);
-        }
+        $this->executeCommand($command);
 
         if (file_exists($outputPath)) {
             return new AudioFile($outputPath);
