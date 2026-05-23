@@ -244,6 +244,45 @@
             </section>
         @endif
 
+        <!-- Tutorial Checklist -->
+        @if ($renderedSummary !== null && count($renderedSummary->tutorialSteps()) > 0)
+            <section class="mb-8">
+                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+                    <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                    </svg>
+                    Tutorial Checklist
+                </h2>
+                <div class="space-y-2">
+                    @foreach ($renderedSummary->tutorialSteps() as $step)
+                        <div class="flex items-start gap-3 rounded-lg p-3 border border-gray-700/40 bg-gray-800/30">
+                            <span class="shrink-0 text-xs font-mono font-medium text-gray-400 w-5 text-center">
+                                {{ $step->step }}
+                            </span>
+                            @if ($step->time !== '' && $task->youtubeUrl() !== null)
+                                @php
+                                    $stepParts = explode(':', $step->time);
+                                    $stepSec = count($stepParts) === 3
+                                        ? (int)$stepParts[0] * 3600 + (int)$stepParts[1] * 60 + (int)$stepParts[2]
+                                        : (int)$stepParts[0] * 60 + (int)$stepParts[1];
+                                @endphp
+                                <a
+                                    href="https://youtube.com/watch?v={{ $task->youtubeUrl()->videoId()->value() }}&t={{ $stepSec }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="shrink-0 text-xs font-mono font-medium text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/25 rounded border border-blue-500/30 px-1.5 py-0.5 transition-colors"
+                                    title="Open YouTube at {{ $step->time }}"
+                                >{{ $step->time }}</a>
+                            @endif
+                            <span class="text-sm leading-relaxed text-gray-200">
+                                {{ $step->action }}
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
         <!-- Full Transcript -->
         @if (count($transcriptChunks) > 0)
             <section class="mb-10">

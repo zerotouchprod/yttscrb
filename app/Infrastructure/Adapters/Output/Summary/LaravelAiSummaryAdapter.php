@@ -12,6 +12,7 @@ use App\Domain\ValueObjects\SummaryKeyPoint;
 use App\Domain\ValueObjects\SummaryOptions;
 use App\Domain\ValueObjects\SummaryResult;
 use App\Domain\ValueObjects\TranscriptionText;
+use App\Domain\ValueObjects\TutorialStep;
 use App\Shared\Exceptions\SummaryFailedException;
 use Laravel\Ai\Responses\StructuredAgentResponse;
 use RuntimeException;
@@ -110,12 +111,35 @@ final class LaravelAiSummaryAdapter implements SummaryProviderInterface
                 );
             }
 
+            // Parse tutorial steps
+            Assert::keyExists($data, 'tutorial_steps', 'Missing key: tutorial_steps.');
+            Assert::isArray($data['tutorial_steps'], 'tutorial_steps must be an array.');
+
+            $tutorialSteps = [];
+
+            foreach ($data['tutorial_steps'] as $index => $s) {
+                Assert::isArray($s, sprintf('tutorial_steps[%d] must be an array.', $index));
+                Assert::keyExists($s, 'step', sprintf('tutorial_steps[%d] missing step.', $index));
+                Assert::keyExists($s, 'time', sprintf('tutorial_steps[%d] missing time.', $index));
+                Assert::keyExists($s, 'action', sprintf('tutorial_steps[%d] missing action.', $index));
+                Assert::integer($s['step'], sprintf('tutorial_steps[%d].step must be an integer.', $index));
+                Assert::string($s['time'], sprintf('tutorial_steps[%d].time must be a string.', $index));
+                Assert::string($s['action'], sprintf('tutorial_steps[%d].action must be a string.', $index));
+
+                $tutorialSteps[] = new TutorialStep(
+                    step: $s['step'],
+                    time: $s['time'],
+                    action: $s['action'],
+                );
+            }
+
             return new SummaryResult(
                 introduction: $data['introduction'],
                 keyPoints: $keyPoints,
                 conclusion: $conclusion,
                 resources: $resources,
                 clickbaitVerdict: $clickbaitVerdict,
+                tutorialSteps: $tutorialSteps,
             );
         } catch (RuntimeException $e) {
             throw new SummaryFailedException(

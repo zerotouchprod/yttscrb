@@ -23,7 +23,9 @@ it('returns SummaryResult when agent responds with structured data', function ()
                 ['timecode' => '01:00', 'title' => 'Setup', 'details' => 'Install dependencies.'],
                 ['timecode' => '05:30', 'title' => 'Write tests', 'details' => 'Use Pest.'],
             ],
-            'conclusion' => 'TDD improves quality.',
+            'conclusion'     => 'TDD improves quality.',
+            'resources'      => [],
+            'tutorial_steps' => [],
         ],
     ]);
 
@@ -46,8 +48,10 @@ it('returns SummaryResult when agent responds with structured data', function ()
 it('returns SummaryResult with null conclusion when omitted', function (): void {
     YoutubeSummarizerAgent::fake([
         [
-            'introduction' => 'Brief intro.',
-            'key_points'   => [],
+            'introduction'    => 'Brief intro.',
+            'key_points'      => [],
+            'resources'       => [],
+            'tutorial_steps'  => [],
             // no 'conclusion' key
         ],
     ]);

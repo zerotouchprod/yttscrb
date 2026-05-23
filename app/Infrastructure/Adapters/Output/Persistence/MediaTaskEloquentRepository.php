@@ -24,10 +24,7 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
     {
         // Prevent duplicate completed records for the same video
         // (partial unique index idx_media_tasks_video_completed enforces one completed row per video_id)
-        if (
-            $mediaTask->status() === TranscriptionStatus::Completed
-            && $mediaTask->youtubeUrl() !== null
-        ) {
+        if ($mediaTask->status() === TranscriptionStatus::Completed) {
             $existingCompleted = MediaTaskModel::query()
                 ->where('video_id', $mediaTask->youtubeUrl()->videoId()->value())
                 ->where('status', TranscriptionStatus::Completed->value)
@@ -290,7 +287,7 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
         $this->setPrivate($task, 'workflowId', $model->workflow_id);
 
         if ($model->summary !== null) {
-            /** @var array{introduction: string, key_points: array<int, array{timecode: string, title: string, details: string}>, conclusion?: string|null, resources?: array<int, array{type: string, name: string, url?: string|null}>, clickbait_verdict?: array{score: int, comment: string}|null} $summaryData */
+            /** @var array{introduction: string, key_points: array<int, array{timecode: string, title: string, details: string}>, conclusion?: string|null, resources?: array<int, array{type: string, name: string, url?: string|null}>, clickbait_verdict?: array{score: int, comment: string}|null, tutorial_steps?: array<int, array{step: int, time: string, action: string}>} $summaryData */
             $summaryData = $model->summary;
             $this->setPrivate($task, 'summary', SummaryResult::fromArray($summaryData));
         }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Domain\ValueObjects\SummaryKeyPoint;
 use App\Domain\ValueObjects\SummaryResult;
+use App\Domain\ValueObjects\TutorialStep;
 
 it('stores introduction, keyPoints and conclusion', function (): void {
     $kp = new SummaryKeyPoint('01:30', 'Title', 'Details');
@@ -33,6 +34,7 @@ it('serializes to array via toArray()', function (): void {
         'conclusion'        => 'Closing remark',
         'resources'         => [],
         'clickbait_verdict' => null,
+        'tutorial_steps'    => [],
     ]);
 });
 
@@ -81,5 +83,59 @@ it('round-trips through toArray and fromArray', function (): void {
         ->and($roundTrip->keyPoints()[0]->timecode)->toBe('10:00')
         ->and($roundTrip->keyPoints()[0]->title)->toBe('Chapter')
         ->and($roundTrip->resources())->toBe([])
-        ->and($roundTrip->clickbaitVerdict())->toBeNull();
+        ->and($roundTrip->clickbaitVerdict())->toBeNull()
+        ->and($roundTrip->tutorialSteps())->toBe([]);
+});
+
+it('stores and retrieves tutorial steps', function (): void {
+    $step = new TutorialStep(step: 1, time: '01:00', action: 'Open settings');
+    $result = new SummaryResult('Intro', [], tutorialSteps: [$step]);
+
+    expect($result->tutorialSteps())->toHaveCount(1)
+        ->and($result->tutorialSteps()[0]->step)->toBe(1)
+        ->and($result->tutorialSteps()[0]->time)->toBe('01:00')
+        ->and($result->tutorialSteps()[0]->action)->toBe('Open settings');
+});
+
+it('defaults tutorialSteps to empty array', function (): void {
+    $result = new SummaryResult('Intro', []);
+
+    expect($result->tutorialSteps())->toBe([]);
+});
+
+it('serializes tutorial steps in toArray', function (): void {
+    $step = new TutorialStep(step: 1, time: '02:00', action: 'Run npm install');
+    $result = new SummaryResult('Intro', [], tutorialSteps: [$step]);
+
+    expect($result->toArray()['tutorial_steps'])->toBe([
+        ['step' => 1, 'time' => '02:00', 'action' => 'Run npm install'],
+    ]);
+});
+
+it('deserializes tutorial steps from fromArray', function (): void {
+    $data = [
+        'introduction'   => 'Intro',
+        'key_points'     => [],
+        'tutorial_steps' => [
+            ['step' => 1, 'time' => '03:00', 'action' => 'Do something'],
+        ],
+    ];
+
+    $result = SummaryResult::fromArray($data);
+
+    expect($result->tutorialSteps())->toHaveCount(1)
+        ->and($result->tutorialSteps()[0]->step)->toBe(1)
+        ->and($result->tutorialSteps()[0]->time)->toBe('03:00')
+        ->and($result->tutorialSteps()[0]->action)->toBe('Do something');
+});
+
+it('fromArray handles missing tutorial_steps', function (): void {
+    $data = [
+        'introduction' => 'No tutorial here',
+        'key_points'   => [],
+    ];
+
+    $result = SummaryResult::fromArray($data);
+
+    expect($result->tutorialSteps())->toBe([]);
 });

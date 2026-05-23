@@ -1,0 +1,568 @@
+# Tutorial Step-by-Step Checklist — Implementation Plan
+
+> **Goal:** Add automatic tutorial step extraction from YouTube transcripts. The LLM detects whether a video is a tutorial/how-to and, if so, extracts sequential actionable steps with timecodes. Results render as an interactive checklist in the UI — all within the existing single LLM call.
+
+**Architecture:** Follows the exact same pattern as Resource Catcher + Clickbait: extend `YoutubeSummarizerAgent` instructions + schema, extend `SummaryResult` with `tutorialSteps`, parse in `LaravelAiSummaryAdapter`, expose via `SummaryResource`/`SummarySchema`, render in Vue + Blade.
+
+**Cost:** Zero extra API calls. Single LLM call with extended JSON schema.
+
+---
+
+## Architecture Overview
+
+```mermaid
+graph TD
+    A["YouTube Transcript"] --> B["YoutubeSummarizerAgent"]
+    B --> C["LLM - Single Call - Extended Schema"]
+    C --> D["introduction + key_points + conclusion"]
+    C --> E["resources: books/tools/people/links"]
+    C --> F["clickbait_verdict: score + comment"]
+    C --> G["tutorial_steps: step + time + action"]
+
+    F --> H["ClickbaitVerdict - existing"]
+    E --> I["ResourceItem - existing"]
+    G --> J["TutorialStep - NEW"]
+
+    D --> K["SummaryResult - extended"]
+    E --> K
+    F --> K
+    G --> K
+
+    K --> L["SummaryResource - API"]
+    L --> M["Vue: TutorialChecklist.vue - NEW"]
+    L --> N["Blade: transcript.blade.php - extended"]
+```
+
+## LLM Response Schema Extension
+
+The `YoutubeSummarizerAgent` schema gains `tutorial_steps` alongside existing fields:
+
+```json
+{
+  "introduction": "...",
+  "key_points": [...],
+  "conclusion": "...",
+  "resources": [...],
+  "clickbait_verdict": {"score": 85, "comment": "..."},
+  "tutorial_steps": [
+    {"step": 1, "time": "03:45", "action": "composer require laravel/horizon"},
+    {"step": 2, "time": "05:10", "action": "Publish the config: php artisan horizon:install"}
+  ]
+}
+```
+
+**Key design:** `tutorial_steps` is ALWAYS present in the response. For non-tutorial videos (podcasts, interviews), the array is empty. The LLM decides based on content analysis.
+
+## Prompt Logic
+
+```
+Analyze the transcript. If the video is a tutorial or how-to:
+- Fill 'tutorial_steps' with sequential, numbered steps.
+- Each step MUST have: step number, nearest timecode, and a concise action description.
+- Steps should be directly actionable (commands to run, settings to change, things to click).
+- Copy timecodes ONLY from the transcript — never invent or approximate.
+
+If the video is conversational (podcast, interview, vlog):
+- Return an empty 'tutorial_steps' array.
+- Fill 'key_points' instead.
+```
+
+---
+
+## File Map
+
+| File | Action | Responsibility |
+|------|--------|----------------|
+| `app/Domain/ValueObjects/TutorialStep.php` | **Create** | VO: step number, timecode, action |
+| `app/Domain/ValueObjects/SummaryResult.php` | **Modify** | Add `tutorialSteps` field |
+| `app/Ai/Agents/YoutubeSummarizerAgent.php` | **Modify** | Extend `instructions()` + `schema()` |
+| `app/Infrastructure/Adapters/Output/Summary/LaravelAiSummaryAdapter.php` | **Modify** | Parse `tutorial_steps` from response |
+| `app/Infrastructure/Adapters/Input/Web/Resources/SummaryResource.php` | **Modify** | Serialize `tutorial_steps` |
+| `app/Infrastructure/Adapters/Input/Web/OpenApi/Schemas/SummarySchema.php` | **Modify** | OpenAPI schema update |
+| `app/Infrastructure/Adapters/Output/Persistence/MediaTaskEloquentRepository.php` | **Modify** | Docblock update for summary shape |
+| `resources/js/components/TutorialChecklist.vue` | **Create** | Interactive checklist component |
+| `resources/js/components/TaskStatusCard.vue` | **Modify** | Add Tutorial tab |
+| `resources/views/transcript.blade.php` | **Modify** | Blade checklist section |
+| `tests/Unit/Domain/ValueObjects/TutorialStepTest.php` | **Create** | VO unit tests |
+| `tests/Unit/Domain/ValueObjects/SummaryResultTest.php` | **Modify** | Update toArray test |
+
+---
+
+## Task 1: TutorialStep Value Object + Tests
+
+**Create:** `app/Domain/ValueObjects/TutorialStep.php`
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\ValueObjects;
+
+final readonly class TutorialStep
+{
+    public function __construct(
+        public int $step,
+        public string $time,
+        public string $action,
+    ) {
+    }
+
+    /**
+     * @return array{step: int, time: string, action: string}
+     */
+    public function toArray(): array
+    {
+        return [
+            'step'   => $this->step,
+            'time'   => $this->time,
+            'action' => $this->action,
+        ];
+    }
+
+    /**
+     * @param array{step: int, time: string, action: string} $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            step: (int) $data['step'],
+            time: $data['time'],
+            action: $data['action'],
+        );
+    }
+}
+```
+
+**Create:** `tests/Unit/Domain/ValueObjects/TutorialStepTest.php`
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Unit\Domain\ValueObjects;
+
+use App\Domain\ValueObjects\TutorialStep;
+use PHPUnit\Framework\TestCase;
+
+final class TutorialStepTest extends TestCase
+{
+    public function testCreatesValidTutorialStep(): void
+    {
+        $step = new TutorialStep(1, '03:45', 'Run composer require');
+
+        $this->assertSame(1, $step->step);
+        $this->assertSame('03:45', $step->time);
+        $this->assertSame('Run composer require', $step->action);
+    }
+
+    public function testToArrayOutput(): void
+    {
+        $step = new TutorialStep(2, '05:10', 'Edit .env file');
+
+        $this->assertSame([
+            'step'   => 2,
+            'time'   => '05:10',
+            'action' => 'Edit .env file',
+        ], $step->toArray());
+    }
+
+    public function testFromArrayHydration(): void
+    {
+        $step = TutorialStep::fromArray([
+            'step' => 3, 'time' => '08:22', 'action' => 'Restart the server',
+        ]);
+
+        $this->assertSame(3, $step->step);
+        $this->assertSame('08:22', $step->time);
+        $this->assertSame('Restart the server', $step->action);
+    }
+}
+```
+
+---
+
+## Task 2: Extend SummaryResult with tutorialSteps
+
+**Modify:** `app/Domain/ValueObjects/SummaryResult.php`
+
+Add `tutorialSteps` parameter to constructor, getter, `toArray()`, `fromArray()`:
+
+Constructor:
+```php
+/**
+ * @param SummaryKeyPoint[] $keyPoints
+ * @param ResourceItem[]    $resources
+ * @param TutorialStep[]    $tutorialSteps
+ */
+public function __construct(
+    private string $introduction,
+    private array $keyPoints,
+    private ?string $conclusion = null,
+    private array $resources = [],
+    private ?ClickbaitVerdict $clickbaitVerdict = null,
+    private array $tutorialSteps = [],
+) {
+}
+```
+
+Getter:
+```php
+/**
+ * @return TutorialStep[]
+ */
+public function tutorialSteps(): array
+{
+    return $this->tutorialSteps;
+}
+```
+
+`toArray()` — add `tutorial_steps` key:
+```php
+'tutorial_steps' => array_map(fn (TutorialStep $s) => $s->toArray(), $this->tutorialSteps),
+```
+
+`fromArray()` — parse `tutorial_steps`:
+```php
+tutorialSteps: array_map(
+    fn (array $s) => TutorialStep::fromArray($s),
+    $data['tutorial_steps'] ?? [],
+),
+```
+
+**Update phpstan docblocks** in `toArray()` and `fromArray()`.
+
+**Update SummaryResultTest:** add `tutorial_steps` to expected `toArray()` output and round-trip test.
+
+---
+
+## Task 3: Extend YoutubeSummarizerAgent
+
+**Modify:** `app/Ai/Agents/YoutubeSummarizerAgent.php`
+
+Add to `instructions()`:
+```
+## Tutorial Step Extraction
+- Analyze the transcript. If the video is a tutorial or how-to (programming, setup,
+  repair, recipe, DIY), extract sequential actionable steps into the 'tutorial_steps'
+  array.
+- Each step MUST have: step number (starting at 1), the nearest timecode from the
+  transcript, and a concise action description (what to type, click, or do).
+- Steps should be directly executable — include exact commands, config keys, URLs.
+- If the video is conversational (podcast, interview, vlog, commentary), return an
+  EMPTY 'tutorial_steps' array and use 'key_points' for important moments instead.
+```
+
+Add to `schema()`:
+```php
+'tutorial_steps' => $schema->array()->items(
+    $schema->object(fn (JsonSchema $s): array => [
+        'step'   => $s->integer()->description('Step number, starting at 1')->required(),
+        'time'   => $s->string()->description('Timecode in MM:SS or HH:MM:SS format')->required(),
+        'action' => $s->string()->description('Concise, directly executable action description')->required(),
+    ]),
+)->required(),
+```
+
+---
+
+## Task 4: Update LaravelAiSummaryAdapter
+
+**Modify:** `app/Infrastructure/Adapters/Output/Summary/LaravelAiSummaryAdapter.php`
+
+Add import:
+```php
+use App\Domain\ValueObjects\TutorialStep;
+```
+
+Parse `tutorial_steps` after the resources parsing block:
+```php
+// Parse tutorial steps
+Assert::keyExists($data, 'tutorial_steps', 'Missing key: tutorial_steps.');
+Assert::isArray($data['tutorial_steps'], 'tutorial_steps must be an array.');
+
+$tutorialSteps = [];
+
+foreach ($data['tutorial_steps'] as $index => $s) {
+    Assert::isArray($s, sprintf('tutorial_steps[%d] must be an array.', $index));
+    Assert::keyExists($s, 'step', sprintf('tutorial_steps[%d] missing step.', $index));
+    Assert::keyExists($s, 'time', sprintf('tutorial_steps[%d] missing time.', $index));
+    Assert::keyExists($s, 'action', sprintf('tutorial_steps[%d] missing action.', $index));
+
+    $tutorialSteps[] = new TutorialStep(
+        step: (int) $s['step'],
+        time: $s['time'],
+        action: $s['action'],
+    );
+}
+```
+
+Add to `SummaryResult` return:
+```php
+return new SummaryResult(
+    introduction: $data['introduction'],
+    keyPoints: $keyPoints,
+    conclusion: $conclusion,
+    resources: $resources,
+    clickbaitVerdict: $clickbaitVerdict,
+    tutorialSteps: $tutorialSteps,
+);
+```
+
+---
+
+## Task 5: Update API Serialization + OpenAPI
+
+**Modify:** `app/Infrastructure/Adapters/Input/Web/Resources/SummaryResource.php`
+
+Add `tutorial_steps` to `toArray()`:
+```php
+'tutorial_steps' => array_map(
+    fn (\App\Domain\ValueObjects\TutorialStep $s) => [
+        'step'   => $s->step,
+        'time'   => $s->time,
+        'action' => $s->action,
+    ],
+    $this->resource->tutorialSteps(),
+),
+```
+
+**Modify:** `app/Infrastructure/Adapters/Input/Web/OpenApi/Schemas/SummarySchema.php`
+
+Add `tutorial_steps` property:
+```php
+new OA\Property(
+    property: 'tutorial_steps',
+    type: 'array',
+    items: new OA\Items(
+        required: ['step', 'time', 'action'],
+        properties: [
+            new OA\Property(property: 'step', type: 'integer', example: 1),
+            new OA\Property(property: 'time', type: 'string', example: '03:45'),
+            new OA\Property(property: 'action', type: 'string', example: 'Run composer require'),
+        ],
+        type: 'object',
+    ),
+),
+```
+
+Add `tutorial_steps` to `required` array.
+
+**Modify:** `app/Infrastructure/Adapters/Output/Persistence/MediaTaskEloquentRepository.php`
+
+Update docblock for `$summaryData` to include `tutorial_steps`.
+
+---
+
+## Task 6: Frontend — TutorialChecklist.vue
+
+**Create:** `resources/js/components/TutorialChecklist.vue`
+
+Interactive checklist component:
+- Shows only when `tutorialSteps.length > 0`
+- Each step: checkbox (persisted in localStorage), step number, timecode button, action text
+- Clicking timecode calls `onSeek` to jump YouTube player
+- Completed steps get strikethrough + dimmed styling
+- Progress counter: "3/12 steps completed"
+
+```vue
+<template>
+  <div v-if="steps.length" class="space-y-3">
+    <div class="flex items-center justify-between mb-1">
+      <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+        <svg class="w-3.5 h-3.5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+        </svg>
+        Step-by-Step Checklist
+      </h3>
+      <span class="text-xs text-gray-500">{{ completedCount }}/{{ steps.length }} done</span>
+    </div>
+
+    <div class="space-y-1.5">
+      <div
+        v-for="s in steps"
+        :key="s.step"
+        :class="[
+          'flex items-start gap-3 rounded-lg p-2.5 border transition-all',
+          isCompleted(s.step)
+            ? 'bg-gray-800/30 border-gray-700/30'
+            : 'bg-gray-800/60 border-gray-700 hover:border-orange-500/30'
+        ]"
+      >
+        <!-- Checkbox -->
+        <input
+          type="checkbox"
+          :checked="isCompleted(s.step)"
+          @change="toggleStep(s.step)"
+          class="mt-0.5 w-4 h-4 rounded border-gray-600 bg-gray-700 text-orange-500 focus:ring-orange-500/30 shrink-0"
+        />
+
+        <!-- Step content -->
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2 mb-0.5">
+            <span :class="isCompleted(s.step) ? 'text-gray-600' : 'text-gray-400'" class="text-xs font-mono font-medium">
+              Step {{ s.step }}
+            </span>
+            <button
+              v-if="onSeek"
+              @click="onSeek(timeToSeconds(s.time))"
+              class="text-xs font-mono text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 px-1.5 py-0.5 rounded border border-blue-500/20 transition-colors shrink-0"
+              title="Jump to {{ s.time }}"
+            >
+              {{ s.time }}
+            </button>
+            <span v-else class="text-xs font-mono text-blue-400/60">{{ s.time }}</span>
+          </div>
+          <p :class="isCompleted(s.step) ? 'text-gray-600 line-through' : 'text-gray-200'" class="text-sm leading-relaxed">
+            {{ s.action }}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue';
+
+const props = defineProps({
+  steps: { type: Array, required: true },
+  taskId: { type: String, default: null },
+  onSeek: { type: Function, default: null },
+});
+
+const storageKey = computed(() => `tutorial_${props.taskId ?? 'global'}`);
+
+const completed = ref(new Set(
+  JSON.parse(localStorage.getItem(storageKey.value) ?? '[]')
+));
+
+const completedCount = computed(() => completed.value.size);
+
+function isCompleted(step) {
+  return completed.value.has(step);
+}
+
+function toggleStep(step) {
+  const next = new Set(completed.value);
+  if (next.has(step)) {
+    next.delete(step);
+  } else {
+    next.add(step);
+  }
+  completed.value = next;
+  localStorage.setItem(storageKey.value, JSON.stringify([...next]));
+}
+
+function timeToSeconds(time) {
+  const parts = time.split(':').map(Number);
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  return parts[0] * 60 + parts[1];
+}
+</script>
+```
+
+---
+
+## Task 7: Integrate into TaskStatusCard.vue
+
+**Modify:** `resources/js/components/TaskStatusCard.vue`
+
+1. Add import: `import TutorialChecklist from './TutorialChecklist.vue';`
+2. Add "Tutorial" tab button (conditional: `v-if="renderedSummary?.tutorial_steps?.length"`)
+3. Add Tutorial tab panel with `<TutorialChecklist>`
+
+Tab button (after Resources button):
+```vue
+<button v-if="renderedSummary?.tutorial_steps?.length" @click="activeTab = 'tutorial'" ...>
+  <svg ... /> Checklist
+</button>
+```
+
+Tab panel (after Resources panel):
+```vue
+<div v-show="activeTab === 'tutorial'" id="panel-tutorial" role="tabpanel">
+  <TutorialChecklist
+    :steps="renderedSummary?.tutorial_steps ?? []"
+    :taskId="task?.task_id"
+    :onSeek="seekToSeconds"
+    class="mb-5"
+  />
+</div>
+```
+
+---
+
+## Task 8: Integrate into transcript.blade.php (Public Page)
+
+**Modify:** `resources/views/transcript.blade.php`
+
+After the Resources section, add a Tutorial Checklist section:
+
+```blade
+<!-- Tutorial Checklist -->
+@if ($renderedSummary !== null && count($renderedSummary->tutorialSteps()) > 0)
+    <section class="mb-8">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                <svg class="w-3.5 h-3.5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                </svg>
+                Step-by-Step Checklist
+            </h2>
+            <span class="text-xs text-gray-500">{{ count($renderedSummary->tutorialSteps()) }} steps</span>
+        </div>
+        <div class="space-y-1.5">
+            @foreach ($renderedSummary->tutorialSteps() as $s)
+                <div class="flex items-start gap-3 rounded-lg p-2.5 border border-gray-700 bg-gray-800/60">
+                    <span class="text-xs font-mono font-medium text-gray-400 mt-0.5 shrink-0 w-16">
+                        Step {{ $s->step }}
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        @if ($task->youtubeUrl() !== null)
+                            @php
+                                $parts = explode(':', $s->time);
+                                $tSec = count($parts) === 3
+                                    ? (int)$parts[0] * 3600 + (int)$parts[1] * 60 + (int)$parts[2]
+                                    : (int)$parts[0] * 60 + (int)$parts[1];
+                            @endphp
+                            <a href="https://youtube.com/watch?v={{ $task->youtubeUrl()->videoId()->value() }}&t={{ $tSec }}"
+                               target="_blank" rel="noopener noreferrer"
+                               class="text-xs font-mono text-blue-400 hover:text-blue-300 transition-colors">
+                                {{ $s->time }}
+                            </a>
+                        @endif
+                        <p class="text-gray-200 text-sm mt-0.5">{{ $s->action }}</p>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </section>
+@endif
+```
+
+---
+
+## Task 9: Integration Testing + composer check
+
+1. Run `vendor/bin/pest --compact` — all tests pass
+2. Run `vendor/bin/phpstan analyse --level=9 --no-progress` — no NEW errors
+3. Run `vendor/bin/phpcs --standard=PSR12 app/ tests/` — no NEW errors in modified files
+4. Run `vendor/bin/deptrac analyze` — 0 violations
+5. Run `composer check` — green
+
+---
+
+## Self-Review
+
+| Check | Status |
+|-------|--------|
+| No extra API calls | ✅ Single LLM call, extended schema |
+| No migration needed | ✅ `summary` JSONB handles new keys |
+| Backward compatible | ✅ Default empty array for old summaries |
+| LLM decides tutorial vs not | ✅ Prompt instructs: fill steps OR leave empty |
+| Interactive checklist | ✅ Checkboxes, localStorage persistence, timecode seeking |
+| Public page support | ✅ Blade template section |
+| Architecture boundaries | ✅ Domain → Application → Infrastructure preserved |
+| Type consistency | ✅ `TutorialStep` types match across all layers |

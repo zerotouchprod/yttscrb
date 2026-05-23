@@ -19,10 +19,10 @@ final class TelegramFeedbackNotifier implements FeedbackNotifierInterface
 
     public function notify(SendFeedbackCommand $command): void
     {
-        $token = config('services.telegram.token');
-        $chatId = config('services.telegram.chat_id');
+        $token = (string) config('services.telegram.token');
+        $chatId = (string) config('services.telegram.chat_id');
 
-        if ($token === null || $token === '' || $chatId === null || $chatId === '') {
+        if ($token === '' || $chatId === '') {
             $this->logger->warning('Telegram feedback not configured — skipping notification.');
             return;
         }

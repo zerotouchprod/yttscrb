@@ -56,6 +56,11 @@ final class YoutubeSummarizerAgent implements Agent, HasStructuredOutput
         - Write a one-sentence verdict comment that is sharp and specific. If the title is misleading,
           explain why in a witty, quotable way. If the title is honest, acknowledge it.
         - The verdict comment should be under 150 characters and suitable for sharing as a screenshot.
+        ## Tutorial Step Extraction
+        - If the video is a tutorial/how-to, extract sequential steps into tutorial_steps.
+        - Each step: step number, nearest timecode, concise action description.
+        - Include exact commands, config keys, URLs.
+        - If conversational (podcast, interview), return EMPTY tutorial_steps array.
         PROMPT;
     }
 
@@ -94,6 +99,13 @@ final class YoutubeSummarizerAgent implements Agent, HasStructuredOutput
                     ->description('One-sentence verdict, witty and shareable, under 150 characters.')
                     ->required(),
             ]),
+            'tutorial_steps' => $schema->array()->items(
+                $schema->object(fn (JsonSchema $s): array => [
+                    'step'   => $s->integer()->required(),
+                    'time'   => $s->string()->required(),
+                    'action' => $s->string()->required(),
+                ]),
+            )->required(),
         ];
     }
 }

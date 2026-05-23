@@ -17,9 +17,10 @@ final class FeedbackController
 
     public function send(FeedbackRequest $request): \Illuminate\Http\JsonResponse
     {
+        $validated = $request->validated();
         $command = new SendFeedbackCommand(
-            message: $request->validated('message'),
-            email: $request->validated('email'),
+            message: (string) ($validated['message'] ?? ''),
+            email: isset($validated['email']) && is_string($validated['email']) ? $validated['email'] : null,
         );
 
         $this->handler->handle($command);

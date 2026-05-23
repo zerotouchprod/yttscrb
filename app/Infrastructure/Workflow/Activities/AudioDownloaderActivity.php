@@ -12,7 +12,7 @@ use Workflow\Activity;
 
 final class AudioDownloaderActivity extends Activity
 {
-    public $tries = 3;
+    public int $tries = 3;
 
     public function execute(string $taskId, string $youtubeUrl): DownloadedAudioResult
     {
