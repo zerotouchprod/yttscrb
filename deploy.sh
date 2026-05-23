@@ -80,6 +80,15 @@ fi
 create_secret_if_missing() {
     if kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
         echo "=== Secret '$SECRET_NAME' found ==="
+        # Ensure SENTRY_DSN key exists (add if missing, only if env var is set)
+        local sentry_dsn="${YTSCRB_SENTRY_DSN:-${SENTRY_DSN:-}}"
+        if [[ -n "$sentry_dsn" ]]; then
+            if ! kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data.SENTRY_DSN}" >/dev/null 2>&1; then
+                echo "=== Adding SENTRY_DSN to existing secret ==="
+                kubectl patch secret "$SECRET_NAME" -n "$NAMESPACE" \
+                    -p "{\"data\":{\"SENTRY_DSN\":\"$(echo -n "$sentry_dsn" | base64 -w0)\"}}"
+            fi
+        fi
         return 0
     fi
 
@@ -89,6 +98,7 @@ create_secret_if_missing() {
     local groq_key="${YTSCRB_GROQ_API_KEY:-${GROQ_API_KEY:-}}"
     local openai_key="${YTSCRB_OPENAI_API_KEY:-${OPENAI_API_KEY:-}}"
     local deepseek_key="${YTSCRB_DEEPSEEK_API_KEY:-${DEEPSEEK_API_KEY:-}}"
+    local sentry_dsn="${YTSCRB_SENTRY_DSN:-${SENTRY_DSN:-}}"
 
     local missing_vars=()
     if [[ -z "$groq_key" ]]; then
@@ -140,6 +150,7 @@ create_secret_if_missing() {
         --from-literal=GROQ_API_KEY="$groq_key" \
         --from-literal=OPENAI_API_KEY="$openai_key" \
         --from-literal=DEEPSEEK_API_KEY="$deepseek_key" \
+        --from-literal=SENTRY_DSN="$sentry_dsn" \
         --dry-run=client -o yaml | kubectl apply -f -
 
     echo "=== Secret '$SECRET_NAME' created successfully ==="
@@ -199,6 +210,18 @@ if kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data.REDIS_P
     fi
 fi
 
+# Validate SENTRY_DSN (optional but recommended)
+if kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data.SENTRY_DSN}" >/dev/null 2>&1; then
+    SENTRY_DSN_VAL=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data.SENTRY_DSN}" 2>/dev/null | base64 -d)
+    if [[ -n "$SENTRY_DSN_VAL" ]]; then
+        echo "  SENTRY_DSN: present (${#SENTRY_DSN_VAL} chars)"
+    else
+        echo "  SENTRY_DSN: empty — error tracking disabled"
+    fi
+else
+    echo "  SENTRY_DSN: not set — error tracking disabled"
+fi
+
 echo "  Secret validation: OK"
 
 # ── Push to GHCR (skip if --tag used) ─────────────────────────
@@ -218,6 +241,7 @@ echo "=== Upgrading Helm release '$RELEASE' in namespace '$NAMESPACE' ==="
 helm upgrade "$RELEASE" "$HELM_CHART" \
     --namespace "$NAMESPACE" \
     --set image.tag="$TAG" \
+    --set app.env.SENTRY_RELEASE="$TAG" \
     --timeout 5m \
     --wait
 

@@ -48,6 +48,7 @@ app:
     WORKFLOW_CONNECTION: redis
     TRANSCRIPTION_PROVIDER: groq
     SUMMARY_PROVIDER: openai
+    SENTRY_RELEASE: ""
   secrets:
     existingSecret: yttscrb-secrets
 
