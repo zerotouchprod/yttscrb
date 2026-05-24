@@ -143,7 +143,7 @@
 
       <!-- Highlights tab -->
       <div v-show="activeTab === 'highlights'" id="panel-highlights" role="tabpanel">
-        <HighlightReel :highlights="renderedSummary?.highlights ?? []" class="mb-5" />
+        <HighlightReel :highlights="renderedSummary?.highlights ?? []" :share-url="publicPageUrl" class="mb-5" />
       </div>
 
     </div>
@@ -158,7 +158,7 @@
   </div>
 </template>
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import SummaryResult from './SummaryResult.vue';
 import ResourceCatcher from './ResourceCatcher.vue';
 import ClickbaitVerdict from './ClickbaitVerdict.vue';
@@ -168,13 +168,20 @@ import HighlightReel from './HighlightReel.vue';
 import ContentMetaBadge from './ContentMetaBadge.vue';
 import { formatDuration, formatTimecode } from '../composables/useFormatting.js';
 
-defineProps({
+const props = defineProps({
   task: Object, statusBadgeClass: String, processingProgress: Number, processingStep: Object,
   renderedSummary: Object, groupedTranscript: Array,
   copySummaryLabel: String, copyTranscriptLabel: String,
 });
 const activeTab = defineModel('activeTab', { default: 'summary' });
 defineEmits(['copySummary', 'copyTranscript', 'retry']);
+
+/** Full public URL for sharing highlights (tubesum.app/v/{slug}). */
+const publicPageUrl = computed(() => {
+  const link = props.task?._links?.public_page;
+  if (!link) return '';
+  return window.location.origin + link;
+});
 
 /** Shared YouTube iframe ref — one player for both tabs. */
 const youtubeIframe = ref(null);

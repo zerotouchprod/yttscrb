@@ -47,6 +47,7 @@
 <script setup>
 const props = defineProps({
   highlights: { type: Array, required: true },
+  shareUrl: { type: String, default: '' },
 })
 
 function categoryEmoji(category) {
@@ -72,7 +73,8 @@ function categoryBg(category) {
 }
 
 function shareMoment(moment) {
-  const text = `🔥 "${moment.title}" — ${moment.why_notable}\n\n📺 Full transcript: ${window.location.href}`
+  const publicUrl = props.shareUrl || window.location.href
+  const text = `🔥 "${moment.title}" — ${moment.why_notable}\n\n📺 Full analysis: ${publicUrl}`
   const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
   window.open(url, '_blank', 'noopener,noreferrer')
 }
