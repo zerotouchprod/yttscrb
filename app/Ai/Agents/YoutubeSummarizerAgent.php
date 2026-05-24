@@ -56,6 +56,27 @@ final class YoutubeSummarizerAgent implements Agent, HasStructuredOutput
         - Chapters must cover the entire video sequentially without time gaps.
         - "chapters": Array of objects with "title", "start_timecode", and "end_timecode". Use format MM:SS or HH:MM:SS.
 
+        6. FLASHCARDS (for study/memorization):
+        - Extract 5-15 question-answer pairs suitable for Anki/flashcard study.
+        - Each card: "question" (based on a key concept from the video), "answer" (concise, directly from the transcript), "source_timecode" (where the answer appears), "difficulty" (one of: "easy", "medium", "hard").
+        - Focus on factual, testable knowledge — definitions, steps, comparisons, numbers.
+        - If the video has no study-worthy content (pure entertainment, vlog), return an empty array.
+        - "flashcards": Array of objects with "question", "answer", "source_timecode", "difficulty".
+
+        7. HIGHLIGHTS (best moments):
+        - Pick the 3 most impactful, surprising, funny, or insightful moments from the video.
+        - These are NOT the same as key_points — they are emotional/entertainment peaks: the shocking revelation, the joke, the mic-drop quote, the "aha!" moment.
+        - Each highlight: "timecode", "title" (short label), "why_notable" (one sentence explaining why this moment stands out), "category" (one of: "surprise", "insight", "humor", "revelation", "quote").
+        - "highlights": Array of objects with "timecode", "title", "why_notable", "category".
+
+        8. CONTENT META:
+        - Evaluate the transcript's complexity and return:
+        - "complexity": One of "beginner", "intermediate", "advanced", "expert".
+        - "reading_time_minutes": Estimated reading time in minutes (based on ~200 words per minute).
+        - "jargon_density": One of "low", "moderate", "high".
+        - "target_audience": A 1-2 sentence description of who this video is for (e.g., "Software developers with basic Kubernetes experience").
+        - "content_meta": Object with "complexity", "reading_time_minutes", "jargon_density", "target_audience".
+
         Respond entirely in English. Do not invent content not present in the transcript.
         PROMPT;
     }
@@ -115,6 +136,36 @@ final class YoutubeSummarizerAgent implements Agent, HasStructuredOutput
                     )->required(),
                 ]),
             )->required(),
+            'flashcards' => $schema->array()->items(
+                $schema->object(fn (JsonSchema $s): array => [
+                    'question'        => $s->string()->required(),
+                    'answer'          => $s->string()->required(),
+                    'source_timecode' => $s->string()->required(),
+                    'difficulty'      => $s->string()->description(
+                        'One of: easy, medium, hard',
+                    )->required(),
+                ]),
+            )->required(),
+            'highlights' => $schema->array()->items(
+                $schema->object(fn (JsonSchema $s): array => [
+                    'timecode'    => $s->string()->required(),
+                    'title'       => $s->string()->required(),
+                    'why_notable' => $s->string()->required(),
+                    'category'    => $s->string()->description(
+                        'One of: surprise, insight, humor, revelation, quote',
+                    )->required(),
+                ]),
+            )->required(),
+            'content_meta' => $schema->object(fn (JsonSchema $s): array => [
+                'complexity'           => $s->string()->description(
+                    'One of: beginner, intermediate, advanced, expert',
+                )->required(),
+                'reading_time_minutes' => $s->integer()->required(),
+                'jargon_density'       => $s->string()->description(
+                    'One of: low, moderate, high',
+                )->required(),
+                'target_audience'      => $s->string()->required(),
+            ]),
         ];
     }
 }

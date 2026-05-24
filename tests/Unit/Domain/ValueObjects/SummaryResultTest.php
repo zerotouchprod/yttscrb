@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Domain\ValueObjects\ContentMeta;
+use App\Domain\ValueObjects\Flashcard;
+use App\Domain\ValueObjects\HighlightMoment;
 use App\Domain\ValueObjects\SummaryChapter;
 use App\Domain\ValueObjects\SummaryKeyPoint;
 use App\Domain\ValueObjects\SummaryResult;
@@ -37,6 +40,9 @@ it('serializes to array via toArray()', function (): void {
         'clickbait_verdict' => null,
         'tutorial_steps'    => [],
         'chapters'          => [],
+        'flashcards'        => [],
+        'highlights'        => [],
+        'content_meta'      => null,
     ]);
 });
 
@@ -217,4 +223,162 @@ it('fromArray handles missing tutorial_steps', function (): void {
     $result = SummaryResult::fromArray($data);
 
     expect($result->tutorialSteps())->toBe([]);
+});
+
+it('stores and retrieves flashcards', function (): void {
+    $card = new Flashcard('Q?', 'A.', '00:01:00', 'easy');
+    $result = new SummaryResult('Intro', [], flashCards: [$card]);
+
+    expect($result->flashCards())->toHaveCount(1)
+        ->and($result->flashCards()[0]->question)->toBe('Q?')
+        ->and($result->flashCards()[0]->answer)->toBe('A.')
+        ->and($result->flashCards()[0]->sourceTimecode)->toBe('00:01:00')
+        ->and($result->flashCards()[0]->difficulty)->toBe('easy');
+});
+
+it('defaults flashCards to empty array', function (): void {
+    $result = new SummaryResult('Intro', []);
+
+    expect($result->flashCards())->toBe([]);
+});
+
+it('serializes flashcards in toArray', function (): void {
+    $card = new Flashcard('Q', 'A', '00:30', 'medium');
+    $result = new SummaryResult('Intro', [], flashCards: [$card]);
+
+    expect($result->toArray()['flashcards'])->toBe([
+        ['question' => 'Q', 'answer' => 'A', 'source_timecode' => '00:30', 'difficulty' => 'medium'],
+    ]);
+});
+
+it('deserializes flashcards from fromArray', function (): void {
+    $data = [
+        'introduction' => 'Intro',
+        'key_points'   => [],
+        'flashcards'   => [
+            ['question' => 'Q1', 'answer' => 'A1', 'source_timecode' => '01:00', 'difficulty' => 'hard'],
+        ],
+    ];
+
+    $result = SummaryResult::fromArray($data);
+
+    expect($result->flashCards())->toHaveCount(1)
+        ->and($result->flashCards()[0]->question)->toBe('Q1')
+        ->and($result->flashCards()[0]->answer)->toBe('A1');
+});
+
+it('fromArray handles missing flashcards key', function (): void {
+    $data = ['introduction' => 'No cards', 'key_points' => []];
+
+    $result = SummaryResult::fromArray($data);
+
+    expect($result->flashCards())->toBe([]);
+});
+
+it('stores and retrieves highlights', function (): void {
+    $highlight = new HighlightMoment('00:10:00', 'Big moment', 'Very notable.', 'surprise');
+    $result = new SummaryResult('Intro', [], highlights: [$highlight]);
+
+    expect($result->highlights())->toHaveCount(1)
+        ->and($result->highlights()[0]->timecode)->toBe('00:10:00')
+        ->and($result->highlights()[0]->title)->toBe('Big moment')
+        ->and($result->highlights()[0]->whyNotable)->toBe('Very notable.')
+        ->and($result->highlights()[0]->category)->toBe('surprise');
+});
+
+it('defaults highlights to empty array', function (): void {
+    $result = new SummaryResult('Intro', []);
+
+    expect($result->highlights())->toBe([]);
+});
+
+it('serializes highlights in toArray', function (): void {
+    $highlight = new HighlightMoment('05:00', 'Funny bit', 'Laughs.', 'humor');
+    $result = new SummaryResult('Intro', [], highlights: [$highlight]);
+
+    expect($result->toArray()['highlights'])->toBe([
+        ['timecode' => '05:00', 'title' => 'Funny bit', 'why_notable' => 'Laughs.', 'category' => 'humor'],
+    ]);
+});
+
+it('deserializes highlights from fromArray', function (): void {
+    $data = [
+        'introduction' => 'Intro',
+        'key_points'   => [],
+        'highlights'   => [
+            ['timecode' => '03:00', 'title' => 'Wow', 'why_notable' => 'Shocking.', 'category' => 'revelation'],
+        ],
+    ];
+
+    $result = SummaryResult::fromArray($data);
+
+    expect($result->highlights())->toHaveCount(1)
+        ->and($result->highlights()[0]->title)->toBe('Wow')
+        ->and($result->highlights()[0]->category)->toBe('revelation');
+});
+
+it('fromArray handles missing highlights key', function (): void {
+    $data = ['introduction' => 'No highlights', 'key_points' => []];
+
+    $result = SummaryResult::fromArray($data);
+
+    expect($result->highlights())->toBe([]);
+});
+
+it('stores and retrieves content meta', function (): void {
+    $meta = new ContentMeta('beginner', 5, 'low', 'Anyone');
+    $result = new SummaryResult('Intro', [], contentMeta: $meta);
+
+    $retrieved = $result->contentMeta();
+    \PHPUnit\Framework\Assert::assertNotNull($retrieved);
+    expect($retrieved->complexity)->toBe('beginner')
+        ->and($retrieved->readingTimeMinutes)->toBe(5);
+});
+
+it('defaults contentMeta to null', function (): void {
+    $result = new SummaryResult('Intro', []);
+
+    expect($result->contentMeta())->toBeNull();
+});
+
+it('serializes contentMeta in toArray', function (): void {
+    $meta = new ContentMeta('advanced', 30, 'high', 'Experts');
+    $result = new SummaryResult('Intro', [], contentMeta: $meta);
+
+    expect($result->toArray()['content_meta'])->toBe([
+        'complexity' => 'advanced', 'reading_time_minutes' => 30,
+        'jargon_density' => 'high', 'target_audience' => 'Experts',
+    ]);
+});
+
+it('serializes null contentMeta in toArray', function (): void {
+    $result = new SummaryResult('Intro', []);
+
+    expect($result->toArray()['content_meta'])->toBeNull();
+});
+
+it('deserializes contentMeta from fromArray', function (): void {
+    $data = [
+        'introduction' => 'Intro',
+        'key_points'   => [],
+        'content_meta' => [
+            'complexity' => 'intermediate', 'reading_time_minutes' => 12,
+            'jargon_density' => 'moderate', 'target_audience' => 'Devs',
+        ],
+    ];
+
+    $result = SummaryResult::fromArray($data);
+
+    $retrieved = $result->contentMeta();
+    \PHPUnit\Framework\Assert::assertNotNull($retrieved);
+    expect($retrieved->complexity)->toBe('intermediate')
+        ->and($retrieved->readingTimeMinutes)->toBe(12);
+});
+
+it('fromArray handles missing content_meta key', function (): void {
+    $data = ['introduction' => 'No meta', 'key_points' => []];
+
+    $result = SummaryResult::fromArray($data);
+
+    expect($result->contentMeta())->toBeNull();
 });

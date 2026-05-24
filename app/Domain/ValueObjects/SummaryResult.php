@@ -11,6 +11,8 @@ final readonly class SummaryResult
      * @param ResourceItem[]    $resources
      * @param TutorialStep[]    $tutorialSteps
      * @param SummaryChapter[]  $chapters
+     * @param Flashcard[]       $flashCards
+     * @param HighlightMoment[] $highlights
      */
     public function __construct(
         private string $introduction,
@@ -20,6 +22,9 @@ final readonly class SummaryResult
         private ?ClickbaitVerdict $clickbaitVerdict = null,
         private array $tutorialSteps = [],
         private array $chapters = [],
+        private array $flashCards = [],
+        private array $highlights = [],
+        private ?ContentMeta $contentMeta = null,
     ) {
     }
 
@@ -71,6 +76,27 @@ final readonly class SummaryResult
     }
 
     /**
+     * @return Flashcard[]
+     */
+    public function flashCards(): array
+    {
+        return $this->flashCards;
+    }
+
+    /**
+     * @return HighlightMoment[]
+     */
+    public function highlights(): array
+    {
+        return $this->highlights;
+    }
+
+    public function contentMeta(): ?ContentMeta
+    {
+        return $this->contentMeta;
+    }
+
+    /**
      * Сериализация для хранения в JSONB-колонке.
      *
      * @internal Used only by persistence layer. HTTP serialization is handled by
@@ -83,7 +109,10 @@ final readonly class SummaryResult
      *     resources: array<int, array{type: string, name: string, url: string|null}>,
      *     clickbait_verdict: array{score: int, comment: string}|null,
      *     tutorial_steps: array<int, array{step: int, time: string, action: string}>,
-     *     chapters: array<int, array{title: string, start_timecode: string, end_timecode: string}>
+     *     chapters: array<int, array{title: string, start_timecode: string, end_timecode: string}>,
+     *     flashcards: array<int, array{question: string, answer: string, source_timecode: string, difficulty: string}>,
+     *     highlights: array<int, array{timecode: string, title: string, why_notable: string, category: string}>,
+     *     content_meta: array{complexity: string, reading_time_minutes: int, jargon_density: string, target_audience: string}|null
      * }
      */
     public function toArray(): array
@@ -96,6 +125,9 @@ final readonly class SummaryResult
             'clickbait_verdict' => $this->clickbaitVerdict?->toArray(),
             'tutorial_steps'    => array_map(fn (TutorialStep $s) => $s->toArray(), $this->tutorialSteps),
             'chapters'          => array_map(fn (SummaryChapter $ch) => $ch->toArray(), $this->chapters),
+            'flashcards'        => array_map(fn (Flashcard $fc) => $fc->toArray(), $this->flashCards),
+            'highlights'        => array_map(fn (HighlightMoment $hm) => $hm->toArray(), $this->highlights),
+            'content_meta'      => $this->contentMeta?->toArray(),
         ];
     }
 
@@ -109,7 +141,10 @@ final readonly class SummaryResult
      *     resources?: array<int, array{type: string, name: string, url?: string|null}>,
      *     clickbait_verdict?: array{score: int, comment: string}|null,
      *     tutorial_steps?: array<int, array{step: int, time: string, action: string}>,
-     *     chapters?: array<int, array{title: string, start_timecode: string, end_timecode: string}>
+     *     chapters?: array<int, array{title: string, start_timecode: string, end_timecode: string}>,
+     *     flashcards?: array<int, array{question: string, answer: string, source_timecode: string, difficulty?: string}>,
+     *     highlights?: array<int, array{timecode: string, title: string, why_notable: string, category?: string}>,
+     *     content_meta?: array{complexity: string, reading_time_minutes: int, jargon_density: string, target_audience: string}|null
      * } $data
      */
     public static function fromArray(array $data): self
@@ -136,6 +171,17 @@ final readonly class SummaryResult
                 fn (array $ch) => SummaryChapter::fromArray($ch),
                 $data['chapters'] ?? [],
             ),
+            flashCards: array_map(
+                fn (array $fc) => Flashcard::fromArray($fc),
+                $data['flashcards'] ?? [],
+            ),
+            highlights: array_map(
+                fn (array $hm) => HighlightMoment::fromArray($hm),
+                $data['highlights'] ?? [],
+            ),
+            contentMeta: isset($data['content_meta'])
+                ? ContentMeta::fromArray($data['content_meta'])
+                : null,
         );
     }
 }

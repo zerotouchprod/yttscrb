@@ -8,7 +8,7 @@ use OpenApi\Attributes as OA;
 
 #[OA\Schema(
     schema: 'Summary',
-    required: ['introduction', 'key_points', 'conclusion', 'resources', 'tutorial_steps', 'chapters'],
+    required: ['introduction', 'key_points', 'conclusion', 'resources', 'tutorial_steps', 'chapters', 'flashcards', 'highlights'],
     properties: [
         new OA\Property(property: 'introduction', type: 'string'),
         new OA\Property(
@@ -73,6 +73,46 @@ use OpenApi\Attributes as OA;
                 ],
                 type: 'object',
             ),
+        ),
+        new OA\Property(
+            property: 'flashcards',
+            type: 'array',
+            items: new OA\Items(
+                required: ['question', 'answer', 'source_timecode', 'difficulty'],
+                properties: [
+                    new OA\Property(property: 'question', type: 'string', example: 'What is the Dependency Rule?'),
+                    new OA\Property(property: 'answer', type: 'string', example: 'Source code dependencies can only point inwards.'),
+                    new OA\Property(property: 'source_timecode', type: 'string', example: '00:05:30'),
+                    new OA\Property(property: 'difficulty', type: 'string', example: 'medium'),
+                ],
+                type: 'object',
+            ),
+        ),
+        new OA\Property(
+            property: 'highlights',
+            type: 'array',
+            items: new OA\Items(
+                required: ['timecode', 'title', 'why_notable', 'category'],
+                properties: [
+                    new OA\Property(property: 'timecode', type: 'string', example: '00:12:34'),
+                    new OA\Property(property: 'title', type: 'string', example: 'The big reveal'),
+                    new OA\Property(property: 'why_notable', type: 'string', example: 'Speaker unexpectedly announces open-source.'),
+                    new OA\Property(property: 'category', type: 'string', example: 'surprise'),
+                ],
+                type: 'object',
+            ),
+        ),
+        new OA\Property(
+            property: 'content_meta',
+            required: ['complexity', 'reading_time_minutes', 'jargon_density', 'target_audience'],
+            properties: [
+                new OA\Property(property: 'complexity', type: 'string', example: 'intermediate'),
+                new OA\Property(property: 'reading_time_minutes', type: 'integer', example: 12),
+                new OA\Property(property: 'jargon_density', type: 'string', example: 'moderate'),
+                new OA\Property(property: 'target_audience', type: 'string', example: 'Software developers with basic Kubernetes experience'),
+            ],
+            type: 'object',
+            nullable: true,
         ),
     ],
 )]

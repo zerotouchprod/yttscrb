@@ -21,7 +21,10 @@ final class SummaryResource extends JsonResource
      *     resources: array<int, array{type: string, name: string, url: string|null}>,
      *     clickbait_verdict: array{score: int, comment: string}|null,
      *     tutorial_steps: array<int, array{step: int, time: string, action: string}>,
-     *     chapters: array<int, array{title: string, start_timecode: string, end_timecode: string}>
+     *     chapters: array<int, array{title: string, start_timecode: string, end_timecode: string}>,
+     *     flashcards: array<int, array{question: string, answer: string, source_timecode: string, difficulty: string}>,
+     *     highlights: array<int, array{timecode: string, title: string, why_notable: string, category: string}>,
+     *     content_meta: array{complexity: string, reading_time_minutes: int, jargon_density: string, target_audience: string}|null
      * }
      */
     public function toArray(Request $request): array
@@ -62,6 +65,25 @@ final class SummaryResource extends JsonResource
                 ],
                 $this->resource->chapters(),
             ),
+            'flashcards' => array_map(
+                fn (\App\Domain\ValueObjects\Flashcard $fc) => [
+                    'question'        => $fc->question,
+                    'answer'          => $fc->answer,
+                    'source_timecode' => $fc->sourceTimecode,
+                    'difficulty'      => $fc->difficulty,
+                ],
+                $this->resource->flashCards(),
+            ),
+            'highlights' => array_map(
+                fn (\App\Domain\ValueObjects\HighlightMoment $hm) => [
+                    'timecode'    => $hm->timecode,
+                    'title'       => $hm->title,
+                    'why_notable' => $hm->whyNotable,
+                    'category'    => $hm->category,
+                ],
+                $this->resource->highlights(),
+            ),
+            'content_meta' => $this->resource->contentMeta()?->toArray(),
         ];
     }
 }
