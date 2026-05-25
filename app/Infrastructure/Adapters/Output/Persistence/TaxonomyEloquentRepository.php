@@ -91,8 +91,8 @@ final class TaxonomyEloquentRepository implements TaxonomyRepositoryInterface
             ->whereIn('id', $taskIds)
             ->where('status', 'completed')
             ->where(function ($q): void {
-                $q->whereNull('is_dmca_removed')
-                    ->orWhere('is_dmca_removed', false);
+                $q->whereNull('dmca_removed_at')
+                    ->orWhere('dmca_removed_at', false);
             })
             ->orderBy('completed_at', 'desc');
 
