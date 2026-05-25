@@ -90,10 +90,7 @@ final class TaxonomyEloquentRepository implements TaxonomyRepositoryInterface
         $query = MediaTaskModel::query()
             ->whereIn('id', $taskIds)
             ->where('status', 'completed')
-            ->where(function ($q): void {
-                $q->whereNull('dmca_removed_at')
-                    ->orWhere('dmca_removed_at', false);
-            })
+            ->whereNull('dmca_removed_at')
             ->orderBy('completed_at', 'desc');
 
         $total = $query->count();
