@@ -31,8 +31,8 @@ final class SeedWowContent extends Command
     /** @var int Minimum video duration in seconds (2 min — excludes Shorts) */
     private const MIN_DURATION_SEC = 120;
 
-    /** @var int Maximum video duration in seconds (30 min) */
-    private const MAX_DURATION_SEC = 1800;
+    /** @var int Maximum video duration in seconds (300 min) */
+    private const MAX_DURATION_SEC = 18000;
 
     public function __construct(
         private readonly MediaTaskRepositoryInterface $taskRepository,

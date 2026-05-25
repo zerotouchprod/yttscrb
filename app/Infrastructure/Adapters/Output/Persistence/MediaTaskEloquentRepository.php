@@ -369,7 +369,7 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
             $task->setTitle($model->title);
         }
 
-        if ($model->result_text !== null) {
+        if ($model->result_text !== null && trim($model->result_text) !== '') {
             $this->setPrivate($task, 'resultText', new TranscriptionText($model->result_text));
         }
 
