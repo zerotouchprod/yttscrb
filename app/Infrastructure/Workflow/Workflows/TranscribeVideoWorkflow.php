@@ -11,6 +11,7 @@ use App\Infrastructure\Workflow\Activities\CleanupActivity;
 use App\Infrastructure\Workflow\Activities\GroqTranscriberActivity;
 use App\Infrastructure\Workflow\Activities\PersistResultActivity;
 use App\Infrastructure\Workflow\Activities\SubtitleExtractorActivity;
+use App\Infrastructure\Workflow\Activities\TaxonomyTaggingActivity;
 use App\Infrastructure\Workflow\DTO\DownloadedAudioResult;
 use App\Infrastructure\Workflow\DTO\WorkflowTranscriptionResult;
 use Generator;
@@ -76,6 +77,8 @@ final class TranscribeVideoWorkflow extends Workflow
             $summary,
             $durationSec,
         );
+
+        yield activity(TaxonomyTaggingActivity::class, $taskId);
 
         return null;
     }

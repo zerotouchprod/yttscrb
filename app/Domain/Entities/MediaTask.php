@@ -24,6 +24,8 @@ final class MediaTask
     private ?string $title = null;
     private ?string $slug = null;
     private ?DateTimeImmutable $dmcaRemovedAt = null;
+    private ?string $channelName = null;
+    private ?string $channelSlug = null;
 
     private function __construct(
         private readonly string $id,
@@ -150,6 +152,26 @@ final class MediaTask
     public function setSlug(string $slug): void
     {
         $this->slug = $slug;
+    }
+
+    public function channelName(): ?string
+    {
+        return $this->channelName;
+    }
+
+    public function setChannelName(string $channelName): void
+    {
+        $this->channelName = $channelName;
+    }
+
+    public function channelSlug(): ?string
+    {
+        return $this->channelSlug;
+    }
+
+    public function setChannelSlug(string $channelSlug): void
+    {
+        $this->channelSlug = $channelSlug;
     }
 
     public function isDmcaRemoved(): bool

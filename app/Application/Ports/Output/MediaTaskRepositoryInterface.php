@@ -22,6 +22,11 @@ interface MediaTaskRepositoryInterface
 
     public function findById(string $id): ?MediaTask;
 
+    /**
+     * @throws \RuntimeException when task not found
+     */
+    public function findByIdOrFail(string $id): MediaTask;
+
     public function findBySlug(string $slug): ?MediaTask;
 
     public function findCompletedByVideoId(VideoId $videoId): ?MediaTask;
@@ -90,4 +95,11 @@ interface MediaTaskRepositoryInterface
      * @return array<int, array{task_id: string, video_id: string, title: string, slug: string|null, similarity: float}>
      */
     public function findSimilar(string $taskId, int $limit = 5): array;
+
+    /**
+     * Find completed tasks that have no taxonomy entries (for backfill).
+     *
+     * @return \App\Domain\Entities\MediaTask[]
+     */
+    public function findCompletedWithoutTaxonomies(int $limit): array;
 }

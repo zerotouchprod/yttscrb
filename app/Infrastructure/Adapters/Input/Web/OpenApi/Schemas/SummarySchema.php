@@ -8,7 +8,7 @@ use OpenApi\Attributes as OA;
 
 #[OA\Schema(
     schema: 'Summary',
-    required: ['introduction', 'key_points', 'conclusion', 'resources', 'tutorial_steps', 'chapters', 'flashcards', 'highlights', 'blog_post'],
+    required: ['introduction', 'key_points', 'conclusion', 'resources', 'tutorial_steps', 'chapters', 'flashcards', 'highlights', 'blog_post', 'linkedin_post', 'topics'],
     properties: [
         new OA\Property(property: 'introduction', type: 'string'),
         new OA\Property(
@@ -138,6 +138,25 @@ use OpenApi\Attributes as OA;
             ],
             type: 'object',
             nullable: true,
+        ),
+        new OA\Property(
+            property: 'linkedin_post',
+            required: ['hook', 'body', 'call_to_action'],
+            properties: [
+                new OA\Property(property: 'hook', type: 'string', example: 'Most teams ship slow. Here is why.'),
+                new OA\Property(property: 'body', type: 'string', example: 'The real bottleneck is invisible hand-offs.\n\nSecond paragraph.'),
+                new OA\Property(property: 'call_to_action', type: 'string', example: 'Full AI summary → [URL]'),
+            ],
+            type: 'object',
+            nullable: true,
+        ),
+        new OA\Property(
+            property: 'topics',
+            type: 'array',
+            items: new OA\Items(
+                type: 'string',
+                example: 'machine learning',
+            ),
         ),
     ],
 )]

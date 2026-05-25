@@ -39,3 +39,14 @@ Route::get('/pricing', function () {
 Route::get('/contact', function () {
     return view('contact');
 });
+
+// Taxonomy pages: topic and speaker channels — SEO-indexed
+Route::get('/topics', [\App\Infrastructure\Adapters\Input\Web\TaxonomyController::class, 'topicsIndex'])->name('topics.index');
+Route::get('/topic/{slug}', [\App\Infrastructure\Adapters\Input\Web\TaxonomyController::class, 'show'])
+    ->where('slug', '[a-z0-9\-]+')
+    ->defaults('type', 'topic')
+    ->name('topic.show');
+Route::get('/speaker/{slug}', [\App\Infrastructure\Adapters\Input\Web\TaxonomyController::class, 'show'])
+    ->where('slug', '[a-z0-9\-]+')
+    ->defaults('type', 'speaker')
+    ->name('speaker.show');

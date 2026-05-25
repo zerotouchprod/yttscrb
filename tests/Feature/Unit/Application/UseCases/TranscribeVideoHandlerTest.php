@@ -38,6 +38,11 @@ final class TranscribeVideoHandlerTest extends TestCase
                 $this->saveCalls++;
             }
 
+            public function findByIdOrFail(string $id): \App\Domain\Entities\MediaTask
+            {
+                throw new \RuntimeException("Not found");
+            }
+
             public function findById(string $id): ?MediaTask
             {
                 return $id === $this->existingTask->id() ? $this->existingTask : null;
@@ -97,6 +102,10 @@ final class TranscribeVideoHandlerTest extends TestCase
             {
                 return new LengthAwarePaginator(collect(), 0, $perPage, $page);
             }
+            public function findCompletedWithoutTaxonomies(int $limit): array
+            {
+                return [];
+            }
             public function findSimilar(string $taskId, int $limit = 5): array
             {
                 return [];
@@ -136,6 +145,11 @@ final class TranscribeVideoHandlerTest extends TestCase
             {
                 $this->saveCalls++;
                 $this->lastSavedTask = $mediaTask;
+            }
+
+            public function findByIdOrFail(string $id): \App\Domain\Entities\MediaTask
+            {
+                throw new \RuntimeException("Not found");
             }
 
             public function findById(string $id): ?MediaTask
@@ -194,6 +208,10 @@ final class TranscribeVideoHandlerTest extends TestCase
             public function findPublicCompletedPaginated(int $perPage, int $page): LengthAwarePaginator
             {
                 return new LengthAwarePaginator(collect(), 0, $perPage, $page);
+            }
+            public function findCompletedWithoutTaxonomies(int $limit): array
+            {
+                return [];
             }
             public function findSimilar(string $taskId, int $limit = 5): array
             {
@@ -241,6 +259,11 @@ final class TranscribeVideoHandlerTest extends TestCase
             public function save(MediaTask $mediaTask): void
             {
             }
+            public function findByIdOrFail(string $id): \App\Domain\Entities\MediaTask
+            {
+                throw new \RuntimeException("Not found");
+            }
+
             public function findById(string $id): ?MediaTask
             {
                 return null;
@@ -286,6 +309,10 @@ final class TranscribeVideoHandlerTest extends TestCase
             public function findPublicCompletedPaginated(int $perPage, int $page): LengthAwarePaginator
             {
                 return new LengthAwarePaginator(collect([$this->task]), 1, $perPage, $page);
+            }
+            public function findCompletedWithoutTaxonomies(int $limit): array
+            {
+                return [];
             }
             public function findSimilar(string $taskId, int $limit = 5): array
             {

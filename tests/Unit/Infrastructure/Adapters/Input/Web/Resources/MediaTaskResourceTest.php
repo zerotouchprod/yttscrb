@@ -64,7 +64,8 @@ final class MediaTaskResourceTest extends TestCase
             Uuid::uuid4()->toString(),
             new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
         );
-        $task->startProcessing("wf-test"); $task->complete('Transcript text', null, 120);
+        $task->startProcessing("wf-test");
+        $task->complete('Transcript text', null, 120);
 
         $resource = new MediaTaskResource($task);
         /** @var array<string, mixed> $result */
@@ -86,7 +87,8 @@ final class MediaTaskResourceTest extends TestCase
         );
         $task->setTitle('Test Video');
         $task->setSlug('test-video');
-        $task->startProcessing("wf-test"); $task->complete('Transcript text', null, 120);
+        $task->startProcessing("wf-test");
+        $task->complete('Transcript text', null, 120);
 
         $resource = new MediaTaskResource($task);
         /** @var array<string, mixed> $result */
@@ -105,7 +107,8 @@ final class MediaTaskResourceTest extends TestCase
         );
         $task->setTitle('Test Video');
         $task->setSlug('test-video');
-        $task->startProcessing("wf-test"); $task->complete('Transcript text', null, 120);
+        $task->startProcessing("wf-test");
+        $task->complete('Transcript text', null, 120);
         $task->removeForDmca();
 
         $resource = new MediaTaskResource($task);
@@ -123,7 +126,8 @@ final class MediaTaskResourceTest extends TestCase
             Uuid::uuid4()->toString(),
             new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
         );
-        $task->startProcessing("wf-test"); $task->complete('Transcript text', null, 120);
+        $task->startProcessing("wf-test");
+        $task->complete('Transcript text', null, 120);
 
         $resource = new MediaTaskResource($task);
         /** @var array<string, mixed> $result */
@@ -148,7 +152,8 @@ final class MediaTaskResourceTest extends TestCase
             Uuid::uuid4()->toString(),
             new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
         );
-        $task->startProcessing("wf-test"); $task->complete('Transcript text', $summary, 120);
+        $task->startProcessing("wf-test");
+        $task->complete('Transcript text', $summary, 120);
 
         $resource = new MediaTaskResource($task);
         /** @var array<string, mixed> $result */
@@ -172,7 +177,8 @@ final class MediaTaskResourceTest extends TestCase
             Uuid::uuid4()->toString(),
             new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
         );
-        $task->startProcessing("wf-test"); $task->fail('Download timeout');
+        $task->startProcessing("wf-test");
+        $task->fail('Download timeout');
 
         $resource = new MediaTaskResource($task);
         /** @var array<string, mixed> $result */

@@ -37,7 +37,8 @@ final class MediaTaskCollectionTest extends TestCase
         );
         $task->setTitle($title);
         $task->setSlug($slug);
-        $task->startProcessing('wf-test'); $task->complete('Transcript', null, 120);
+        $task->startProcessing('wf-test');
+        $task->complete('Transcript', null, 120);
         return $task;
     }
 

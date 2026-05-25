@@ -26,6 +26,14 @@ it('returns SummaryResult when agent responds with structured data', function ()
             'conclusion'     => 'TDD improves quality.',
             'resources'      => [],
             'tutorial_steps' => [],
+            'chapters'       => [],
+            'flashcards'     => [],
+            'highlights'     => [],
+            'linkedin_post'  => [
+                'hook'           => 'PHP testing is underrated.',
+                'body'           => 'Most teams skip tests. Here is why they should not.',
+                'call_to_action' => 'Full summary → [URL]',
+            ],
         ],
     ]);
 
@@ -42,17 +50,23 @@ it('returns SummaryResult when agent responds with structured data', function ()
         ->and($result->keyPoints()[0]->timecode)->toBe('01:00')
         ->and($result->keyPoints()[0]->title)->toBe('Setup')
         ->and($result->keyPoints()[1]->timecode)->toBe('05:30')
-        ->and($result->conclusion())->toBe('TDD improves quality.');
+        ->and($result->conclusion())->toBe('TDD improves quality.')
+        ->and($result->linkedInPost())->not->toBeNull()
+        ->and($result->linkedInPost()?->hook())->toBe('PHP testing is underrated.');
 });
 
 it('returns SummaryResult with null conclusion when omitted', function (): void {
     YoutubeSummarizerAgent::fake([
         [
-            'introduction'    => 'Brief intro.',
-            'key_points'      => [],
-            'resources'       => [],
-            'tutorial_steps'  => [],
-            // no 'conclusion' key
+            'introduction'   => 'Brief intro.',
+            'key_points'     => [],
+            'resources'      => [],
+            'tutorial_steps' => [],
+            'chapters'       => [],
+            'flashcards'     => [],
+            'highlights'     => [],
+            // no 'conclusion' key — should default to null
+            // no 'linkedin_post' key — should default to null
         ],
     ]);
 
@@ -60,7 +74,8 @@ it('returns SummaryResult with null conclusion when omitted', function (): void 
     $result = $adapter->summarize(new TranscriptionText('Text'), new SummaryOptions());
 
     expect($result->conclusion())->toBeNull()
-        ->and($result->keyPoints())->toBeEmpty();
+        ->and($result->keyPoints())->toBeEmpty()
+        ->and($result->linkedInPost())->toBeNull();
 });
 
 it('wraps RuntimeException into SummaryFailedException when prompt fails', function (): void {

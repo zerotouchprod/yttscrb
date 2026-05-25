@@ -71,6 +71,15 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
         return $model ? $this->toEntity($model) : null;
     }
 
+    public function findByIdOrFail(string $id): MediaTask
+    {
+        $task = $this->findById($id);
+        if ($task === null) {
+            throw new \RuntimeException("MediaTask not found: {$id}");
+        }
+        return $task;
+    }
+
     public function findBySlug(string $slug): ?MediaTask
     {
         /** @var MediaTaskModel|null $model */
@@ -81,6 +90,24 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
             ->first();
 
         return $model ? $this->toEntity($model) : null;
+    }
+
+    /** @return MediaTask[] */
+    /** @return MediaTask[] */
+    public function findCompletedWithoutTaxonomies(int $limit): array
+    {
+        $models = MediaTaskModel::query()
+            ->where('status', TranscriptionStatus::Completed->value)
+            ->whereDoesntHave('taxonomies')
+            ->limit($limit)
+            ->get();
+
+        $result = [];
+        foreach ($models as $model) {
+            /** @var MediaTaskModel $model */
+            $result[] = $this->toEntity($model);
+        }
+        return $result;
     }
 
     public function findCompletedByVideoId(VideoId $videoId): ?MediaTask

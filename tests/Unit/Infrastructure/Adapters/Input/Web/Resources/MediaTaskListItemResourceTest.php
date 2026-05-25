@@ -40,7 +40,8 @@ final class MediaTaskListItemResourceTest extends TestCase
         );
         $task->setTitle('My Video');
         $task->setSlug('my-video');
-        $task->startProcessing("wf-test"); $task->complete('Transcript', null, 120);
+        $task->startProcessing("wf-test");
+        $task->complete('Transcript', null, 120);
 
         $resource = new MediaTaskListItemResource($task);
         /** @var array<string, mixed> $result */
@@ -60,7 +61,8 @@ final class MediaTaskListItemResourceTest extends TestCase
         );
         $task->setTitle('DMCA Video');
         $task->setSlug('dmca-video');
-        $task->startProcessing("wf-test"); $task->complete('Transcript', null, 120);
+        $task->startProcessing("wf-test");
+        $task->complete('Transcript', null, 120);
         $task->removeForDmca();
 
         $resource = new MediaTaskListItemResource($task);

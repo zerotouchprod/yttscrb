@@ -12,6 +12,7 @@ use App\Domain\ValueObjects\ClickbaitVerdict;
 use App\Domain\ValueObjects\ContentMeta;
 use App\Domain\ValueObjects\Flashcard;
 use App\Domain\ValueObjects\HighlightMoment;
+use App\Domain\ValueObjects\LinkedInPost;
 use App\Domain\ValueObjects\ResourceItem;
 use App\Domain\ValueObjects\SummaryChapter;
 use App\Domain\ValueObjects\SummaryKeyPoint;
@@ -250,6 +251,34 @@ final class LaravelAiSummaryAdapter implements SummaryProviderInterface
                 $blogPost = new BlogPost(title: $data['blog_post']['title'], sections: $sections);
             }
 
+            // Parse linkedin_post (optional)
+            $linkedInPost = null;
+            if (isset($data['linkedin_post'])) {
+                Assert::isArray($data['linkedin_post'], 'linkedin_post must be an array.');
+                Assert::keyExists($data['linkedin_post'], 'hook', 'linkedin_post missing hook.');
+                Assert::keyExists($data['linkedin_post'], 'body', 'linkedin_post missing body.');
+                Assert::keyExists($data['linkedin_post'], 'call_to_action', 'linkedin_post missing call_to_action.');
+                Assert::string($data['linkedin_post']['hook'], 'linkedin_post.hook must be a string.');
+                Assert::string($data['linkedin_post']['body'], 'linkedin_post.body must be a string.');
+                Assert::string($data['linkedin_post']['call_to_action'], 'linkedin_post.call_to_action must be a string.');
+
+                $linkedInPost = new LinkedInPost(
+                    hook:          $data['linkedin_post']['hook'],
+                    body:          $data['linkedin_post']['body'],
+                    callToAction:  $data['linkedin_post']['call_to_action'],
+                );
+            }
+
+            // Parse topics
+            $topics = [];
+            if (isset($data['topics'])) {
+                Assert::isArray($data['topics'], 'topics must be an array.');
+                foreach ($data['topics'] as $i => $topic) {
+                    Assert::string($topic, sprintf('topics[%d] must be a string.', $i));
+                    $topics[] = $topic;
+                }
+            }
+
             return new SummaryResult(
                 introduction: $data['introduction'],
                 keyPoints: $keyPoints,
@@ -261,7 +290,9 @@ final class LaravelAiSummaryAdapter implements SummaryProviderInterface
                 flashCards: $flashCards,
                 highlights: $highlights,
                 contentMeta: $contentMeta,
+                topics: $topics,
                 blogPost: $blogPost,
+                linkedInPost: $linkedInPost,
             );
         } catch (RuntimeException $e) {
             throw new SummaryFailedException(

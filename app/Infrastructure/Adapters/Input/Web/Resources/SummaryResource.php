@@ -24,7 +24,10 @@ final class SummaryResource extends JsonResource
      *     chapters: array<int, array{title: string, start_timecode: string, end_timecode: string}>,
      *     flashcards: array<int, array{question: string, answer: string, source_timecode: string, difficulty: string}>,
      *     highlights: array<int, array{timecode: string, title: string, why_notable: string, category: string}>,
-     *     content_meta: array{complexity: string, reading_time_minutes: int, jargon_density: string, target_audience: string}|null
+     *     content_meta: array{complexity: string, reading_time_minutes: int, jargon_density: string, target_audience: string}|null,
+     *     topics: string[],
+     *     blog_post: array{title: string, sections: array<int, array{heading: string, body: string}>}|null,
+     *     linkedin_post: array{hook: string, body: string, call_to_action: string}|null
      * }
      */
     public function toArray(Request $request): array
@@ -83,8 +86,10 @@ final class SummaryResource extends JsonResource
                 ],
                 $this->resource->highlights(),
             ),
-            'content_meta' => $this->resource->contentMeta()?->toArray(),
-            'blog_post'    => $this->resource->blogPost()?->toArray(),
+            'content_meta'  => $this->resource->contentMeta()?->toArray(),
+            'topics'        => $this->resource->topics(),
+            'blog_post'     => $this->resource->blogPost()?->toArray(),
+            'linkedin_post' => $this->resource->linkedInPost()?->toArray(),
         ];
     }
 }

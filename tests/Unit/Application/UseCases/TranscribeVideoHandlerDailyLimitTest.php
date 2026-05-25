@@ -30,6 +30,11 @@ final class TranscribeVideoHandlerDailyLimitTest extends TestCase
             public function save(MediaTask $mediaTask): void
             {
             }
+            public function findByIdOrFail(string $id): \App\Domain\Entities\MediaTask
+            {
+                throw new \RuntimeException("Not found");
+            }
+
             public function findById(string $id): ?MediaTask
             {
                 return null;
@@ -71,6 +76,10 @@ final class TranscribeVideoHandlerDailyLimitTest extends TestCase
             public function findPublicCompletedPaginated(int $perPage, int $page): LengthAwarePaginator
             {
                 return new LengthAwarePaginator(collect(), 0, $perPage, $page);
+            }
+            public function findCompletedWithoutTaxonomies(int $limit): array
+            {
+                return [];
             }
             public function findSimilar(string $taskId, int $limit = 5): array
             {

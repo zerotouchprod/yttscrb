@@ -13,7 +13,9 @@ final readonly class SummaryResult
      * @param SummaryChapter[]  $chapters
      * @param Flashcard[]       $flashCards
      * @param HighlightMoment[] $highlights
-     * @param BlogPost|null      $blogPost
+     * @param string[]          $topics
+     * @param BlogPost|null     $blogPost
+     * @param LinkedInPost|null $linkedInPost
      */
     public function __construct(
         private string $introduction,
@@ -26,7 +28,9 @@ final readonly class SummaryResult
         private array $flashCards = [],
         private array $highlights = [],
         private ?ContentMeta $contentMeta = null,
+        private array $topics = [],
         private ?BlogPost $blogPost = null,
+        private ?LinkedInPost $linkedInPost = null,
     ) {
     }
 
@@ -98,9 +102,22 @@ final readonly class SummaryResult
         return $this->contentMeta;
     }
 
+    /**
+     * @return string[]
+     */
+    public function topics(): array
+    {
+        return $this->topics;
+    }
+
     public function blogPost(): ?BlogPost
     {
         return $this->blogPost;
+    }
+
+    public function linkedInPost(): ?LinkedInPost
+    {
+        return $this->linkedInPost;
     }
 
     /**
@@ -120,7 +137,9 @@ final readonly class SummaryResult
      *     flashcards: array<int, array{question: string, answer: string, source_timecode: string, difficulty: string}>,
      *     highlights: array<int, array{timecode: string, title: string, why_notable: string, category: string}>,
      *     content_meta: array{complexity: string, reading_time_minutes: int, jargon_density: string, target_audience: string}|null,
-     *     blog_post: array{title: string, sections: array<int, array{heading: string, body: string}>}|null
+     *     topics: string[],
+     *     blog_post: array{title: string, sections: array<int, array{heading: string, body: string}>}|null,
+     *     linkedin_post: array{hook: string, body: string, call_to_action: string}|null
      * }
      */
     public function toArray(): array
@@ -136,7 +155,9 @@ final readonly class SummaryResult
             'flashcards'        => array_map(fn (Flashcard $fc) => $fc->toArray(), $this->flashCards),
             'highlights'        => array_map(fn (HighlightMoment $hm) => $hm->toArray(), $this->highlights),
             'content_meta'      => $this->contentMeta?->toArray(),
+            'topics'            => $this->topics,
             'blog_post'         => $this->blogPost?->toArray(),
+            'linkedin_post'     => $this->linkedInPost?->toArray(),
         ];
     }
 
@@ -154,7 +175,9 @@ final readonly class SummaryResult
      *     flashcards?: array<int, array{question: string, answer: string, source_timecode: string, difficulty?: string}>,
      *     highlights?: array<int, array{timecode: string, title: string, why_notable: string, category?: string}>,
      *     content_meta?: array{complexity: string, reading_time_minutes: int, jargon_density: string, target_audience: string}|null,
-     *     blog_post?: array{title: string, sections: array<int, array{heading: string, body: string}>}|null
+     *     topics?: string[],
+     *     blog_post?: array{title: string, sections: array<int, array{heading: string, body: string}>}|null,
+     *     linkedin_post?: array{hook: string, body: string, call_to_action: string}|null
      * } $data
      */
     public static function fromArray(array $data): self
@@ -192,8 +215,12 @@ final readonly class SummaryResult
             contentMeta: isset($data['content_meta'])
                 ? ContentMeta::fromArray($data['content_meta'])
                 : null,
+            topics: $data['topics'] ?? [],
             blogPost: isset($data['blog_post'])
                 ? BlogPost::fromArray($data['blog_post'])
+                : null,
+            linkedInPost: isset($data['linkedin_post'])
+                ? LinkedInPost::fromArray($data['linkedin_post'])
                 : null,
         );
     }

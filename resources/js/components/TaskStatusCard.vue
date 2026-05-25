@@ -78,6 +78,7 @@
         <button v-if="renderedSummary?.flashcards?.length" @click="activeTab = 'flashcards'" :class="activeTab === 'flashcards' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'" class="flex-shrink-0 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-150" role="tab" :aria-selected="activeTab === 'flashcards'" aria-controls="panel-flashcards"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg> Flashcards</button>
         <button v-if="renderedSummary?.highlights?.length" @click="activeTab = 'highlights'" :class="activeTab === 'highlights' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'" class="flex-shrink-0 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-150" role="tab" :aria-selected="activeTab === 'highlights'" aria-controls="panel-highlights"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg> Highlights</button>
         <button v-if="renderedSummary?.blog_post" @click="activeTab = 'blogpost'" :class="activeTab === 'blogpost' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'" class="flex-shrink-0 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-150" role="tab" :aria-selected="activeTab === 'blogpost'" aria-controls="panel-blogpost"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg> Blog</button>
+        <button v-if="renderedSummary?.linkedin_post" @click="activeTab = 'linkedin'" :class="activeTab === 'linkedin' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'" class="flex-shrink-0 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-150" role="tab" :aria-selected="activeTab === 'linkedin'" aria-controls="panel-linkedin"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg> LinkedIn</button>
       </div>
 
       <!-- Summary tab -->
@@ -152,6 +153,11 @@
         <BlogPostExporter :blog-post="renderedSummary?.blog_post ?? null" class="mb-5" />
       </div>
 
+      <!-- LinkedIn Post tab -->
+      <div v-show="activeTab === 'linkedin'" id="panel-linkedin" role="tabpanel">
+        <LinkedInPostExporter :linked-in-post="renderedSummary?.linkedin_post ?? null" :public-url="publicPageUrl" class="mb-5" />
+      </div>
+
     </div>
 
     <!-- failed state -->
@@ -173,6 +179,7 @@ import FlashcardViewer from './FlashcardViewer.vue';
 import HighlightReel from './HighlightReel.vue';
 import ContentMetaBadge from './ContentMetaBadge.vue';
 import BlogPostExporter from './BlogPostExporter.vue';
+import LinkedInPostExporter from './LinkedInPostExporter.vue';
 import { formatDuration, formatTimecode } from '../composables/useFormatting.js';
 
 const props = defineProps({

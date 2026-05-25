@@ -17,6 +17,9 @@ parameters:
         - '#Access to an undefined property Pest\\PendingCalls\\TestCall::\$storedWorkflow#'
         - '#Access to an undefined property Pest\\PendingCalls\\TestCall::\$tempDir#'
         - '#Access to an undefined property Pest\\PendingCalls\\TestCall::\$parser#'
+        - '#Access to an undefined property Pest\\PendingCalls\\TestCall::\$mockNotifier#'
+        - '#Access to an undefined property Pest\\PendingCalls\\TestCall::\$app#'
+        - '#Call to an undefined method Pest\\PendingCalls\\TestCall::postJson\(\)#'
         - '#Access to an undefined property Pest\\Mixins\\Expectation<.*>::\$not#'
         # YouTubeUrl|null after App::make() in tests
         - '#Cannot call method value\(\) on App\\Domain\\ValueObjects\\YouTubeUrl\|null#'
@@ -27,3 +30,5 @@ parameters:
         # OpenAPI Schema classes — used only by swagger-php at scan time, never instantiated
         - '/^Class .*OpenApi\\\\Schemas\\\\\w+ is never used\.$/'
         - '/^Class App\\\\Infrastructure\\\\Adapters\\\\Input\\\\Web\\\\OpenApi\\\\TranscribeVideoApi is never used\.$/'
+        # HEREDOC body indentation in YoutubeSummarizerAgent::instructions() — pre-existing
+        - '#Invalid body indentation level .* on line 27#'

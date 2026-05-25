@@ -17,6 +17,7 @@ final class FeedbackController
 
     public function send(FeedbackRequest $request): \Illuminate\Http\JsonResponse
     {
+        /** @var array<string, mixed> $validated */
         $validated = $request->validated();
         $command = new SendFeedbackCommand(
             message: (string) ($validated['message'] ?? ''),

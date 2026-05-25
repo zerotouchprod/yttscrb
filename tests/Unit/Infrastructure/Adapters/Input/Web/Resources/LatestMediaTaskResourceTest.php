@@ -29,7 +29,8 @@ final class LatestMediaTaskResourceTest extends TestCase
             Uuid::uuid4()->toString(),
             new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
         );
-        $task->startProcessing("wf-test"); $task->complete('Full transcript', $summary, 120);
+        $task->startProcessing("wf-test");
+        $task->complete('Full transcript', $summary, 120);
 
         $resource = new LatestMediaTaskResource($task);
         /** @var array<string, mixed> $result */
@@ -53,7 +54,8 @@ final class LatestMediaTaskResourceTest extends TestCase
             Uuid::uuid4()->toString(),
             new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
         );
-        $task->startProcessing("wf-test"); $task->complete('Transcript only, no AI summary', null, 90);
+        $task->startProcessing("wf-test");
+        $task->complete('Transcript only, no AI summary', null, 90);
 
         $resource = new LatestMediaTaskResource($task);
         /** @var array<string, mixed> $result */

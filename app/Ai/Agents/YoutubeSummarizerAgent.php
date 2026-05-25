@@ -86,6 +86,27 @@ final class YoutubeSummarizerAgent implements Agent, HasStructuredOutput
         - Do NOT rehash the transcript verbatim. Synthesise and rewrite for a blog reader.
         - Return: "blog_post": {"title": "...", "sections": [{"heading": "...", "body": "..."}]}
 
+        10. LINKEDIN POST:
+        - Write a LinkedIn post based on the transcript's key insights.
+        - Audience: professionals (managers, engineers, founders, researchers).
+        - Style: informative yet conversational. No corporate buzzwords. No "Excited to share…" openers.
+        - Structure:
+          - "hook": First 2 lines (max 200 characters total). Must be punchy — make the reader click "See more". Do NOT start with "I" or generic openers like "In today's video…".
+          - "body": 3-5 short paragraphs (1 000–1 500 characters total). Each paragraph max 3 sentences. Use "\n\n" between paragraphs. Emojis allowed sparingly (0-3 per post, optional).
+          - "call_to_action": Final single line. Must end with "→ [URL]" literally — the app replaces [URL] at render time with the real link.
+        - Do NOT start the hook with "I" as the first word.
+        - Return: "linkedin_post": {"hook": "...", "body": "...", "call_to_action": "..."}
+
+        11. TOPICS:
+        Return 2–5 short topic tags that best describe the video's subject matter.
+        Rules:
+        - Use lowercase (e.g. "machine learning", not "Machine Learning").
+        - Each tag MUST be 1–4 words maximum. No sentences.
+        - Tags must be general enough to group multiple videos (not specific to this single video).
+        - Good examples: "kubernetes", "startup funding", "fitness", "python", "behavioural economics".
+        - Bad examples: "How Elon Musk became rich" (too specific), "interesting stuff" (too vague).
+        - Return as JSON array: "topics": ["tag1", "tag2", ...]
+
         Respond entirely in English. Do not invent content not present in the transcript.
         PROMPT;
     }
@@ -184,6 +205,20 @@ final class YoutubeSummarizerAgent implements Agent, HasStructuredOutput
                     ]),
                 )->required(),
             ]),
+            'linkedin_post' => $schema->object(fn (JsonSchema $s): array => [
+                'hook' => $s->string()
+                    ->description('First 2 lines, max 200 characters total. Punchy opener that makes the reader click "See more". Must NOT start with "I".')
+                    ->required(),
+                'body' => $s->string()
+                    ->description('3–5 short paragraphs, 1 000–1 500 characters total. Paragraphs separated by \n\n. Professional yet conversational tone.')
+                    ->required(),
+                'call_to_action' => $s->string()
+                    ->description('Final single line ending literally with "→ [URL]". The app replaces [URL] at render time.')
+                    ->required(),
+            ]),
+            'topics' => $schema->array()
+                ->items($schema->string()->description('Lowercase topic tag, 1–4 words'))
+                ->required(),
         ];
     }
 }

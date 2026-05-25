@@ -7,6 +7,7 @@ use App\Domain\ValueObjects\BlogSection;
 use App\Domain\ValueObjects\ContentMeta;
 use App\Domain\ValueObjects\Flashcard;
 use App\Domain\ValueObjects\HighlightMoment;
+use App\Domain\ValueObjects\LinkedInPost;
 use App\Domain\ValueObjects\SummaryChapter;
 use App\Domain\ValueObjects\SummaryKeyPoint;
 use App\Domain\ValueObjects\SummaryResult;
@@ -46,6 +47,7 @@ it('serializes to array via toArray()', function (): void {
         'highlights'        => [],
         'content_meta'      => null,
         'blog_post'         => null,
+        'linkedin_post'     => null,
     ]);
 });
 
@@ -470,4 +472,84 @@ it('round-trips blogPost through toArray and fromArray', function (): void {
     expect($retrieved->title)->toBe('Round Trip')
         ->and($retrieved->sections)->toHaveCount(2)
         ->and($retrieved->sections[1]->heading)->toBe('Core');
+});
+
+// ─── LinkedIn Post ────────────────────────────────────────────────────────────
+
+it('stores and retrieves linkedInPost', function (): void {
+    $post = new LinkedInPost(
+        hook: 'Most teams ship slow. Here is why.',
+        body: 'The real bottleneck is invisible hand-offs.' . "\n\n" . 'Second paragraph.',
+        callToAction: 'Full AI summary → [URL]',
+    );
+    $result = new SummaryResult('Intro', [], linkedInPost: $post);
+
+    $retrieved = $result->linkedInPost();
+    \PHPUnit\Framework\Assert::assertNotNull($retrieved);
+    expect($retrieved->hook())->toBe('Most teams ship slow. Here is why.')
+        ->and($retrieved->callToAction())->toBe('Full AI summary → [URL]');
+});
+
+it('defaults linkedInPost to null', function (): void {
+    $result = new SummaryResult('Intro', []);
+
+    expect($result->linkedInPost())->toBeNull();
+});
+
+it('serializes linkedInPost in toArray', function (): void {
+    $post = new LinkedInPost('Hook text', 'Body text', 'CTA → [URL]');
+    $result = new SummaryResult('Intro', [], linkedInPost: $post);
+
+    expect($result->toArray()['linkedin_post'])->toBe([
+        'hook'           => 'Hook text',
+        'body'           => 'Body text',
+        'call_to_action' => 'CTA → [URL]',
+    ]);
+});
+
+it('serializes null linkedInPost in toArray', function (): void {
+    $result = new SummaryResult('Intro', []);
+
+    expect($result->toArray()['linkedin_post'])->toBeNull();
+});
+
+it('deserializes linkedInPost from fromArray', function (): void {
+    $data = [
+        'introduction'  => 'Intro',
+        'key_points'    => [],
+        'linkedin_post' => [
+            'hook'           => 'Deserialized hook',
+            'body'           => 'Deserialized body',
+            'call_to_action' => 'Deserialized CTA → [URL]',
+        ],
+    ];
+
+    $result = SummaryResult::fromArray($data);
+
+    $retrieved = $result->linkedInPost();
+    \PHPUnit\Framework\Assert::assertNotNull($retrieved);
+    expect($retrieved->hook())->toBe('Deserialized hook')
+        ->and($retrieved->body())->toBe('Deserialized body')
+        ->and($retrieved->callToAction())->toBe('Deserialized CTA → [URL]');
+});
+
+it('fromArray handles missing linkedin_post key', function (): void {
+    $data = ['introduction' => 'No LinkedIn', 'key_points' => []];
+
+    $result = SummaryResult::fromArray($data);
+
+    expect($result->linkedInPost())->toBeNull();
+});
+
+it('round-trips linkedInPost through toArray and fromArray', function (): void {
+    $post     = new LinkedInPost('Hook', "Body\n\nParagraph two.", 'CTA → [URL]');
+    $original = new SummaryResult('Intro', [], linkedInPost: $post);
+
+    $roundTrip = SummaryResult::fromArray($original->toArray());
+
+    $retrieved = $roundTrip->linkedInPost();
+    \PHPUnit\Framework\Assert::assertNotNull($retrieved);
+    expect($retrieved->hook())->toBe('Hook')
+        ->and($retrieved->body())->toBe("Body\n\nParagraph two.")
+        ->and($retrieved->callToAction())->toBe('CTA → [URL]');
 });
