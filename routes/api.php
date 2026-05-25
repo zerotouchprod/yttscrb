@@ -49,3 +49,13 @@ Route::get('/docs/openapi.json', function () {
         'Content-Type' => 'application/json',
     ])->header('Access-Control-Allow-Origin', '*');
 })->name('api.openapi');
+
+Route::get('/topics/popular', function () {
+    $repo = app(\App\Application\Ports\Output\TaxonomyRepositoryInterface::class);
+    $topics = $repo->paginateByType(\App\Domain\ValueObjects\TaxonomyType::Topic, 1, 8);
+    return array_map(fn ($t) => [
+        'name' => $t->name(),
+        'slug' => $t->slug(),
+        'video_count' => $t->videoCount(),
+    ], $topics);
+});

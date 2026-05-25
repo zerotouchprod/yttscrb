@@ -1,8 +1,14 @@
 <template>
   <nav class="w-full max-w-5xl mx-auto flex items-center justify-between py-5 px-4 sm:px-6 mb-8">
-    <a href="/" class="text-2xl font-bold bg-gradient-to-r from-blue-400 via-blue-300 to-blue-200 bg-clip-text text-transparent hover:from-blue-300 hover:via-blue-200 hover:to-blue-100 transition-all duration-300 tracking-tight">
-      TubeSum
-    </a>
+    <div class="flex items-center gap-4">
+      <a href="/" class="text-2xl font-bold bg-gradient-to-r from-blue-400 via-blue-300 to-blue-200 bg-clip-text text-transparent hover:from-blue-300 hover:via-blue-200 hover:to-blue-100 transition-all duration-300 tracking-tight">
+        TubeSum
+      </a>
+      <a href="/topics" class="hidden sm:inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-400 transition-colors font-medium">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+        Explore Topics
+      </a>
+    </div>
     <div class="relative w-full max-w-xs hidden sm:block">
       <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
       <input

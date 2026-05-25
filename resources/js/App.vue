@@ -37,6 +37,7 @@
         @retry="retry"
       />
       <PublicLibrary :recentTasks="recentTasks" :hideWhenTask="!!task" />
+      <PopularTopics />
       <SearchResults
         :searchResults="searchResults"
         :searchLoading="searchLoading"
@@ -58,6 +59,7 @@
             <ul class="space-y-2 text-slate-400">
               <li><a href="/pricing" class="hover:text-blue-400 transition-colors">Pricing</a></li>
               <li><a href="/history" class="hover:text-blue-400 transition-colors">Public Library</a></li>
+              <li><a href="/topics" class="hover:text-blue-400 transition-colors">All Topics</a></li>
               <li><a href="#" class="hover:text-blue-400 transition-colors">Chrome Extension <span class="text-[10px] bg-slate-800 border border-slate-700 text-slate-300 px-1.5 py-0.5 rounded ml-1">Soon</span></a></li>
             </ul>
           </div>
@@ -93,6 +95,7 @@ import HeroSection from './components/HeroSection.vue';
 import TranscribeForm from './components/TranscribeForm.vue';
 import TaskStatusCard from './components/TaskStatusCard.vue';
 import PublicLibrary from './components/PublicLibrary.vue';
+import PopularTopics from './components/PopularTopics.vue';
 import SearchResults from './components/SearchResults.vue';
 import FeedbackModal from './components/FeedbackModal.vue';
 import { ref } from 'vue';
