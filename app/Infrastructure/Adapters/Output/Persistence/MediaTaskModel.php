@@ -26,10 +26,26 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $dmca_removed_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ *
  */
 class MediaTaskModel extends Model
 {
     protected $table = 'media_tasks';
+
+    /**
+     * Taxonomy tags attached to this media task (pivot: media_task_taxonomies).
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function taxonomies(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(
+            \App\Models\TaxonomyModel::class,
+            'media_task_taxonomies',
+            'media_task_id',
+            'taxonomy_id',
+        );
+    }
 
     protected $keyType = 'string';
 
