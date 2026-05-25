@@ -54,10 +54,9 @@ final class SeedWowContent extends Command
                     continue;
                 }
 
-                // Skip if already processed or too long
-                if ($this->taskRepository->findCompletedByVideoId(
-                    \App\Domain\ValueObjects\VideoId::fromString($videoId),
-                ) !== null) {
+                // Skip if already processed
+                $vid = new \App\Domain\ValueObjects\VideoId($videoId);
+                if ($this->taskRepository->findCompletedByVideoId($vid) !== null) {
                     $this->line("  ∘ {$title} — already in DB");
                     continue;
                 }
