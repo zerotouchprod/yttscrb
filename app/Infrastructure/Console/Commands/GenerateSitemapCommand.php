@@ -40,6 +40,12 @@ final class GenerateSitemapCommand extends Command
         );
 
         $sitemap->add(
+            Url::create(url('/trending'))
+                ->setPriority(0.7)
+                ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY),
+        );
+
+        $sitemap->add(
             Url::create(url('/pricing'))
                 ->setPriority(0.6)
                 ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY),

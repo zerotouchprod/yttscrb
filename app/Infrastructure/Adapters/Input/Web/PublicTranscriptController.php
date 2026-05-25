@@ -5,26 +5,31 @@ declare(strict_types=1);
 namespace App\Infrastructure\Adapters\Input\Web;
 
 use App\Application\Ports\Output\MediaTaskRepositoryInterface;
+use App\Application\Ports\Output\ViewTrackerInterface;
 use App\Domain\Entities\MediaTask;
+use App\Infrastructure\Adapters\Output\Queue\IncrementViewCountJob;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Str;
 
 final class PublicTranscriptController extends Controller
 {
     public function __construct(
         private readonly MediaTaskRepositoryInterface $repository,
+        private readonly ViewTrackerInterface $viewTracker,
     ) {
     }
 
-    public function show(string $slug): View|Response
+    public function show(string $slug, Request $request): View|Response
     {
         $task = $this->repository->findBySlug($slug);
 
         if ($task === null) {
             abort(404);
         }
+
+        $this->recordView($task, $request);
 
         $summary = $task->summary();
         $summaryExcerpt = $summary !== null
@@ -49,6 +54,24 @@ final class PublicTranscriptController extends Controller
             'renderedSummary'  => $renderedSummary,
             'transcriptChunks' => $transcriptChunks,
         ]);
+    }
+
+    /**
+     * Record a page view: deduplicate by IP hash (1-hour window),
+     * update Redis weekly sorted set, and dispatch async DB increment.
+     */
+    private function recordView(MediaTask $task, Request $request): void
+    {
+        $ipHash = hash('sha256', ($request->ip() ?? '') . $task->id());
+
+        if ($this->viewTracker->isRecentlyViewed($ipHash, $task->id())) {
+            return;
+        }
+
+        $this->viewTracker->markViewed($ipHash, $task->id());
+        $this->viewTracker->recordWeeklyView($task->id());
+
+        IncrementViewCountJob::dispatch($task->id());
     }
 
     /**

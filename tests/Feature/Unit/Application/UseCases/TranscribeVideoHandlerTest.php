@@ -113,6 +113,17 @@ final class TranscribeVideoHandlerTest extends TestCase
             public function saveUserIdentifier(string $taskId, string $userIdentifier): void
             {
             }
+            public function incrementViewCount(string $taskId): void
+            {
+            }
+            public function findTrending(int $limit): array
+            {
+                return [];
+            }
+            public function findByIds(array $ids): array
+            {
+                return [];
+            }
         };
 
         $dispatcher = new class () implements WorkflowDispatcherInterface {
@@ -220,6 +231,17 @@ final class TranscribeVideoHandlerTest extends TestCase
             public function saveUserIdentifier(string $taskId, string $userIdentifier): void
             {
             }
+            public function incrementViewCount(string $taskId): void
+            {
+            }
+            public function findTrending(int $limit): array
+            {
+                return [];
+            }
+            public function findByIds(array $ids): array
+            {
+                return [];
+            }
         };
 
         $dispatcher = new class () implements WorkflowDispatcherInterface {
@@ -320,6 +342,17 @@ final class TranscribeVideoHandlerTest extends TestCase
             }
             public function saveUserIdentifier(string $taskId, string $userIdentifier): void
             {
+            }
+            public function incrementViewCount(string $taskId): void
+            {
+            }
+            public function findTrending(int $limit): array
+            {
+                return [];
+            }
+            public function findByIds(array $ids): array
+            {
+                return [];
             }
         };
 

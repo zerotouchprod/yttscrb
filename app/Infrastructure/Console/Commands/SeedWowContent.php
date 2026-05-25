@@ -50,9 +50,9 @@ final class SeedWowContent extends Command
             $this->line("Channel {$channel}: " . count($videos) . ' videos fetched');
 
             foreach ($videos as $video) {
-                $videoId = $video['id'] ?? '';
-                $title = $video['title'] ?? 'Untitled';
-                $duration = (int) ($video['duration'] ?? 0);
+                $videoId = $video['id'];
+                $title = $video['title'];
+                $duration = (int) $video['duration'];
 
                 if ($videoId === '') {
                     continue;
@@ -119,7 +119,7 @@ final class SeedWowContent extends Command
 
         $output = shell_exec($command);
 
-        if ($output === null || $output === '') {
+        if (! is_string($output) || $output === '') {
             return [];
         }
 
@@ -133,9 +133,9 @@ final class SeedWowContent extends Command
                 continue;
             }
             $videos[] = [
-                'id'       => $data['id'],
-                'title'    => $data['title'] ?? 'Untitled',
-                'duration' => $data['duration'] ?? null,
+                'id'       => (string) $data['id'],
+                'title'    => isset($data['title']) ? (string) $data['title'] : 'Untitled',
+                'duration' => isset($data['duration']) ? (int) $data['duration'] : null,
             ];
         }
 

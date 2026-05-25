@@ -26,6 +26,7 @@ final class MediaTask
     private ?DateTimeImmutable $dmcaRemovedAt = null;
     private ?string $channelName = null;
     private ?string $channelSlug = null;
+    private int $viewsCount = 0;
 
     private function __construct(
         private readonly string $id,
@@ -192,6 +193,11 @@ final class MediaTask
     public function createdAt(): DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function viewsCount(): int
+    {
+        return $this->viewsCount;
     }
 
     private function transitionTo(TranscriptionStatus $target): void

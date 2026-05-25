@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $result_text
  * @property array<string, mixed>|null $summary
  * @property int|null $duration_sec
+ * @property int $views_count
  * @property string|null $error_message
  * @property int|null $user_id
  * @property string|null $user_identifier
@@ -35,7 +36,7 @@ class MediaTaskModel extends Model
     /**
      * Taxonomy tags attached to this media task (pivot: media_task_taxonomies).
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany<\App\Models\TaxonomyModel, \App\Infrastructure\Adapters\Output\Persistence\MediaTaskModel>
      */
     public function taxonomies(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
@@ -62,6 +63,7 @@ class MediaTaskModel extends Model
         'result_text',
         'summary',
         'duration_sec',
+        'views_count',
         'error_message',
         'user_id',
         'user_identifier',
@@ -73,13 +75,14 @@ class MediaTaskModel extends Model
     protected function casts(): array
     {
         return [
-            'summary' => 'array',
-            'duration_sec' => 'integer',
-            'completed_at' => 'datetime',
-            'failed_at' => 'datetime',
+            'summary'         => 'array',
+            'duration_sec'    => 'integer',
+            'views_count'     => 'integer',
+            'completed_at'    => 'datetime',
+            'failed_at'       => 'datetime',
             'dmca_removed_at' => 'datetime',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
+            'created_at'      => 'datetime',
+            'updated_at'      => 'datetime',
         ];
     }
 }

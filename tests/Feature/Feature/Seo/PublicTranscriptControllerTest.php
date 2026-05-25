@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Feature\Seo;
 
+use App\Application\Ports\Output\ViewTrackerInterface;
 use App\Infrastructure\Adapters\Output\Persistence\MediaTaskModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
+use Tests\Support\FakeRedisViewTracker;
 use Tests\TestCase;
 
 /**
@@ -14,6 +17,16 @@ use Tests\TestCase;
 final class PublicTranscriptControllerTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Prevent live Redis dependency in these structural tests.
+        Queue::fake();
+        $tracker = new FakeRedisViewTracker(isRecentlyViewed: false);
+        $this->app->instance(ViewTrackerInterface::class, $tracker);
+    }
 
     // -----------------------------------------------------------------------
     // Happy path

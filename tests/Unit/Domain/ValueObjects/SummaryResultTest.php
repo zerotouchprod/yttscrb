@@ -46,6 +46,7 @@ it('serializes to array via toArray()', function (): void {
         'flashcards'        => [],
         'highlights'        => [],
         'content_meta'      => null,
+        'topics'            => [],
         'blog_post'         => null,
         'linkedin_post'     => null,
     ]);

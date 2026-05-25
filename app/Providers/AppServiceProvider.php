@@ -11,6 +11,7 @@ use App\Application\Ports\Output\SummaryProviderInterface;
 use App\Application\Ports\Output\TaxonomyRepositoryInterface;
 use App\Application\Ports\Output\TranscriptionProviderInterface;
 use App\Application\Ports\Output\FeedbackNotifierInterface;
+use App\Application\Ports\Output\ViewTrackerInterface;
 use App\Application\Ports\Output\WorkflowDispatcherInterface;
 use App\Infrastructure\Adapters\Output\Persistence\MediaTaskEloquentRepository;
 use App\Infrastructure\Adapters\Output\Persistence\TaxonomyEloquentRepository;
@@ -18,6 +19,7 @@ use App\Infrastructure\Adapters\Output\Summary\LaravelAiSummaryAdapter;
 use App\Infrastructure\Adapters\Output\Telegram\TelegramFeedbackNotifier;
 use App\Infrastructure\Adapters\Output\Transcription\GroqWhisperAdapter;
 use App\Infrastructure\Adapters\Output\Transcription\SubtitleExtractorAdapter;
+use App\Infrastructure\Adapters\Output\Views\RedisViewTracker;
 use App\Infrastructure\Adapters\Output\Workflow\WorkflowDispatcher;
 use App\Infrastructure\Adapters\Output\YoutubeDl\YoutubeDlAudioExtractor;
 use App\Infrastructure\Workflow\WorkflowStarter;
@@ -37,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(WorkflowStarter::class, DurableWorkflowStarter::class);
         $this->app->bind(FeedbackNotifierInterface::class, TelegramFeedbackNotifier::class);
         $this->app->bind(TaxonomyRepositoryInterface::class, TaxonomyEloquentRepository::class);
+        $this->app->bind(ViewTrackerInterface::class, RedisViewTracker::class);
     }
 
     public function boot(): void

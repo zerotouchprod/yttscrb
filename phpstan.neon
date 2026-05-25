@@ -32,3 +32,5 @@ parameters:
         - '/^Class App\\\\Infrastructure\\\\Adapters\\\\Input\\\\Web\\\\OpenApi\\\\TranscribeVideoApi is never used\.$/'
         # HEREDOC body indentation in YoutubeSummarizerAgent::instructions() — pre-existing
         - '#Invalid body indentation level .* on line 27#'
+        # Laravel BelongsToMany generic covariance: TDeclaringModel uses $this which PHPStan treats as non-covariant
+        - '#Method App\\Infrastructure\\Adapters\\Output\\Persistence\\MediaTaskModel::taxonomies\(\) should return .* but returns .*BelongsToMany.*\$this.*#'

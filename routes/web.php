@@ -2,11 +2,15 @@
 
 use App\Infrastructure\Adapters\Input\Web\PublicTranscriptController;
 use App\Infrastructure\Adapters\Input\Web\TranscribeVideoController;
+use App\Infrastructure\Adapters\Input\Web\TrendingController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+// Trending page: top-20 most-read transcripts this week.
+Route::get('/trending', TrendingController::class)->name('trending');
 
 // SEO landing pages: /v/{slug} → server-rendered transcript page for Google indexing.
 Route::get('/v/{slug}', [PublicTranscriptController::class, 'show'])

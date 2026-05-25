@@ -93,7 +93,6 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
     }
 
     /** @return MediaTask[] */
-    /** @return MediaTask[] */
     public function findCompletedWithoutTaxonomies(int $limit): array
     {
         $models = MediaTaskModel::query()
@@ -327,6 +326,68 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
             ->all();
     }
 
+    public function incrementViewCount(string $taskId): void
+    {
+        MediaTaskModel::query()
+            ->where('id', $taskId)
+            ->increment('views_count');
+    }
+
+    /**
+     * @return MediaTask[]
+     */
+    public function findTrending(int $limit): array
+    {
+        $models = MediaTaskModel::query()
+            ->where('status', TranscriptionStatus::Completed->value)
+            ->whereNotNull('title')
+            ->whereNotNull('slug')
+            ->whereNull('dmca_removed_at')
+            ->orderByDesc('views_count')
+            ->limit($limit)
+            ->get();
+
+        $result = [];
+        foreach ($models as $model) {
+            /** @var MediaTaskModel $model */
+            $result[] = $this->toEntity($model);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  string[] $ids
+     * @return MediaTask[]
+     */
+    public function findByIds(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $models = MediaTaskModel::query()
+            ->whereIn('id', $ids)
+            ->where('status', TranscriptionStatus::Completed->value)
+            ->whereNotNull('title')
+            ->whereNotNull('slug')
+            ->whereNull('dmca_removed_at')
+            ->get()
+            ->keyBy('id');
+
+        // Preserve the order of the provided $ids array (Redis rank order).
+        $result = [];
+        foreach ($ids as $id) {
+            if ($models->has($id)) {
+                /** @var MediaTaskModel $model */
+                $model = $models->get($id);
+                $result[] = $this->toEntity($model);
+            }
+        }
+
+        return $result;
+    }
+
     private function generateUniqueSlug(string $title, string $taskId): string
     {
         $base = Str::slug($title);
@@ -385,6 +446,8 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
             $dmcaDate = new DateTimeImmutable($model->dmca_removed_at->toIso8601String());
             $this->setPrivate($task, 'dmcaRemovedAt', $dmcaDate);
         }
+
+        $this->setPrivate($task, 'viewsCount', (int) ($model->views_count ?? 0));
 
         return $task;
     }

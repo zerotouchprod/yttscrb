@@ -122,6 +122,17 @@ it('starts durable workflow and stores returned workflow id', function (): void 
         public function saveUserIdentifier(string $taskId, string $userIdentifier): void
         {
         }
+        public function incrementViewCount(string $taskId): void
+        {
+        }
+        public function findTrending(int $limit): array
+        {
+            return [];
+        }
+        public function findByIds(array $ids): array
+        {
+            return [];
+        }
     };
 
     $dispatcher = new WorkflowDispatcher($launcher, $repository);

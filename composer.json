@@ -81,7 +81,7 @@
             "@php artisan migrate --graceful --ansi"
         ],
         "check": [
-            "@php vendor/bin/phpstan analyse --level=9 --no-progress",
+            "@php -d memory_limit=512M vendor/bin/phpstan analyse --level=9 --no-progress",
             "@php vendor/bin/phpcs --standard=PSR12 --warning-severity=0 app/ tests/",
             "@php vendor/bin/deptrac analyze",
             "@php vendor/bin/pest --compact"

@@ -102,4 +102,27 @@ interface MediaTaskRepositoryInterface
      * @return \App\Domain\Entities\MediaTask[]
      */
     public function findCompletedWithoutTaxonomies(int $limit): array;
+
+    /**
+     * Atomically increment the views_count for the given task.
+     * Safe to call from concurrent jobs.
+     */
+    public function incrementViewCount(string $taskId): void;
+
+    /**
+     * Return the top $limit completed public tasks ordered by views_count DESC.
+     * Used as DB fallback for the /trending page when Redis has no data.
+     *
+     * @return MediaTask[]
+     */
+    public function findTrending(int $limit): array;
+
+    /**
+     * Fetch multiple tasks by their IDs, preserving the order of the provided array.
+     * Excludes DMCA-removed and non-completed tasks.
+     *
+     * @param  string[] $ids
+     * @return MediaTask[]
+     */
+    public function findByIds(array $ids): array;
 }
