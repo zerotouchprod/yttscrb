@@ -1,11 +1,15 @@
-@extends('layouts.app')
-
-@section('title', 'All Topics — TubeSum')
-@section('meta_description', 'Browse all topics with free AI-powered video transcripts and summaries. No signup required.')
-@section('canonical', url('/topics'))
-@section('og_title', 'All Topics — TubeSum')
-
-@section('content')
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>All Topics — TubeSum</title>
+    <meta name="description" content="Browse all topics with free AI-powered video transcripts and summaries. No signup required.">
+    <link rel="canonical" href="{{ url('/topics') }}">
+    <meta property="og:title" content="All Topics — TubeSum">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
 <div class="max-w-5xl mx-auto px-4 py-8">
     <nav class="text-sm text-gray-400 mb-6">
         <a href="/" class="hover:text-white transition-colors">Home</a>
@@ -29,4 +33,5 @@
         </div>
     @endif
 </div>
-@endsection
+</body>
+</html>

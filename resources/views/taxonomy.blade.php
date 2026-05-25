@@ -1,12 +1,16 @@
-@extends('layouts.app')
-
-@section('title', $taxonomy->name() . ' Transcripts & AI Summaries — TubeSum')
-@section('meta_description', 'Browse ' . $taxonomy->videoCount() . ' video transcripts and AI summaries tagged "' . $taxonomy->name() . '". Free, no signup.')
-@section('canonical', url('/' . $taxonomy->type()->routePrefix() . '/' . $taxonomy->slug()))
-@section('og_title', $taxonomy->name() . ' — TubeSum')
-@section('og_description', 'Browse ' . $taxonomy->videoCount() . ' video transcripts and AI summaries tagged "' . $taxonomy->name() . '".')
-
-@section('content')
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ $taxonomy->name() }} Transcripts & AI Summaries — TubeSum</title>
+    <meta name="description" content="Browse {{ $taxonomy->videoCount() }} video transcripts and AI summaries tagged '{{ $taxonomy->name() }}'. Free, no signup.">
+    <link rel="canonical" href="{{ url('/' . $taxonomy->type()->routePrefix() . '/' . $taxonomy->slug()) }}">
+    <meta property="og:title" content="{{ $taxonomy->name() }} — TubeSum">
+    <meta property="og:description" content="Browse {{ $taxonomy->videoCount() }} video transcripts and AI summaries tagged '{{ $taxonomy->name() }}'.">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
 <div class="max-w-5xl mx-auto px-4 py-8">
     {{-- Breadcrumb --}}
     <nav class="text-sm text-gray-400 mb-6">
@@ -48,4 +52,5 @@
         @endif
     @endif
 </div>
-@endsection
+</body>
+</html>
