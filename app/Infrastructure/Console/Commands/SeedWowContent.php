@@ -21,7 +21,7 @@ final class SeedWowContent extends Command
     /** @var array<int, string> YouTube channel URLs */
     private const CHANNELS = [
         'https://www.youtube.com/@BellularGaming',
-        'https://www.youtube.com/@BellularWarcraft',
+        'https://www.youtube.com/channel/UCAbaiKvP8kZfY706loT4ivg',
         'https://www.youtube.com/@Hazelnuttygames',
         'https://www.youtube.com/@TaliesinEvitel',
         'https://www.youtube.com/@SignsOfKelani',
