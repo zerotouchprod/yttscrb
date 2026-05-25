@@ -48,4 +48,5 @@ RUN npm install --legacy-peer-deps --ignore-scripts \
 CMD php artisan optimize:clear \
     && cp -n vendor/durable-workflow/workflow/src/migrations/* database/migrations/ 2>/dev/null; \
     php artisan migrate --force \
-    && php artisan serve --host=0.0.0.0 --port=80
+    && (php artisan schedule:work &) \
+    && exec php artisan serve --host=0.0.0.0 --port=80
