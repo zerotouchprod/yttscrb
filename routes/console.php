@@ -12,3 +12,6 @@ Artisan::command('inspire', function () {
 // Regenerate sitemap.xml every day at 03:00 UTC.
 Schedule::command(GenerateSitemapCommand::class)->dailyAt('03:00');
 
+// Seed WoW content: 1 video per hour, ~24/day
+Schedule::command(\App\Infrastructure\Console\Commands\SeedWowContent::class)->hourly();
+
