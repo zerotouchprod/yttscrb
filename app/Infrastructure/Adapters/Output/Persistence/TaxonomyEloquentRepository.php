@@ -8,6 +8,7 @@ use App\Application\Ports\Output\TaxonomyRepositoryInterface;
 use App\Domain\Entities\Taxonomy;
 use App\Domain\ValueObjects\TaxonomyType;
 use App\Models\MediaTaskTaxonomyModel;
+use App\Infrastructure\Adapters\Output\Persistence\MediaTaskModel;
 use App\Models\TaxonomyModel;
 use Illuminate\Support\Str;
 use LogicException;
@@ -82,17 +83,21 @@ final class TaxonomyEloquentRepository implements TaxonomyRepositoryInterface
     /** @return array{data: array<int, mixed>, total: int} */
     public function paginateTasksByTaxonomy(Taxonomy $taxonomy, int $page, int $perPage): array
     {
-        $query = MediaTaskTaxonomyModel::query()->where('taxonomy_id', $taxonomy->id())
-            ->join('media_tasks', 'media_task_taxonomies.media_task_id', '=', 'media_tasks.id')
-            ->where('media_tasks.status', 'completed')
+        $taskIds = MediaTaskTaxonomyModel::query()
+            ->where('taxonomy_id', $taxonomy->id())
+            ->pluck('media_task_id');
+
+        $query = MediaTaskModel::query()
+            ->whereIn('id', $taskIds)
+            ->where('status', 'completed')
             ->where(function ($q): void {
-                $q->whereNull('media_tasks.is_dmca_removed')
-                    ->orWhere('media_tasks.is_dmca_removed', false);
+                $q->whereNull('is_dmca_removed')
+                    ->orWhere('is_dmca_removed', false);
             })
-            ->orderBy('media_tasks.completed_at', 'desc');
+            ->orderBy('completed_at', 'desc');
 
         $total = $query->count();
-        $rows = $query->forPage($page, $perPage)->get(['media_tasks.*']);
+        $rows = $query->forPage($page, $perPage)->get();
 
         return [
             'data' => $rows->all(),
