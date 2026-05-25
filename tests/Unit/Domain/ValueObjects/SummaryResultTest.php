@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Domain\ValueObjects\BlogPost;
+use App\Domain\ValueObjects\BlogSection;
 use App\Domain\ValueObjects\ContentMeta;
 use App\Domain\ValueObjects\Flashcard;
 use App\Domain\ValueObjects\HighlightMoment;
@@ -43,6 +45,7 @@ it('serializes to array via toArray()', function (): void {
         'flashcards'        => [],
         'highlights'        => [],
         'content_meta'      => null,
+        'blog_post'         => null,
     ]);
 });
 
@@ -381,4 +384,90 @@ it('fromArray handles missing content_meta key', function (): void {
     $result = SummaryResult::fromArray($data);
 
     expect($result->contentMeta())->toBeNull();
+});
+
+it('stores and retrieves blog post', function (): void {
+    $sections = [
+        new BlogSection('Intro', 'Body 1'),
+        new BlogSection('Main', 'Body 2'),
+    ];
+    $blogPost = new BlogPost('My Article', $sections);
+    $result = new SummaryResult('Intro', [], blogPost: $blogPost);
+
+    $retrieved = $result->blogPost();
+    \PHPUnit\Framework\Assert::assertNotNull($retrieved);
+    expect($retrieved->title)->toBe('My Article')
+        ->and($retrieved->sections)->toHaveCount(2)
+        ->and($retrieved->sections[0]->heading)->toBe('Intro');
+});
+
+it('defaults blogPost to null', function (): void {
+    $result = new SummaryResult('Intro', []);
+
+    expect($result->blogPost())->toBeNull();
+});
+
+it('serializes blogPost in toArray', function (): void {
+    $sections = [new BlogSection('H1', 'B1')];
+    $blogPost = new BlogPost('Title', $sections);
+    $result = new SummaryResult('Intro', [], blogPost: $blogPost);
+
+    expect($result->toArray()['blog_post'])->toBe([
+        'title'    => 'Title',
+        'sections' => [
+            ['heading' => 'H1', 'body' => 'B1'],
+        ],
+    ]);
+});
+
+it('serializes null blogPost in toArray', function (): void {
+    $result = new SummaryResult('Intro', []);
+
+    expect($result->toArray()['blog_post'])->toBeNull();
+});
+
+it('deserializes blogPost from fromArray', function (): void {
+    $data = [
+        'introduction' => 'Intro',
+        'key_points'   => [],
+        'blog_post'    => [
+            'title'    => 'Deserialized',
+            'sections' => [
+                ['heading' => 'S1', 'body' => 'B1'],
+            ],
+        ],
+    ];
+
+    $result = SummaryResult::fromArray($data);
+
+    $retrieved = $result->blogPost();
+    \PHPUnit\Framework\Assert::assertNotNull($retrieved);
+    expect($retrieved->title)->toBe('Deserialized')
+        ->and($retrieved->sections)->toHaveCount(1)
+        ->and($retrieved->sections[0]->heading)->toBe('S1');
+});
+
+it('fromArray handles missing blog_post key', function (): void {
+    $data = ['introduction' => 'No blog', 'key_points' => []];
+
+    $result = SummaryResult::fromArray($data);
+
+    expect($result->blogPost())->toBeNull();
+});
+
+it('round-trips blogPost through toArray and fromArray', function (): void {
+    $sections = [
+        new BlogSection('Setup', 'How to begin.'),
+        new BlogSection('Core', 'Main content.'),
+    ];
+    $blogPost = new BlogPost('Round Trip', $sections);
+    $original = new SummaryResult('Intro', [], blogPost: $blogPost);
+
+    $roundTrip = SummaryResult::fromArray($original->toArray());
+
+    $retrieved = $roundTrip->blogPost();
+    \PHPUnit\Framework\Assert::assertNotNull($retrieved);
+    expect($retrieved->title)->toBe('Round Trip')
+        ->and($retrieved->sections)->toHaveCount(2)
+        ->and($retrieved->sections[1]->heading)->toBe('Core');
 });

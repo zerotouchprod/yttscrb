@@ -6,6 +6,8 @@ namespace App\Infrastructure\Adapters\Output\Summary;
 
 use App\Ai\Agents\YoutubeSummarizerAgent;
 use App\Application\Ports\Output\SummaryProviderInterface;
+use App\Domain\ValueObjects\BlogPost;
+use App\Domain\ValueObjects\BlogSection;
 use App\Domain\ValueObjects\ClickbaitVerdict;
 use App\Domain\ValueObjects\ContentMeta;
 use App\Domain\ValueObjects\Flashcard;
@@ -227,6 +229,27 @@ final class LaravelAiSummaryAdapter implements SummaryProviderInterface
                 );
             }
 
+            // Parse blog_post (optional)
+            $blogPost = null;
+            if (isset($data['blog_post'])) {
+                Assert::isArray($data['blog_post'], 'blog_post must be an array.');
+                Assert::keyExists($data['blog_post'], 'title', 'blog_post missing title.');
+                Assert::keyExists($data['blog_post'], 'sections', 'blog_post missing sections.');
+                Assert::string($data['blog_post']['title'], 'blog_post.title must be a string.');
+                Assert::isArray($data['blog_post']['sections'], 'blog_post.sections must be an array.');
+
+                $sections = [];
+                foreach ($data['blog_post']['sections'] as $i => $sec) {
+                    Assert::isArray($sec, sprintf('blog_post.sections[%d] must be an array.', $i));
+                    Assert::keyExists($sec, 'heading', sprintf('blog_post.sections[%d] missing heading.', $i));
+                    Assert::keyExists($sec, 'body', sprintf('blog_post.sections[%d] missing body.', $i));
+                    Assert::string($sec['heading'], sprintf('blog_post.sections[%d].heading must be a string.', $i));
+                    Assert::string($sec['body'], sprintf('blog_post.sections[%d].body must be a string.', $i));
+                    $sections[] = new BlogSection(heading: $sec['heading'], body: $sec['body']);
+                }
+                $blogPost = new BlogPost(title: $data['blog_post']['title'], sections: $sections);
+            }
+
             return new SummaryResult(
                 introduction: $data['introduction'],
                 keyPoints: $keyPoints,
@@ -238,6 +261,7 @@ final class LaravelAiSummaryAdapter implements SummaryProviderInterface
                 flashCards: $flashCards,
                 highlights: $highlights,
                 contentMeta: $contentMeta,
+                blogPost: $blogPost,
             );
         } catch (RuntimeException $e) {
             throw new SummaryFailedException(

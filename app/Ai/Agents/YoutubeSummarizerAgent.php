@@ -77,6 +77,15 @@ final class YoutubeSummarizerAgent implements Agent, HasStructuredOutput
         - "target_audience": A 1-2 sentence description of who this video is for (e.g., "Software developers with basic Kubernetes experience").
         - "content_meta": Object with "complexity", "reading_time_minutes", "jargon_density", "target_audience".
 
+        9. BLOG POST:
+        - Write a structured blog article based on the transcript's key insights.
+        - Style: informative, conversational, 400-600 words total.
+        - Structure:
+        - "title": A compelling blog title (not the video title).
+        - "sections": Array of 3-5 sections, each with a clear "heading" (H2 level) and "body" (1-3 paragraphs).
+        - Do NOT rehash the transcript verbatim. Synthesise and rewrite for a blog reader.
+        - Return: "blog_post": {"title": "...", "sections": [{"heading": "...", "body": "..."}]}
+
         Respond entirely in English. Do not invent content not present in the transcript.
         PROMPT;
     }
@@ -165,6 +174,15 @@ final class YoutubeSummarizerAgent implements Agent, HasStructuredOutput
                     'One of: low, moderate, high',
                 )->required(),
                 'target_audience'      => $s->string()->required(),
+            ]),
+            'blog_post' => $schema->object(fn (JsonSchema $s): array => [
+                'title'    => $s->string()->required(),
+                'sections' => $s->array()->items(
+                    $schema->object(fn (JsonSchema $s): array => [
+                        'heading' => $s->string()->required(),
+                        'body'    => $s->string()->required(),
+                    ]),
+                )->required(),
             ]),
         ];
     }

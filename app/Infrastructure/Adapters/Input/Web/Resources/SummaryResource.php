@@ -84,6 +84,7 @@ final class SummaryResource extends JsonResource
                 $this->resource->highlights(),
             ),
             'content_meta' => $this->resource->contentMeta()?->toArray(),
+            'blog_post'    => $this->resource->blogPost()?->toArray(),
         ];
     }
 }

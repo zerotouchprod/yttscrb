@@ -8,7 +8,7 @@ use OpenApi\Attributes as OA;
 
 #[OA\Schema(
     schema: 'Summary',
-    required: ['introduction', 'key_points', 'conclusion', 'resources', 'tutorial_steps', 'chapters', 'flashcards', 'highlights'],
+    required: ['introduction', 'key_points', 'conclusion', 'resources', 'tutorial_steps', 'chapters', 'flashcards', 'highlights', 'blog_post'],
     properties: [
         new OA\Property(property: 'introduction', type: 'string'),
         new OA\Property(
@@ -110,6 +110,31 @@ use OpenApi\Attributes as OA;
                 new OA\Property(property: 'reading_time_minutes', type: 'integer', example: 12),
                 new OA\Property(property: 'jargon_density', type: 'string', example: 'moderate'),
                 new OA\Property(property: 'target_audience', type: 'string', example: 'Software developers with basic Kubernetes experience'),
+            ],
+            type: 'object',
+            nullable: true,
+        ),
+        new OA\Property(
+            property: 'blog_post',
+            required: ['title', 'sections'],
+            properties: [
+                new OA\Property(property: 'title', type: 'string', example: 'How to Build Scalable APIs with Laravel'),
+                new OA\Property(
+                    property: 'sections',
+                    type: 'array',
+                    items: new OA\Items(
+                        required: ['heading', 'body'],
+                        properties: [
+                            new OA\Property(property: 'heading', type: 'string', example: 'Setting Up Your Environment'),
+                            new OA\Property(
+                                property: 'body',
+                                type: 'string',
+                                example: 'Ensure you have PHP and Composer installed.',
+                            ),
+                        ],
+                        type: 'object',
+                    ),
+                ),
             ],
             type: 'object',
             nullable: true,

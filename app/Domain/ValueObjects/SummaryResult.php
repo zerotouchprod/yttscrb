@@ -13,6 +13,7 @@ final readonly class SummaryResult
      * @param SummaryChapter[]  $chapters
      * @param Flashcard[]       $flashCards
      * @param HighlightMoment[] $highlights
+     * @param BlogPost|null      $blogPost
      */
     public function __construct(
         private string $introduction,
@@ -25,6 +26,7 @@ final readonly class SummaryResult
         private array $flashCards = [],
         private array $highlights = [],
         private ?ContentMeta $contentMeta = null,
+        private ?BlogPost $blogPost = null,
     ) {
     }
 
@@ -96,6 +98,11 @@ final readonly class SummaryResult
         return $this->contentMeta;
     }
 
+    public function blogPost(): ?BlogPost
+    {
+        return $this->blogPost;
+    }
+
     /**
      * Сериализация для хранения в JSONB-колонке.
      *
@@ -112,7 +119,8 @@ final readonly class SummaryResult
      *     chapters: array<int, array{title: string, start_timecode: string, end_timecode: string}>,
      *     flashcards: array<int, array{question: string, answer: string, source_timecode: string, difficulty: string}>,
      *     highlights: array<int, array{timecode: string, title: string, why_notable: string, category: string}>,
-     *     content_meta: array{complexity: string, reading_time_minutes: int, jargon_density: string, target_audience: string}|null
+     *     content_meta: array{complexity: string, reading_time_minutes: int, jargon_density: string, target_audience: string}|null,
+     *     blog_post: array{title: string, sections: array<int, array{heading: string, body: string}>}|null
      * }
      */
     public function toArray(): array
@@ -128,6 +136,7 @@ final readonly class SummaryResult
             'flashcards'        => array_map(fn (Flashcard $fc) => $fc->toArray(), $this->flashCards),
             'highlights'        => array_map(fn (HighlightMoment $hm) => $hm->toArray(), $this->highlights),
             'content_meta'      => $this->contentMeta?->toArray(),
+            'blog_post'         => $this->blogPost?->toArray(),
         ];
     }
 
@@ -144,7 +153,8 @@ final readonly class SummaryResult
      *     chapters?: array<int, array{title: string, start_timecode: string, end_timecode: string}>,
      *     flashcards?: array<int, array{question: string, answer: string, source_timecode: string, difficulty?: string}>,
      *     highlights?: array<int, array{timecode: string, title: string, why_notable: string, category?: string}>,
-     *     content_meta?: array{complexity: string, reading_time_minutes: int, jargon_density: string, target_audience: string}|null
+     *     content_meta?: array{complexity: string, reading_time_minutes: int, jargon_density: string, target_audience: string}|null,
+     *     blog_post?: array{title: string, sections: array<int, array{heading: string, body: string}>}|null
      * } $data
      */
     public static function fromArray(array $data): self
@@ -181,6 +191,9 @@ final readonly class SummaryResult
             ),
             contentMeta: isset($data['content_meta'])
                 ? ContentMeta::fromArray($data['content_meta'])
+                : null,
+            blogPost: isset($data['blog_post'])
+                ? BlogPost::fromArray($data['blog_post'])
                 : null,
         );
     }

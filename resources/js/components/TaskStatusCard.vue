@@ -77,6 +77,7 @@
         <button v-if="renderedSummary?.tutorial_steps?.length" @click="activeTab = 'checklist'" :class="activeTab === 'checklist' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'" class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-150" role="tab" :aria-selected="activeTab === 'checklist'" aria-controls="panel-checklist"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg> Checklist</button>
         <button v-if="renderedSummary?.flashcards?.length" @click="activeTab = 'flashcards'" :class="activeTab === 'flashcards' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'" class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-150" role="tab" :aria-selected="activeTab === 'flashcards'" aria-controls="panel-flashcards"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg> Flashcards</button>
         <button v-if="renderedSummary?.highlights?.length" @click="activeTab = 'highlights'" :class="activeTab === 'highlights' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'" class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-150" role="tab" :aria-selected="activeTab === 'highlights'" aria-controls="panel-highlights"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg> Highlights</button>
+        <button v-if="renderedSummary?.blog_post" @click="activeTab = 'blogpost'" :class="activeTab === 'blogpost' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'" class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-150" role="tab" :aria-selected="activeTab === 'blogpost'" aria-controls="panel-blogpost"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg> Blog Post</button>
       </div>
 
       <!-- Summary tab -->
@@ -146,6 +147,11 @@
         <HighlightReel :highlights="renderedSummary?.highlights ?? []" :share-url="publicPageUrl" class="mb-5" />
       </div>
 
+      <!-- Blog Post tab -->
+      <div v-show="activeTab === 'blogpost'" id="panel-blogpost" role="tabpanel">
+        <BlogPostExporter :blog-post="renderedSummary?.blog_post ?? null" class="mb-5" />
+      </div>
+
     </div>
 
     <!-- failed state -->
@@ -166,6 +172,7 @@ import TutorialChecklist from './TutorialChecklist.vue';
 import FlashcardViewer from './FlashcardViewer.vue';
 import HighlightReel from './HighlightReel.vue';
 import ContentMetaBadge from './ContentMetaBadge.vue';
+import BlogPostExporter from './BlogPostExporter.vue';
 import { formatDuration, formatTimecode } from '../composables/useFormatting.js';
 
 const props = defineProps({
