@@ -19,12 +19,14 @@ final class PersistResultActivity extends Activity
 
         $transcript = $repository->getTranscript($taskId);
 
-        if ($transcript === null) {
+        if ($transcript === null || trim($transcript) === '') {
             $task = $repository->findById($taskId);
 
             if ($task !== null) {
                 $task->fail(
-                    'Transcript not found at persist stage — sideEffect may have failed or DB was wiped during replay'
+                    $transcript === null
+                        ? 'Transcript not found at persist stage — sideEffect may have failed or DB was wiped during replay'
+                        : 'Transcript is empty — transcription produced no usable text'
                 );
                 $repository->save($task);
             }

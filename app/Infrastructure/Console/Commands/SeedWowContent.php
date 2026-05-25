@@ -64,11 +64,8 @@ final class SeedWowContent extends Command
                     $this->line("  ∘ {$title} — already completed");
                     continue;
                 }
-                // Also check pending/processing via the model directly
-                $existing = \App\Infrastructure\Adapters\Output\Persistence\MediaTaskModel::query()
-                    ->where('video_id', $videoId)
-                    ->exists();
-                if ($existing) {
+                // Also check pending/processing tasks for this video
+                if ($this->taskRepository->existsByVideoId($videoId)) {
                     $this->line("  ∘ {$title} — already in DB (processing/pending)");
                     continue;
                 }

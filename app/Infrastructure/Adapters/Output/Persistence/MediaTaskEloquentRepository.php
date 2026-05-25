@@ -326,6 +326,11 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
             ->all();
     }
 
+    public function existsByVideoId(string $videoId): bool
+    {
+        return MediaTaskModel::query()->where('video_id', $videoId)->exists();
+    }
+
     public function incrementViewCount(string $taskId): void
     {
         MediaTaskModel::query()

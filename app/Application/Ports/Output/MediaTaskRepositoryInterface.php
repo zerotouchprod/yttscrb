@@ -104,6 +104,11 @@ interface MediaTaskRepositoryInterface
     public function findCompletedWithoutTaxonomies(int $limit): array;
 
     /**
+     * Check if any task (any status) exists for the given video ID.
+     */
+    public function existsByVideoId(string $videoId): bool;
+
+    /**
      * Atomically increment the views_count for the given task.
      * Safe to call from concurrent jobs.
      */

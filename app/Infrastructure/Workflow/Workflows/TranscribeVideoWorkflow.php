@@ -85,6 +85,10 @@ final class TranscribeVideoWorkflow extends Workflow
 
     private function storeTranscript(string $taskId, string $transcript): void
     {
+        if (trim($transcript) === '') {
+            return;
+        }
+
         /** @var MediaTaskRepositoryInterface $repository */
         $repository = Container::getInstance()->make(MediaTaskRepositoryInterface::class);
         $repository->storeTranscript($taskId, $transcript);

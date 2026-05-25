@@ -122,6 +122,10 @@ it('starts durable workflow and stores returned workflow id', function (): void 
         public function saveUserIdentifier(string $taskId, string $userIdentifier): void
         {
         }
+        public function existsByVideoId(string $videoId): bool
+        {
+            return false;
+        }
         public function incrementViewCount(string $taskId): void
         {
         }

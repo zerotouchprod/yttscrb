@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
-use App\Infrastructure\Adapters\Output\Views\RedisViewTracker;
+use App\Application\Ports\Output\ViewTrackerInterface;
 
 /**
- * Test double for RedisViewTracker that avoids live Redis connections.
+ * Test double for ViewTrackerInterface that avoids live Redis connections.
  * Tracks calls so assertions can be written against them.
  */
-final class FakeRedisViewTracker extends RedisViewTracker
+final class FakeRedisViewTracker implements ViewTrackerInterface
 {
     public bool $markViewedCalled = false;
     public bool $recordWeeklyViewCalled = false;
@@ -23,8 +23,6 @@ final class FakeRedisViewTracker extends RedisViewTracker
     public function __construct(
         private readonly bool $isRecentlyViewed = false,
     ) {
-        // Pass a null-object RedisFactory; override methods bypass it.
-        parent::__construct(new NullRedisFactory());
     }
 
     public function isRecentlyViewed(string $ipHash, string $taskId): bool

@@ -62,13 +62,13 @@ final class PublicTranscriptController extends Controller
      */
     private function recordView(MediaTask $task, Request $request): void
     {
-        $ipHash = hash('sha256', ($request->ip() ?? '') . $task->id());
+        $viewKey = hash('sha256', ($request->ip() ?? '') . $task->id());
 
-        if ($this->viewTracker->isRecentlyViewed($ipHash, $task->id())) {
+        if ($this->viewTracker->isRecentlyViewed($viewKey, $task->id())) {
             return;
         }
 
-        $this->viewTracker->markViewed($ipHash, $task->id());
+        $this->viewTracker->markViewed($viewKey, $task->id());
         $this->viewTracker->recordWeeklyView($task->id());
 
         IncrementViewCountJob::dispatch($task->id());
