@@ -54,10 +54,18 @@ final class SeedWowContent extends Command
                     continue;
                 }
 
-                // Skip if already processed
+                // Skip if already processed or processing
                 $vid = new \App\Domain\ValueObjects\VideoId($videoId);
                 if ($this->taskRepository->findCompletedByVideoId($vid) !== null) {
-                    $this->line("  ∘ {$title} — already in DB");
+                    $this->line("  ∘ {$title} — already completed");
+                    continue;
+                }
+                // Also check pending/processing via the model directly
+                $existing = \App\Infrastructure\Adapters\Output\Persistence\MediaTaskModel::query()
+                    ->where('video_id', $videoId)
+                    ->exists();
+                if ($existing) {
+                    $this->line("  ∘ {$title} — already in DB (processing/pending)");
                     continue;
                 }
 
