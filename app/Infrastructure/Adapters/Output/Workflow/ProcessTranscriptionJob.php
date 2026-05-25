@@ -54,7 +54,7 @@ final class ProcessTranscriptionJob implements ShouldQueue
             // Step 0: Try subtitles (zero-cost)
             $subtitles = $subtitleProvider->extract($this->youtubeUrl);
 
-            if ($subtitles !== null) {
+            if ($subtitles !== null && trim($subtitles) !== '') {
                 $summary = $summaryProvider->summarize(
                     new TranscriptionText($subtitles),
                     new SummaryOptions(),

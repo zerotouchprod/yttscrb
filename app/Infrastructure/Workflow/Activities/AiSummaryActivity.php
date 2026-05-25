@@ -21,8 +21,12 @@ final class AiSummaryActivity extends Activity
 
         $transcript = $repository->getTranscript($taskId);
 
-        if ($transcript === null) {
-            throw new RuntimeException("Transcript not found for task: {$taskId}");
+        if ($transcript === null || trim($transcript) === '') {
+            throw new RuntimeException(
+                $transcript === null
+                    ? "Transcript not found for task: {$taskId}"
+                    : "Transcript is empty for task: {$taskId}"
+            );
         }
 
         $task = $repository->findById($taskId);
