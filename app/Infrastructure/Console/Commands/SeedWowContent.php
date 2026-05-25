@@ -28,6 +28,9 @@ final class SeedWowContent extends Command
         'https://www.youtube.com/@MrGM',
     ];
 
+    /** @var int Minimum video duration in seconds (2 min — excludes Shorts) */
+    private const MIN_DURATION_SEC = 120;
+
     /** @var int Maximum video duration in seconds (30 min) */
     private const MAX_DURATION_SEC = 1800;
 
@@ -67,6 +70,11 @@ final class SeedWowContent extends Command
                     ->exists();
                 if ($existing) {
                     $this->line("  ∘ {$title} — already in DB (processing/pending)");
+                    continue;
+                }
+
+                if ($duration < self::MIN_DURATION_SEC) {
+                    $this->line("  ∘ {$title} — too short ({$duration}s, likely a Short)");
                     continue;
                 }
 
