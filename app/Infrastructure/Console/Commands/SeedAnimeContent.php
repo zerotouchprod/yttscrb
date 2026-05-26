@@ -57,10 +57,16 @@ final class SeedAnimeContent extends Command
                     continue;
                 }
 
-                // Skip only if already completed
+                // Skip if already completed successfully
                 $vid = new \App\Domain\ValueObjects\VideoId($videoId);
                 if ($this->taskRepository->findCompletedByVideoId($vid) !== null) {
                     $this->line("  ∘ {$title} — already completed");
+                    continue;
+                }
+
+                // Skip if previous attempt failed with a permanent (non-retryable) error
+                if ($this->hasPermanentFailure($videoId)) {
+                    $this->line("  ∘ {$title} — previously failed (permanent error)");
                     continue;
                 }
 
@@ -94,6 +100,39 @@ final class SeedAnimeContent extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    private function hasPermanentFailure(string $videoId): bool
+    {
+        /** @var object{error_message: string|null}|null $task */
+        $task = \App\Infrastructure\Adapters\Output\Persistence\MediaTaskModel::query()
+            ->where('video_id', $videoId)
+            ->where('status', 'failed')
+            ->orderByDesc('created_at')
+            ->first();
+
+        if ($task === null || $task->error_message === null) {
+            return false;
+        }
+
+        $message = $task->error_message;
+
+        $permanentPatterns = [
+            'members-only',
+            'members only',
+            'private video',
+            'too large',
+            'too long',
+            'not found or not readable',
+        ];
+
+        foreach ($permanentPatterns as $pattern) {
+            if (stripos($message, $pattern) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
