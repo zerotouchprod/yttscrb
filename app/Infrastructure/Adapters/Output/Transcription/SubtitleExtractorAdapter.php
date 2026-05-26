@@ -27,6 +27,7 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
         // Download auto-generated subtitles without downloading the video
         $command = sprintf(
             '%s --write-auto-sub --skip-download --sub-lang en --convert-subs srt '
+            . '--sleep-interval 5 --max-sleep-interval 30 --sleep-requests 1 '
             . '--output %s %s 2>&1',
             escapeshellcmd($binaryPath),
             escapeshellarg($outputDir . '/subs'),
@@ -77,7 +78,7 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
 
         // --print title writes to stdout; stderr (warnings) is discarded
         $command = sprintf(
-            '%s --print title --skip-download %s 2>/dev/null',
+            '%s --print title --skip-download --sleep-interval 5 --max-sleep-interval 30 --sleep-requests 1 %s 2>/dev/null',
             escapeshellcmd($binaryPath),
             escapeshellarg($youtubeUrl),
         );
@@ -115,7 +116,7 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
         $binaryPath = $this->resolveBinaryPath();
 
         $command = sprintf(
-            '%s --print duration --skip-download %s 2>/dev/null',
+            '%s --print duration --skip-download --sleep-interval 5 --max-sleep-interval 30 --sleep-requests 1 %s 2>/dev/null',
             escapeshellcmd($binaryPath),
             escapeshellarg($youtubeUrl),
         );
