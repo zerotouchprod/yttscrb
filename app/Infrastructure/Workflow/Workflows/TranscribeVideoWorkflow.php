@@ -48,7 +48,7 @@ final class TranscribeVideoWorkflow extends Workflow
             );
 
             /** @var WorkflowTranscriptionResult $transcription */
-            $transcription = yield activity(GroqTranscriberActivity::class, $audio->path);
+            $transcription = yield activity(GroqTranscriberActivity::class, $audio->path, $youtubeUrl);
 
             $durationSec = $transcription->durationSec;
         } catch (Throwable $th) {

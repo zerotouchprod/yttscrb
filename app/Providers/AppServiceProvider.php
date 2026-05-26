@@ -30,7 +30,14 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(AudioExtractorInterface::class, YoutubeDlAudioExtractor::class);
+        $this->app->bind(AudioExtractorInterface::class, function ($app) {
+            $ytDlpBinary = config('services.yt_dlp_binary', 'yt-dlp');
+
+            return new YoutubeDlAudioExtractor(
+                binaryPath: is_string($ytDlpBinary) && $ytDlpBinary !== '' ? $ytDlpBinary : 'yt-dlp',
+                outputDir: storage_path('app/temp'),
+            );
+        });
         $this->app->bind(MediaTaskRepositoryInterface::class, MediaTaskEloquentRepository::class);
         $this->app->bind(SubtitleProviderInterface::class, SubtitleExtractorAdapter::class);
         $this->app->bind(TranscriptionProviderInterface::class, GroqWhisperAdapter::class);
