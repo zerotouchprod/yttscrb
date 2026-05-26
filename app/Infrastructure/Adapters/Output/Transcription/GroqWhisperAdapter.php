@@ -48,7 +48,8 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
             CURLOPT_HTTPHEADER => [
                 'Authorization: Bearer ' . $apiKey,
             ],
-            CURLOPT_TIMEOUT => 600, // 10 minutes
+            CURLOPT_TIMEOUT => 900, // 15 minutes — large files need time to upload + transcribe
+            CURLOPT_CONNECTTIMEOUT => 30,
         ]);
 
         $response = curl_exec($ch);
@@ -88,7 +89,7 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
     }
 
     /**
-     * Compress audio file to mono 32kbps MP3 for Groq's 25MB limit.
+     * Compress audio file to mono 16kbps MP3 (16kHz) for Groq's 25MB limit.
      *
      * Returns path to compressed file (temporary, cleaned up after transcription).
      */
@@ -97,7 +98,7 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
         $destPath = $sourcePath . '.compressed.mp3';
 
         $command = sprintf(
-            'ffmpeg -y -i %s -ac 1 -b:a 32k -f mp3 %s 2>/dev/null',
+            'ffmpeg -y -i %s -ac 1 -ar 16000 -b:a 16k -f mp3 %s 2>/dev/null',
             escapeshellarg($sourcePath),
             escapeshellarg($destPath),
         );
