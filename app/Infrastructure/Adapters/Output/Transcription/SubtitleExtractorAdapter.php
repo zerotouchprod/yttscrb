@@ -5,16 +5,18 @@ declare(strict_types=1);
 namespace App\Infrastructure\Adapters\Output\Transcription;
 
 use App\Application\Ports\Output\SubtitleProviderInterface;
+use App\Infrastructure\Adapters\Output\YoutubeDl\YtDlpRateLimiter;
 use Illuminate\Support\Facades\Log;
 
 final class SubtitleExtractorAdapter implements SubtitleProviderInterface
 {
-    private const MAX_RATE_LIMIT_RETRIES = 3;
-    private const RATE_LIMIT_COOLDOWN_SEC = 60;
+    private const MAX_RATE_LIMIT_RETRIES = 2;
+    private const RATE_LIMIT_COOLDOWN_SEC = 90;
 
     public function __construct(
         private readonly SrtParser $srtParser = new SrtParser(),
         private readonly string $binaryPath = 'yt-dlp',
+        private readonly YtDlpRateLimiter $rateLimiter = new YtDlpRateLimiter(),
     ) {
     }
 
@@ -166,49 +168,50 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
      */
     private function runYtDlp(string $command): ?array
     {
-        for ($attempt = 0; $attempt <= self::MAX_RATE_LIMIT_RETRIES; $attempt++) {
-            exec($command, $output, $exitCode);
+        // Acquire global lock — only one yt-dlp process across all workers
+        $this->rateLimiter->acquire();
 
-            if ($exitCode === 0) {
-                return $output;
-            }
+        try {
+            for ($attempt = 0; $attempt <= self::MAX_RATE_LIMIT_RETRIES; $attempt++) {
+                exec($command, $output, $exitCode);
 
-            $errorOutput = implode("\n", $output);
-
-            // Rate limit — cooldown and retry
-            if (str_contains($errorOutput, 'HTTP Error 429') || str_contains($errorOutput, 'Too Many Requests')) {
-                if ($attempt < self::MAX_RATE_LIMIT_RETRIES) {
-                    $cooldown = self::RATE_LIMIT_COOLDOWN_SEC * ($attempt + 1);
-                    Log::info('yt-dlp rate limited, cooling down', [
-                        'attempt' => $attempt + 1,
-                        'cooldown_sec' => $cooldown,
-                        'command' => $command,
-                    ]);
-                    sleep($cooldown);
-                    continue;
+                if ($exitCode === 0) {
+                    return $output;
                 }
 
-                Log::warning('yt-dlp rate limited after all retries', [
-                    'retries' => self::MAX_RATE_LIMIT_RETRIES + 1,
-                    'command' => $command,
-                ]);
+                $errorOutput = implode("\n", $output);
 
+                // Rate limit — cooldown and retry
+                if (str_contains($errorOutput, 'HTTP Error 429') || str_contains($errorOutput, 'Too Many Requests')) {
+                    if ($attempt < self::MAX_RATE_LIMIT_RETRIES) {
+                        $cooldown = self::RATE_LIMIT_COOLDOWN_SEC * ($attempt + 1);
+                        Log::info('yt-dlp rate limited, cooling down', [
+                            'attempt' => $attempt + 1,
+                            'cooldown_sec' => $cooldown,
+                        ]);
+                        sleep($cooldown);
+                        continue;
+                    }
+
+                    Log::warning('yt-dlp rate limited after all retries');
+
+                    return null;
+                }
+
+                // Bot detection — not retryable
+                if (str_contains($errorOutput, 'Sign in to confirm')) {
+                    Log::warning('yt-dlp bot detection triggered');
+
+                    return null;
+                }
+
+                // Other errors — not retryable (no subtitles, video unavailable, etc.)
                 return null;
             }
 
-            // Bot detection — not retryable
-            if (str_contains($errorOutput, 'Sign in to confirm')) {
-                Log::warning('yt-dlp bot detection triggered', [
-                    'command' => $command,
-                ]);
-
-                return null;
-            }
-
-            // Other errors — not retryable (no subtitles, video unavailable, etc.)
             return null;
+        } finally {
+            $this->rateLimiter->release();
         }
-
-        return null;
     }
 }

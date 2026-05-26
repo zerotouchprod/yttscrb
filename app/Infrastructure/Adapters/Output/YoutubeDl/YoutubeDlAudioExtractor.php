@@ -14,12 +14,13 @@ use Throwable;
 final class YoutubeDlAudioExtractor implements AudioExtractorInterface
 {
     private const OUTPUT_TEMPLATE = '%(id)s.%(ext)s';
-    private const MAX_RATE_LIMIT_RETRIES = 3;
-    private const RATE_LIMIT_COOLDOWN_SEC = 60;
+    private const MAX_RATE_LIMIT_RETRIES = 2;
+    private const RATE_LIMIT_COOLDOWN_SEC = 90;
 
     public function __construct(
         private readonly string $binaryPath = 'yt-dlp',
         private readonly string $outputDir = '/tmp',
+        private readonly YtDlpRateLimiter $rateLimiter = new YtDlpRateLimiter(),
     ) {
     }
 
@@ -39,7 +40,14 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
             escapeshellarg($youtubeUrl->value()),
         );
 
-        $this->executeCommand($command, $youtubeUrl->value());
+        // Acquire global rate limit lock before calling yt-dlp
+        $this->rateLimiter->acquire();
+
+        try {
+            $this->executeCommand($command, $youtubeUrl->value());
+        } finally {
+            $this->rateLimiter->release();
+        }
 
         if (file_exists($outputPath)) {
             return new AudioFile($outputPath);
