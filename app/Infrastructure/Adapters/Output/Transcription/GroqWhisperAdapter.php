@@ -80,6 +80,17 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
      */
     private function doRequest(string $apiKey, string $audioPath): TranscriptionResult
     {
+        if (! file_exists($audioPath) || ! is_readable($audioPath)) {
+            throw new RuntimeException(
+                sprintf(
+                    'Audio file not found or not readable: %s (exists=%s, size=%s)',
+                    $audioPath,
+                    file_exists($audioPath) ? 'yes' : 'no',
+                    file_exists($audioPath) ? (string) filesize($audioPath) : 'N/A',
+                ),
+            );
+        }
+
         $ch = curl_init();
 
         $postFields = [
@@ -98,19 +109,22 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
             ],
             CURLOPT_TIMEOUT => 900, // 15 minutes — large files need time to upload + transcribe
             CURLOPT_CONNECTTIMEOUT => 30,
-            // Prevent PHP signals (SIGALRM, SIGTERM) from aborting the curl transfer.
-            // Without this, signals cause CURLE_ABORTED_BY_CALLBACK (HTTP 0).
-            CURLOPT_NOSIGNAL => true,
         ]);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErrno = curl_errno($ch);
         $error = curl_error($ch);
         curl_close($ch);
 
         if (! is_string($response) || $httpCode !== 200) {
             throw new RuntimeException(
-                sprintf('Groq API request failed (HTTP %d): %s', $httpCode, $error ?: $response),
+                sprintf(
+                    'Groq API request failed (HTTP %d, errno %d): %s',
+                    $httpCode,
+                    $curlErrno,
+                    $error ?: $response,
+                ),
             );
         }
 
