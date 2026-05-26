@@ -74,7 +74,7 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
         $command = sprintf(
             '%s --write-auto-sub --skip-download --sub-lang en --convert-subs srt '
             . '--print title --print duration '
-            . '--sleep-interval 5 --max-sleep-interval 30 --sleep-requests 1 '
+            . '--sleep-interval 5 --max-sleep-interval 15 --sleep-requests 2 '
             . '--output %s %s 2>&1',
             escapeshellcmd($binaryPath),
             escapeshellarg($outputDir . '/subs'),

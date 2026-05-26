@@ -34,7 +34,7 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
         }
 
         $command = sprintf(
-            '%s -x --audio-format mp3 -o %s --no-playlist --sleep-interval 5 --max-sleep-interval 30 --sleep-requests 1 %s 2>&1',
+            '%s -x --audio-format mp3 -o %s --no-playlist --sleep-interval 5 --max-sleep-interval 15 --sleep-requests 2 %s 2>&1',
             escapeshellcmd($this->binaryPath),
             escapeshellarg($this->outputDir . '/' . self::OUTPUT_TEMPLATE),
             escapeshellarg($youtubeUrl->value()),
