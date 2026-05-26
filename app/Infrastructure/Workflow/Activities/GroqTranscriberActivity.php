@@ -17,13 +17,19 @@ final class GroqTranscriberActivity extends Activity
     /** @var int 960s = 15 min curl timeout (900s) + 60s buffer for upload/compression + re-download */
     public $timeout = 1020;
 
-    public function execute(string $audioPath, string $youtubeUrl): WorkflowTranscriptionResult
+    /**
+     * @param string      $audioPath  Path to the audio file to transcribe.
+     * @param string|null $youtubeUrl Optional — required only for re-download after pod restart.
+     *                                Kept optional for backward compatibility with in-flight workflows
+     *                                that were dispatched before the signature changed.
+     */
+    public function execute(string $audioPath, ?string $youtubeUrl = null): WorkflowTranscriptionResult
     {
         $this->heartbeat();
 
         // Pod restarts wipe /tmp, so the audio file may not exist.
         // Re-download if necessary to make the workflow resilient to restarts.
-        if (! file_exists($audioPath) || ! is_readable($audioPath)) {
+        if ((! file_exists($audioPath) || ! is_readable($audioPath)) && $youtubeUrl !== null) {
             /** @var AudioExtractorInterface $extractor */
             $extractor = Container::getInstance()->make(AudioExtractorInterface::class);
             $audioFile = $extractor->extract(new YouTubeUrl($youtubeUrl));
