@@ -19,3 +19,6 @@ Schedule::command(ResetWeeklyTrendingCommand::class)->weeklyOn(1, '00:00');
 // Seed WoW content: 1 video per hour, ~24/day
 Schedule::command(\App\Infrastructure\Console\Commands\SeedWowContent::class)->everyMinute();
 
+// Seed Anime content: 1 video per hour, ~24/day
+Schedule::command(\App\Infrastructure\Console\Commands\SeedAnimeContent::class)->everyMinute();
+
