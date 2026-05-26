@@ -54,12 +54,44 @@ final class LaravelAiSummaryAdapter implements SummaryProviderInterface
             /** @var array<string, mixed> $data */
             $data = $response->toArray();
 
-            // introduction is required by schema but AI may omit it on rare occasions
-            if (! isset($data['introduction']) || ! is_string($data['introduction'])) {
-                $data['introduction'] = '';
+            // AI may return incomplete JSON — fill missing required keys with safe defaults.
+            $defaults = [
+                'introduction' => '',
+                'key_points' => [],
+                'conclusion' => null,
+                'resources' => [],
+                'tutorial_steps' => [],
+                'chapters' => [],
+                'flashcards' => [],
+                'highlights' => [],
+                'topics' => [],
+            ];
+            foreach ($defaults as $key => $default) {
+                if (! isset($data[$key])) {
+                    $data[$key] = $default;
+                }
             }
-            Assert::keyExists($data, 'key_points', 'Missing key: key_points.');
-            Assert::isArray($data['key_points'], 'key_points must be an array.');
+            if (! is_array($data['key_points'])) {
+                $data['key_points'] = [];
+            }
+            if (! is_array($data['resources'])) {
+                $data['resources'] = [];
+            }
+            if (! is_array($data['tutorial_steps'])) {
+                $data['tutorial_steps'] = [];
+            }
+            if (! is_array($data['chapters'])) {
+                $data['chapters'] = [];
+            }
+            if (! is_array($data['flashcards'])) {
+                $data['flashcards'] = [];
+            }
+            if (! is_array($data['highlights'])) {
+                $data['highlights'] = [];
+            }
+            if (! is_array($data['topics'])) {
+                $data['topics'] = [];
+            }
 
             $keyPoints = [];
 
@@ -274,16 +306,13 @@ final class LaravelAiSummaryAdapter implements SummaryProviderInterface
 
             // Parse topics
             $topics = [];
-            if (isset($data['topics'])) {
-                Assert::isArray($data['topics'], 'topics must be an array.');
-                foreach ($data['topics'] as $i => $topic) {
-                    Assert::string($topic, sprintf('topics[%d] must be a string.', $i));
-                    $topics[] = $topic;
-                }
+            foreach ($data['topics'] as $i => $topic) {
+                Assert::string($topic, sprintf('topics[%d] must be a string.', $i));
+                $topics[] = $topic;
             }
 
             return new SummaryResult(
-                introduction: $data['introduction'],
+                introduction: (string) $data['introduction'],
                 keyPoints: $keyPoints,
                 conclusion: $conclusion,
                 resources: $resources,
