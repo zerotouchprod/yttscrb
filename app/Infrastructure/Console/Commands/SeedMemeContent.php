@@ -9,13 +9,14 @@ use App\Application\UseCases\TranscribeVideoHandler;
 use App\Domain\Entities\MediaTask;
 use App\Domain\ValueObjects\YouTubeUrl;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 
 final class SeedMemeContent extends Command
 {
     protected $signature = 'app:seed-meme';
 
-    protected $description = 'Fetch latest meme/viral videos from curated channels and dispatch transcription. 1 video per run.';
+    protected $description = 'Fetch latest meme/viral videos from curated channels and dispatch transcription. Up to 3 videos per run with Redis rate limiting.';
 
     /** @var array<int, string> YouTube channel URLs */
     private const CHANNELS = [
@@ -33,6 +34,9 @@ final class SeedMemeContent extends Command
     /** @var int Maximum video duration in seconds (300 min) */
     private const MAX_DURATION_SEC = 18000;
 
+    /** @var int Max videos to dispatch per run */
+    private const MAX_DISPATCH = 3;
+
     public function __construct(
         private readonly MediaTaskRepositoryInterface $taskRepository,
         private readonly TranscribeVideoHandler $transcribeHandler,
@@ -42,13 +46,21 @@ final class SeedMemeContent extends Command
 
     public function handle(): int
     {
-        $found = false;
+        $dispatched = 0;
 
         foreach (self::CHANNELS as $channel) {
+            if ($dispatched >= self::MAX_DISPATCH) {
+                break;
+            }
+
             $videos = $this->fetchLatestVideos($channel);
             $this->line("Channel {$channel}: " . count($videos) . ' videos fetched');
 
             foreach ($videos as $video) {
+                if ($dispatched >= self::MAX_DISPATCH) {
+                    break;
+                }
+
                 $videoId = $video['id'];
                 $title = $video['title'];
                 $duration = (int) $video['duration'];
@@ -80,26 +92,26 @@ final class SeedMemeContent extends Command
                     continue;
                 }
 
-                // Dispatch!
-                $url = new YouTubeUrl("https://youtube.com/watch?v={$videoId}");
-                $task = MediaTask::create((string) Str::uuid(), $url);
-                $this->transcribeHandler->handle($task);
+                // Rate limit via Redis funnel
+                Redis::funnel('groq-transcription')
+                    ->limit(3)
+                    ->releaseAfter(60)
+                    ->then(function () use ($videoId): void {
+                        $url = new YouTubeUrl("https://youtube.com/watch?v={$videoId}");
+                        $task = MediaTask::create((string) Str::uuid(), $url);
+                        $this->transcribeHandler->handle($task);
+                    });
 
                 $this->info("  ✓ Dispatched: {$title} ({$duration}s)");
-                $found = true;
-                break; // 1 video per channel loop
-            }
-
-            if ($found) {
-                break; // 1 video total per command run
+                $dispatched++;
             }
         }
 
-        if (! $found) {
+        if ($dispatched === 0) {
             $this->info('No new meme videos to process.');
         }
 
-        return 0;
+        return self::SUCCESS;
     }
 
     private function hasPermanentFailure(string $videoId): bool

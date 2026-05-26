@@ -28,6 +28,10 @@ it('starts durable workflow and stores returned workflow id', function (): void 
 
             return 42;
         }
+        public function countPublicCompleted(): int
+        {
+            return 0;
+        }
     };
 
     $repository = new class implements MediaTaskRepositoryInterface {
@@ -136,6 +140,10 @@ it('starts durable workflow and stores returned workflow id', function (): void 
         public function findByIds(array $ids): array
         {
             return [];
+        }
+        public function countPublicCompleted(): int
+        {
+            return 0;
         }
     };
 

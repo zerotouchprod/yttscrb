@@ -18,10 +18,19 @@
     <link rel="canonical" href="{{ $canonicalUrl }}">
 
     <!-- Open Graph -->
-    <meta property="og:type" content="article">
-    <meta property="og:title" content="{{ $task->title() }} — Transcript & AI Summary">
+    <meta property="og:type" content="video.other">
+    <meta property="og:title" content="{{ $task->title() }} — Transcript & AI Summary | TubeSum">
     <meta property="og:description" content="{{ $metaDescription }}">
     <meta property="og:url" content="{{ $canonicalUrl }}">
+    @if ($task->youtubeUrl()?->videoId()?->value() !== null)
+        <meta property="og:image" content="https://img.youtube.com/vi/{{ $task->youtubeUrl()->videoId()->value() }}/mqdefault.jpg">
+        <meta property="og:image:width" content="320">
+        <meta property="og:image:height" content="180">
+        <meta property="og:video" content="https://www.youtube.com/embed/{{ $task->youtubeUrl()->videoId()->value() }}">
+        <meta property="og:video:type" content="text/html">
+        <meta property="og:video:width" content="1280">
+        <meta property="og:video:height" content="720">
+    @endif
     <meta property="og:site_name" content="TubeSum">
     <meta property="og:locale" content="en_US">
 
@@ -31,25 +40,102 @@
     <meta name="twitter:description" content="{{ $metaDescription }}">
 
     <!-- Structured Data: VideoObject -->
-    <script type="application/ld+json">
-    {
-        "@@context": "https://schema.org",
-        "@type": "Article",
-        "headline": {{ Js::from($task->title() . ' — Transcript & AI Summary') }},
-        "description": {{ Js::from($metaDescription) }},
-        "url": {{ Js::from($canonicalUrl) }},
-        "datePublished": "{{ $task->completedAt()?->format('c') }}",
-        "dateModified": "{{ $task->completedAt()?->format('c') }}",
-        "publisher": {
-            "@type": "Organization",
-            "name": "TubeSum",
-            "url": {{ Js::from(url('/')) }}
-        },
-        "mainEntityOfPage": {
-            "@type": "WebPage",
-            "@id": {{ Js::from($canonicalUrl) }}
+    @php
+        $vid = $task->youtubeUrl()?->videoId()?->value();
+        $durationSec = $task->durationSec() ?? 0;
+
+        // Build ISO 8601 duration string
+        $h = intdiv($durationSec, 3600);
+        $m = intdiv($durationSec % 3600, 60);
+        $s = $durationSec % 60;
+        $isoDuration = 'PT' . ($h > 0 ? $h . 'H' : '') . ($m > 0 ? $m . 'M' : '') . $s . 'S';
+
+        // Helper: convert "MM:SS" or "HH:MM:SS" to seconds
+        $toSeconds = function(string $tc): int {
+            $parts = explode(':', $tc);
+            if (count($parts) === 3) {
+                return (int)$parts[0] * 3600 + (int)$parts[1] * 60 + (int)$parts[2];
+            }
+            return (int)$parts[0] * 60 + (int)$parts[1];
+        };
+
+        // Build hasPart clips from keyPoints and tutorialSteps
+        $hasPart = [];
+
+        // Introduction clip (0 until first keyPoint or 120s)
+        $firstKpTime = null;
+        if ($renderedSummary !== null && count($renderedSummary->keyPoints()) > 0) {
+            $firstKpTime = $toSeconds($renderedSummary->keyPoints()[0]->timecode);
         }
-    }
+        $introEnd = $firstKpTime !== null ? $firstKpTime : min($durationSec, 120);
+        $hasPart[] = [
+            '@type' => 'Clip',
+            'name' => 'Introduction: ' . \Illuminate\Support\Str::limit($task->title(), 80),
+            'startOffset' => 0,
+            'endOffset' => $introEnd,
+            'url' => $vid ? 'https://www.youtube.com/watch?v=' . $vid . '&t=0' : null,
+        ];
+
+        // Key Points as Clips
+        if ($renderedSummary !== null) {
+            foreach ($renderedSummary->keyPoints() as $kp) {
+                $start = $toSeconds($kp->timecode);
+                $end = $start + 120; // estimate: 2 min per point
+                if ($durationSec > 0) {
+                    $end = min($end, $durationSec);
+                }
+                $hasPart[] = [
+                    '@type' => 'Clip',
+                    'name' => 'Key Point: ' . \Illuminate\Support\Str::limit($kp->title, 90),
+                    'startOffset' => $start,
+                    'endOffset' => $end,
+                    'url' => $vid ? 'https://www.youtube.com/watch?v=' . $vid . '&t=' . $start : null,
+                ];
+            }
+
+            // Tutorial Steps as Clips
+            foreach ($renderedSummary->tutorialSteps() as $step) {
+                if ($step->time === '') continue;
+                $start = $toSeconds($step->time);
+                $end = $start + 120;
+                if ($durationSec > 0) {
+                    $end = min($end, $durationSec);
+                }
+                $hasPart[] = [
+                    '@type' => 'Clip',
+                    'name' => 'Step ' . $step->step . ': ' . \Illuminate\Support\Str::limit($step->action, 90),
+                    'startOffset' => $start,
+                    'endOffset' => $end,
+                    'url' => $vid ? 'https://www.youtube.com/watch?v=' . $vid . '&t=' . $start : null,
+                ];
+            }
+        }
+
+        // Convert to JSON for ld+json
+        $schema = [
+            '@context' => 'https://schema.org',
+            '@type' => 'VideoObject',
+            'name' => $task->title(),
+            'description' => $metaDescription,
+            'thumbnailUrl' => $vid ? 'https://img.youtube.com/vi/' . $vid . '/mqdefault.jpg' : null,
+            'uploadDate' => $task->completedAt()?->format('c'),
+            'duration' => $isoDuration,
+            'contentUrl' => $vid ? 'https://www.youtube.com/watch?v=' . $vid : null,
+            'embedUrl' => $vid ? 'https://www.youtube.com/embed/' . $vid : null,
+            'url' => $canonicalUrl,
+            'publisher' => [
+                '@type' => 'Organization',
+                'name' => 'TubeSum',
+                'url' => url('/'),
+            ],
+            'hasPart' => $hasPart,
+        ];
+
+        // Remove null values
+        $schema = array_filter($schema, fn($v) => $v !== null);
+    @endphp
+    <script type="application/ld+json">
+    {!! json_encode($schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
     </script>
 
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))

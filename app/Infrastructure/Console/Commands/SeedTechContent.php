@@ -12,24 +12,20 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 
-final class SeedGamingContent extends Command
+final class SeedTechContent extends Command
 {
-    protected $signature = 'app:seed-gaming';
+    protected $signature = 'app:seed-tech';
 
-    protected $description = 'Fetch latest gaming videos from curated channels and dispatch transcription. Up to 3 videos per run with Redis rate limiting.';
+    protected $description = 'Fetch latest tech videos from curated channels and dispatch transcription. Up to 3 videos per run with Redis rate limiting.';
 
     /** @var array<int, string> YouTube channel URLs */
     private const CHANNELS = [
-        'https://www.youtube.com/@IGN',
-        'https://www.youtube.com/@Gamespot',
-        'https://www.youtube.com/@GameRanx',
-        'https://www.youtube.com/@DigitalFoundry',
-        'https://www.youtube.com/@SkillUp',
-        'https://www.youtube.com/@ACG-Game-Reviews',
-        'https://www.youtube.com/@videogamedunkey',
-        'https://www.youtube.com/@videogamedunkey-dunk',
-        'https://www.youtube.com/@Strat-Edgy',
-        'https://www.youtube.com/@SummoningSalt',
+        'https://www.youtube.com/@MKBHD',
+        'https://www.youtube.com/@LinusTechTips',
+        'https://www.youtube.com/@Dave2D',
+        'https://www.youtube.com/@JerryRigEverything',
+        'https://www.youtube.com/@Mrwhosetheboss',
+        'https://www.youtube.com/@austinevans',
     ];
 
     /** @var int Minimum video duration in seconds (2 min — excludes Shorts) */
@@ -112,7 +108,7 @@ final class SeedGamingContent extends Command
         }
 
         if ($dispatched === 0) {
-            $this->info('No new gaming videos to process.');
+            $this->info('No new tech videos to process.');
         }
 
         return self::SUCCESS;
@@ -151,40 +147,36 @@ final class SeedGamingContent extends Command
     }
 
     /**
-     * @return array<int, array{id: string, title: string, duration: string}>
+     * Fetch latest 10 videos from a YouTube channel using yt-dlp.
+     *
+     * @return array<int, array{id: string, title: string, duration: int|null}>
      */
     private function fetchLatestVideos(string $channelUrl): array
     {
-        $ytDlp = config('services.yt_dlp_binary', 'yt-dlp');
-
-        if (! is_string($ytDlp) || $ytDlp === '') {
-            $ytDlp = 'yt-dlp';
-        }
-
         $command = sprintf(
-            '%s --flat-playlist --print "%%(id)s|%%(title)s|%%(duration)s" --playlist-end 3 %s/videos 2>/dev/null',
-            escapeshellcmd($ytDlp),
+            'yt-dlp --flat-playlist --dump-json --playlist-items 1-10 --skip-download %s 2>/dev/null',
             escapeshellarg($channelUrl),
         );
 
-        $output = [];
-        exec($command, $output, $exitCode);
+        $output = shell_exec($command);
 
-        if ($exitCode !== 0 || $output === []) {
+        if (! is_string($output) || $output === '') {
             return [];
         }
 
         $videos = [];
-        foreach ($output as $line) {
-            $parts = explode('|', $line, 3);
-            if (count($parts) < 3) {
+        foreach (explode("\n", trim($output)) as $line) {
+            if ($line === '') {
                 continue;
             }
-
+            $data = json_decode($line, true);
+            if (! is_array($data) || ! isset($data['id'])) {
+                continue;
+            }
             $videos[] = [
-                'id'       => trim($parts[0]),
-                'title'    => trim($parts[1]),
-                'duration' => trim($parts[2]),
+                'id'       => (string) $data['id'],
+                'title'    => isset($data['title']) ? (string) $data['title'] : 'Untitled',
+                'duration' => isset($data['duration']) ? (int) $data['duration'] : null,
             ];
         }
 

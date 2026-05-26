@@ -128,6 +128,10 @@ final class TranscribeVideoHandlerTest extends TestCase
             {
                 return [];
             }
+            public function countPublicCompleted(): int
+            {
+                return 0;
+            }
         };
 
         $dispatcher = new class () implements WorkflowDispatcherInterface {
@@ -136,6 +140,10 @@ final class TranscribeVideoHandlerTest extends TestCase
             public function dispatch(MediaTask $task): void
             {
                 $this->dispatchCalls++;
+            }
+            public function countPublicCompleted(): int
+            {
+                return 0;
             }
         };
 
@@ -250,6 +258,10 @@ final class TranscribeVideoHandlerTest extends TestCase
             {
                 return [];
             }
+            public function countPublicCompleted(): int
+            {
+                return 0;
+            }
         };
 
         $dispatcher = new class () implements WorkflowDispatcherInterface {
@@ -258,6 +270,10 @@ final class TranscribeVideoHandlerTest extends TestCase
             public function dispatch(MediaTask $task): void
             {
                 $this->dispatchedTask = $task;
+            }
+            public function countPublicCompleted(): int
+            {
+                return 0;
             }
         };
 
@@ -366,11 +382,19 @@ final class TranscribeVideoHandlerTest extends TestCase
             {
                 return [];
             }
+            public function countPublicCompleted(): int
+            {
+                return 0;
+            }
         };
 
         $dispatcher = new class () implements WorkflowDispatcherInterface {
             public function dispatch(MediaTask $task): void
             {
+            }
+            public function countPublicCompleted(): int
+            {
+                return 0;
             }
         };
 

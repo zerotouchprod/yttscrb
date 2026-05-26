@@ -28,3 +28,12 @@ Schedule::command(\App\Infrastructure\Console\Commands\SeedMemeContent::class)->
 // Seed Gaming content: 1 video per hour, ~24/day
 Schedule::command(\App\Infrastructure\Console\Commands\SeedGamingContent::class)->everyMinute();
 
+// Seed Tech content: 1-3 videos per run, every minute with Redis::funnel rate limiting
+Schedule::command(\App\Infrastructure\Console\Commands\SeedTechContent::class)->everyMinute();
+
+// Seed Science/Education content: 1-5 videos per run, every minute with Redis::funnel rate limiting
+Schedule::command(\App\Infrastructure\Console\Commands\SeedScienceContent::class)->everyMinute();
+
+// Seed Search content (yt-dlp ytsearch): 1-3 videos per run, every 5 min
+Schedule::command(\App\Infrastructure\Console\Commands\SeedSearchContent::class)->everyFiveMinutes();
+

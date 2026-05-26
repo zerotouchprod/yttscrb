@@ -9,6 +9,7 @@ use App\Application\UseCases\TranscribeVideoHandler;
 use App\Domain\Entities\MediaTask;
 use App\Domain\ValueObjects\YouTubeUrl;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -16,7 +17,7 @@ final class SeedWowContent extends Command
 {
     protected $signature = 'app:seed-wow';
 
-    protected $description = 'Fetch latest WoW videos from curated channels and dispatch transcription. 1 video per run.';
+    protected $description = 'Fetch latest WoW videos from curated channels and dispatch transcription. Up to 3 videos per run with Redis rate limiting.';
 
     /** @var array<int, string> YouTube channel URLs */
     private const CHANNELS = [
@@ -34,6 +35,9 @@ final class SeedWowContent extends Command
     /** @var int Maximum video duration in seconds (300 min) */
     private const MAX_DURATION_SEC = 18000;
 
+    /** @var int Max videos to dispatch per run */
+    private const MAX_DISPATCH = 3;
+
     public function __construct(
         private readonly MediaTaskRepositoryInterface $taskRepository,
         private readonly TranscribeVideoHandler $transcribeHandler,
@@ -43,13 +47,21 @@ final class SeedWowContent extends Command
 
     public function handle(): int
     {
-        $found = false;
+        $dispatched = 0;
 
         foreach (self::CHANNELS as $channel) {
+            if ($dispatched >= self::MAX_DISPATCH) {
+                break;
+            }
+
             $videos = $this->fetchLatestVideos($channel);
             $this->line("Channel {$channel}: " . count($videos) . ' videos fetched');
 
             foreach ($videos as $video) {
+                if ($dispatched >= self::MAX_DISPATCH) {
+                    break;
+                }
+
                 $videoId = $video['id'];
                 $title = $video['title'];
                 $duration = (int) $video['duration'];
@@ -81,23 +93,23 @@ final class SeedWowContent extends Command
                     continue;
                 }
 
-                // Dispatch!
-                $url = new YouTubeUrl("https://youtube.com/watch?v={$videoId}");
-                $task = MediaTask::create((string) Str::uuid(), $url);
-                $this->transcribeHandler->handle($task);
+                // Rate limit via Redis funnel
+                Redis::funnel('groq-transcription')
+                    ->limit(3)
+                    ->releaseAfter(60)
+                    ->then(function () use ($videoId): void {
+                        $url = new YouTubeUrl("https://youtube.com/watch?v={$videoId}");
+                        $task = MediaTask::create((string) Str::uuid(), $url);
+                        $this->transcribeHandler->handle($task);
+                    });
 
                 $this->info("  ✓ Dispatched: {$title} ({$duration}s)");
-                $found = true;
-                break; // 1 video per channel loop
-            }
-
-            if ($found) {
-                break; // 1 video total per command run
+                $dispatched++;
             }
         }
 
-        if (! $found) {
-            $this->info('No new videos to process.');
+        if ($dispatched === 0) {
+            $this->info('No new WoW videos to process.');
         }
 
         return self::SUCCESS;
@@ -136,14 +148,14 @@ final class SeedWowContent extends Command
     }
 
     /**
-     * Fetch latest 5 videos from a YouTube channel using yt-dlp.
+     * Fetch latest 10 videos from a YouTube channel using yt-dlp.
      *
      * @return array<int, array{id: string, title: string, duration: int|null}>
      */
     private function fetchLatestVideos(string $channelUrl): array
     {
         $command = sprintf(
-            'yt-dlp --flat-playlist --dump-json --playlist-items 1-5 --skip-download %s 2>/dev/null',
+            'yt-dlp --flat-playlist --dump-json --playlist-items 1-10 --skip-download %s 2>/dev/null',
             escapeshellarg($channelUrl),
         );
 

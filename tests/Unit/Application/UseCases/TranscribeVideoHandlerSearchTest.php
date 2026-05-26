@@ -122,11 +122,19 @@ final class TranscribeVideoHandlerSearchTest extends TestCase
             {
                 return [];
             }
+            public function countPublicCompleted(): int
+            {
+                return 0;
+            }
         };
 
         $dispatcher = new class () implements WorkflowDispatcherInterface {
             public function dispatch(MediaTask $task): void
             {
+            }
+            public function countPublicCompleted(): int
+            {
+                return 0;
             }
         };
 
@@ -243,11 +251,19 @@ final class TranscribeVideoHandlerSearchTest extends TestCase
             {
                 return [];
             }
+            public function countPublicCompleted(): int
+            {
+                return 0;
+            }
         };
 
         $dispatcher = new class () implements WorkflowDispatcherInterface {
             public function dispatch(MediaTask $task): void
             {
+            }
+            public function countPublicCompleted(): int
+            {
+                return 0;
             }
         };
 
