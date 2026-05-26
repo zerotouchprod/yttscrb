@@ -33,19 +33,23 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(AudioExtractorInterface::class, function ($app) {
             $ytDlpBinary = config('services.yt_dlp_binary', 'yt-dlp');
             $ipv6Prefix = config('services.youtube.ipv6_prefix');
+            $cookiesPath = config('services.youtube.cookies_path');
 
             return new YoutubeDlAudioExtractor(
                 binaryPath: is_string($ytDlpBinary) && $ytDlpBinary !== '' ? $ytDlpBinary : 'yt-dlp',
                 outputDir: storage_path('app/temp'),
                 ipv6Prefix: is_string($ipv6Prefix) && $ipv6Prefix !== '' ? $ipv6Prefix : null,
+                cookiesPath: is_string($cookiesPath) && $cookiesPath !== '' && file_exists($cookiesPath) ? $cookiesPath : null,
             );
         });
         $this->app->bind(MediaTaskRepositoryInterface::class, MediaTaskEloquentRepository::class);
         $this->app->bind(SubtitleProviderInterface::class, function ($app) {
             $ipv6Prefix = config('services.youtube.ipv6_prefix');
+            $cookiesPath = config('services.youtube.cookies_path');
 
             return new SubtitleExtractorAdapter(
                 ipv6Prefix: is_string($ipv6Prefix) && $ipv6Prefix !== '' ? $ipv6Prefix : null,
+                cookiesPath: is_string($cookiesPath) && $cookiesPath !== '' && file_exists($cookiesPath) ? $cookiesPath : null,
             );
         });
         $this->app->bind(TranscriptionProviderInterface::class, GroqWhisperAdapter::class);

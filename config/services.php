@@ -35,6 +35,7 @@ return [
 
     'youtube' => [
         'ipv6_prefix' => env('SERVICES_YOUTUBE_IPV6_PREFIX'),
+        'cookies_path' => env('YT_DLP_COOKIES_PATH'),
     ],
 
     'max_video_duration_sec' => (int) env('MAX_VIDEO_DURATION_SEC', 7200),

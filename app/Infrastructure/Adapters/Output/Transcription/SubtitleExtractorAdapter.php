@@ -25,6 +25,7 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
         private readonly YtDlpRateLimiter $rateLimiter = new YtDlpRateLimiter(),
         private readonly ?string $ipv6Prefix = null,
         private readonly Ipv6Rotator $ipv6Rotator = new Ipv6Rotator(),
+        private readonly ?string $cookiesPath = null,
     ) {
     }
 
@@ -75,15 +76,19 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
 
         $ipv6Args = $this->ipv6Rotator->buildYtDlpArgs($this->ipv6Prefix);
         $sourceAddr = $ipv6Args !== [] ? implode(' ', $ipv6Args) . ' ' : '';
+        $cookies = $this->cookiesPath ? sprintf('--cookies %s ', escapeshellarg($this->cookiesPath)) : '';
+        $extractorArgs = '--extractor-args "youtube:player_client=android,ios,web" ';
 
         // Single yt-dlp call: print title + duration to stdout, download subs to file
         $command = sprintf(
-            '%s %s--write-auto-sub --skip-download --sub-lang en --convert-subs srt '
+            '%s %s%s%s--write-auto-sub --skip-download --sub-lang en --convert-subs srt '
             . '--print title --print duration '
             . '--sleep-interval 5 --max-sleep-interval 15 --sleep-requests 2 '
             . '--output %s %s 2>&1',
             escapeshellcmd($binaryPath),
             $sourceAddr,
+            $cookies,
+            $extractorArgs,
             escapeshellarg($outputDir . '/subs'),
             escapeshellarg($youtubeUrl),
         );

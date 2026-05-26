@@ -17,7 +17,7 @@ final class YtDlpRateLimiter
 {
     private const LOCK_KEY = 'ytdlp:global-lock';
     private const LOCK_TTL_SEC = 120;    // Max time a single yt-dlp call can take
-    private const MIN_GAP_SEC = 15;       // Minimum gap between calls
+    private const MIN_GAP_SEC = 30;       // Minimum gap between calls
     private const POLL_INTERVAL_MS = 500; // Check every 500ms
 
     /**

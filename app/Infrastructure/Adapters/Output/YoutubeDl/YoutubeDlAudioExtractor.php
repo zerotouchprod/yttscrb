@@ -23,6 +23,7 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
         private readonly YtDlpRateLimiter $rateLimiter = new YtDlpRateLimiter(),
         private readonly ?string $ipv6Prefix = null,
         private readonly Ipv6Rotator $ipv6Rotator = new Ipv6Rotator(),
+        private readonly ?string $cookiesPath = null,
     ) {
     }
 
@@ -37,11 +38,15 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
 
         $ipv6Args = $this->ipv6Rotator->buildYtDlpArgs($this->ipv6Prefix);
         $sourceAddr = $ipv6Args !== [] ? implode(' ', $ipv6Args) . ' ' : '';
+        $cookies = $this->cookiesPath ? sprintf('--cookies %s ', escapeshellarg($this->cookiesPath)) : '';
+        $extractorArgs = '--extractor-args "youtube:player_client=android,ios,web" ';
 
         $command = sprintf(
-            '%s %s-x --audio-format mp3 -o %s --no-playlist --sleep-interval 5 --max-sleep-interval 15 --sleep-requests 2 %s 2>&1',
+            '%s %s%s%s-x --audio-format mp3 -o %s --no-playlist --sleep-interval 5 --max-sleep-interval 15 --sleep-requests 2 %s 2>&1',
             escapeshellcmd($this->binaryPath),
             $sourceAddr,
+            $cookies,
+            $extractorArgs,
             escapeshellarg($this->outputDir . '/' . self::OUTPUT_TEMPLATE),
             escapeshellarg($youtubeUrl->value()),
         );
