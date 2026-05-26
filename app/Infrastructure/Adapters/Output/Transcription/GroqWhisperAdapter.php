@@ -15,7 +15,11 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
     private const API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 
     /** @var int Maximum file size in bytes before compression (24 MB — Groq limit is 25 MB) */
-    private const MAX_FILE_SIZE = 24 * 1024 * 1024;
+    /** @var int Maximum file size in bytes (25 MB — Groq hard limit) */
+    private const MAX_FILE_SIZE = 25 * 1024 * 1024;
+
+    /** @var int Compress any file above this threshold (5 MB) to speed up upload */
+    private const COMPRESS_THRESHOLD = 5 * 1024 * 1024;
 
     public function transcribe(AudioFile $audioFile): TranscriptionResult
     {
@@ -29,6 +33,17 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
         $fileSize = @filesize($audioPath);
 
         if ($fileSize !== false && $fileSize > self::MAX_FILE_SIZE) {
+            throw new RuntimeException(
+                sprintf(
+                    'Audio file too large for Groq API (%d MB, max %d MB). Try a shorter video.',
+                    (int) round($fileSize / 1024 / 1024),
+                    (int) (self::MAX_FILE_SIZE / 1024 / 1024),
+                ),
+            );
+        }
+
+        // Compress any audio > 5 MB to speed up upload and reduce memory pressure.
+        if ($fileSize !== false && $fileSize > self::COMPRESS_THRESHOLD) {
             $audioPath = $this->compressAudio($audioPath);
         }
 
@@ -89,7 +104,7 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
     }
 
     /**
-     * Compress audio file to mono 16kbps MP3 (16kHz) for Groq's 25MB limit.
+     * Compress audio file to mono 8kbps MP3 (16kHz) for faster upload.
      *
      * Returns path to compressed file (temporary, cleaned up after transcription).
      */
@@ -98,19 +113,19 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
         $destPath = $sourcePath . '.compressed.mp3';
 
         $command = sprintf(
-            'ffmpeg -y -i %s -ac 1 -ar 16000 -b:a 16k -f mp3 %s 2>/dev/null',
+            'ffmpeg -y -i %s -ac 1 -ar 16000 -b:a 8k -f mp3 %s 2>/dev/null',
             escapeshellarg($sourcePath),
             escapeshellarg($destPath),
         );
 
-        $exitCode = 0;
-        shell_exec($command);
+        exec($command, result_code: $exitCode);
 
         if (! file_exists($destPath) || filesize($destPath) === 0) {
             $originalSize = filesize($sourcePath) ?: 0;
             throw new RuntimeException(
                 sprintf(
-                    'Failed to compress audio file for Groq API (original size: %d bytes).',
+                    'Failed to compress audio (exit code: %d, original: %d bytes).',
+                    $exitCode,
                     $originalSize,
                 ),
             );
