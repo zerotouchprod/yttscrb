@@ -57,15 +57,10 @@ final class SeedAnimeContent extends Command
                     continue;
                 }
 
-                // Skip if already processed or processing
+                // Skip only if already completed
                 $vid = new \App\Domain\ValueObjects\VideoId($videoId);
                 if ($this->taskRepository->findCompletedByVideoId($vid) !== null) {
                     $this->line("  ∘ {$title} — already completed");
-                    continue;
-                }
-                // Also check pending/processing tasks for this video
-                if ($this->taskRepository->existsByVideoId($videoId)) {
-                    $this->line("  ∘ {$title} — already in DB (processing/pending)");
                     continue;
                 }
 

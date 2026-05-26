@@ -10,22 +10,21 @@ use App\Domain\Entities\MediaTask;
 use App\Domain\ValueObjects\YouTubeUrl;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
-use RuntimeException;
 
-final class SeedWowContent extends Command
+final class SeedMemeContent extends Command
 {
-    protected $signature = 'app:seed-wow';
+    protected $signature = 'app:seed-meme';
 
-    protected $description = 'Fetch latest WoW videos from curated channels and dispatch transcription. 1 video per run.';
+    protected $description = 'Fetch latest meme/viral videos from curated channels and dispatch transcription. 1 video per run.';
 
     /** @var array<int, string> YouTube channel URLs */
     private const CHANNELS = [
-        'https://www.youtube.com/@BellularGaming',
-        'https://www.youtube.com/channel/UCAbaiKvP8kZfY706loT4ivg',
-        'https://www.youtube.com/@Hazelnuttygames',
-        'https://www.youtube.com/@TaliesinEvitel',
-        'https://www.youtube.com/@SignsOfKelani',
-        'https://www.youtube.com/@MrGM',
+        'https://www.youtube.com/@PewDiePie',
+        'https://www.youtube.com/@ksi',
+        'https://www.youtube.com/@MrBeast',
+        'https://www.youtube.com/@penguinz0',
+        'https://www.youtube.com/@Ludwig',
+        'https://www.youtube.com/@jacksepticeye',
     ];
 
     /** @var int Minimum video duration in seconds (2 min — excludes Shorts) */
@@ -91,43 +90,47 @@ final class SeedWowContent extends Command
         }
 
         if (! $found) {
-            $this->info('No new videos to process.');
+            $this->info('No new meme videos to process.');
         }
 
-        return self::SUCCESS;
+        return 0;
     }
 
     /**
-     * Fetch latest 5 videos from a YouTube channel using yt-dlp.
-     *
-     * @return array<int, array{id: string, title: string, duration: int|null}>
+     * @return array<int, array{id: string, title: string, duration: string}>
      */
     private function fetchLatestVideos(string $channelUrl): array
     {
+        $ytDlp = config('services.yt_dlp_binary', 'yt-dlp');
+
+        if (! is_string($ytDlp) || $ytDlp === '') {
+            $ytDlp = 'yt-dlp';
+        }
+
         $command = sprintf(
-            'yt-dlp --flat-playlist --dump-json --playlist-items 1-5 --skip-download %s 2>/dev/null',
+            '%s --flat-playlist --print "%%(id)s|%%(title)s|%%(duration)s" --playlist-end 3 %s/videos 2>/dev/null',
+            escapeshellcmd($ytDlp),
             escapeshellarg($channelUrl),
         );
 
-        $output = shell_exec($command);
+        $output = [];
+        exec($command, $output, $exitCode);
 
-        if (! is_string($output) || $output === '') {
+        if ($exitCode !== 0 || $output === []) {
             return [];
         }
 
         $videos = [];
-        foreach (explode("\n", trim($output)) as $line) {
-            if ($line === '') {
+        foreach ($output as $line) {
+            $parts = explode('|', $line, 3);
+            if (count($parts) < 3) {
                 continue;
             }
-            $data = json_decode($line, true);
-            if (! is_array($data) || ! isset($data['id'])) {
-                continue;
-            }
+
             $videos[] = [
-                'id'       => (string) $data['id'],
-                'title'    => isset($data['title']) ? (string) $data['title'] : 'Untitled',
-                'duration' => isset($data['duration']) ? (int) $data['duration'] : null,
+                'id'       => trim($parts[0]),
+                'title'    => trim($parts[1]),
+                'duration' => trim($parts[2]),
             ];
         }
 

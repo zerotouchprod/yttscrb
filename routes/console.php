@@ -22,3 +22,6 @@ Schedule::command(\App\Infrastructure\Console\Commands\SeedWowContent::class)->e
 // Seed Anime content: 1 video per hour, ~24/day
 Schedule::command(\App\Infrastructure\Console\Commands\SeedAnimeContent::class)->everyMinute();
 
+// Seed Meme content: 1 video per hour, ~24/day
+Schedule::command(\App\Infrastructure\Console\Commands\SeedMemeContent::class)->everyMinute();
+
