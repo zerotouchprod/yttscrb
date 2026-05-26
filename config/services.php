@@ -33,6 +33,10 @@ return [
 
     'yt_dlp_binary' => env('YT_DLP_BINARY', 'yt-dlp'),
 
+    'youtube' => [
+        'ipv6_prefix' => env('SERVICES_YOUTUBE_IPV6_PREFIX'),
+    ],
+
     'max_video_duration_sec' => (int) env('MAX_VIDEO_DURATION_SEC', 7200),
 
     'telegram' => [

@@ -21,6 +21,8 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
         private readonly string $binaryPath = 'yt-dlp',
         private readonly string $outputDir = '/tmp',
         private readonly YtDlpRateLimiter $rateLimiter = new YtDlpRateLimiter(),
+        private readonly ?string $ipv6Prefix = null,
+        private readonly Ipv6Rotator $ipv6Rotator = new Ipv6Rotator(),
     ) {
     }
 
@@ -33,9 +35,13 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
             return new AudioFile($outputPath);
         }
 
+        $ipv6Args = $this->ipv6Rotator->buildYtDlpArgs($this->ipv6Prefix);
+        $sourceAddr = $ipv6Args !== [] ? implode(' ', $ipv6Args) . ' ' : '';
+
         $command = sprintf(
-            '%s -x --audio-format mp3 -o %s --no-playlist --sleep-interval 5 --max-sleep-interval 15 --sleep-requests 2 %s 2>&1',
+            '%s %s-x --audio-format mp3 -o %s --no-playlist --sleep-interval 5 --max-sleep-interval 15 --sleep-requests 2 %s 2>&1',
             escapeshellcmd($this->binaryPath),
+            $sourceAddr,
             escapeshellarg($this->outputDir . '/' . self::OUTPUT_TEMPLATE),
             escapeshellarg($youtubeUrl->value()),
         );

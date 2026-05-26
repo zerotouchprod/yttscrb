@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Adapters\Output\Transcription;
 
 use App\Application\Ports\Output\SubtitleProviderInterface;
+use App\Infrastructure\Adapters\Output\YoutubeDl\Ipv6Rotator;
 use App\Infrastructure\Adapters\Output\YoutubeDl\YtDlpRateLimiter;
 use Illuminate\Support\Facades\Log;
 
@@ -22,6 +23,8 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
         private readonly SrtParser $srtParser = new SrtParser(),
         private readonly string $binaryPath = 'yt-dlp',
         private readonly YtDlpRateLimiter $rateLimiter = new YtDlpRateLimiter(),
+        private readonly ?string $ipv6Prefix = null,
+        private readonly Ipv6Rotator $ipv6Rotator = new Ipv6Rotator(),
     ) {
     }
 
@@ -70,13 +73,17 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
 
         $binaryPath = $this->resolveBinaryPath();
 
+        $ipv6Args = $this->ipv6Rotator->buildYtDlpArgs($this->ipv6Prefix);
+        $sourceAddr = $ipv6Args !== [] ? implode(' ', $ipv6Args) . ' ' : '';
+
         // Single yt-dlp call: print title + duration to stdout, download subs to file
         $command = sprintf(
-            '%s --write-auto-sub --skip-download --sub-lang en --convert-subs srt '
+            '%s %s--write-auto-sub --skip-download --sub-lang en --convert-subs srt '
             . '--print title --print duration '
             . '--sleep-interval 5 --max-sleep-interval 15 --sleep-requests 2 '
             . '--output %s %s 2>&1',
             escapeshellcmd($binaryPath),
+            $sourceAddr,
             escapeshellarg($outputDir . '/subs'),
             escapeshellarg($youtubeUrl),
         );
