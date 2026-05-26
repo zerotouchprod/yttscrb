@@ -61,8 +61,13 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
                 $lastException = $e;
 
                 // Do not retry on client errors (4xx) or permanent failures.
+                // Throw PermanentTranscriptionException so the workflow also stops retrying.
                 if ($this->isNonRetryable($e)) {
-                    throw $e;
+                    throw new \App\Shared\Exceptions\PermanentTranscriptionException(
+                        $e->getMessage(),
+                        $e->getCode(),
+                        $e,
+                    );
                 }
 
                 if ($attempt < self::MAX_RETRIES) {
