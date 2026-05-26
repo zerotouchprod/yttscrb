@@ -181,6 +181,7 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
             $paginator->total(),
             $paginator->perPage(),
             $paginator->currentPage(),
+            ['path' => url('/history')],
         );
     }
 
