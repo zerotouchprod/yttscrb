@@ -9,10 +9,13 @@ use App\Domain\ValueObjects\AudioFile;
 use App\Domain\ValueObjects\YouTubeUrl;
 use App\Shared\Exceptions\VideoNotAvailableException;
 use RuntimeException;
+use Throwable;
 
 final class YoutubeDlAudioExtractor implements AudioExtractorInterface
 {
     private const OUTPUT_TEMPLATE = '%(id)s.%(ext)s';
+    private const MAX_RATE_LIMIT_RETRIES = 3;
+    private const RATE_LIMIT_COOLDOWN_SEC = 60;
 
     public function __construct(
         private readonly string $binaryPath = 'yt-dlp',
@@ -36,7 +39,7 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
             escapeshellarg($youtubeUrl->value()),
         );
 
-        $this->executeCommand($command);
+        $this->executeCommand($command, $youtubeUrl->value());
 
         if (file_exists($outputPath)) {
             return new AudioFile($outputPath);
@@ -49,7 +52,51 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
         ));
     }
 
-    private function executeCommand(string $command): string
+    private function executeCommand(string $command, string $youtubeUrl): string
+    {
+        $lastException = null;
+
+        for ($attempt = 0; $attempt <= self::MAX_RATE_LIMIT_RETRIES; $attempt++) {
+            try {
+                return $this->runCommand($command);
+            } catch (RuntimeException $e) {
+                $message = $e->getMessage();
+
+                // Rate limit — cooldown and retry
+                if (str_contains($message, 'rate limited') || str_contains($message, 'Cooling down')) {
+                    $cooldown = self::RATE_LIMIT_COOLDOWN_SEC * ($attempt + 1);
+                    error_log(sprintf(
+                        '[yt-dlp] Rate limited for %s. Cooling down %ds (attempt %d/%d)...',
+                        $youtubeUrl,
+                        $cooldown,
+                        $attempt + 1,
+                        self::MAX_RATE_LIMIT_RETRIES + 1,
+                    ));
+                    sleep($cooldown);
+                    $lastException = $e;
+                    continue;
+                }
+
+                // Bot detection — not retryable, throw immediately
+                if (str_contains($message, 'bot detection') || str_contains($message, 'Sign in to confirm')) {
+                    throw $e;
+                }
+
+                // Other errors — throw immediately
+                throw $e;
+            }
+        }
+
+        // Exhausted retries
+        throw new RuntimeException(sprintf(
+            'yt-dlp rate limited after %d retries for %s. Last error: %s',
+            self::MAX_RATE_LIMIT_RETRIES + 1,
+            $youtubeUrl,
+            $lastException?->getMessage() ?? 'unknown',
+        ));
+    }
+
+    private function runCommand(string $command): string
     {
         $descriptors = [
             0 => ['pipe', 'r'],
@@ -89,7 +136,6 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
             }
 
             if (str_contains($errorOutput, 'Video unavailable')) {
-                // Extract the reason from YouTube's error message
                 $reason = 'This video is unavailable.';
                 if (preg_match('/Video unavailable\.?\s*(.*)/i', $errorOutput, $matches)) {
                     $reason = trim($matches[1]);

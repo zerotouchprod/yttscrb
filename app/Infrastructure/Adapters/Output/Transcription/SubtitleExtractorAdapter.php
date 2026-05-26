@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Log;
 
 final class SubtitleExtractorAdapter implements SubtitleProviderInterface
 {
+    private const MAX_RATE_LIMIT_RETRIES = 3;
+    private const RATE_LIMIT_COOLDOWN_SEC = 60;
+
     public function __construct(
         private readonly SrtParser $srtParser = new SrtParser(),
         private readonly string $binaryPath = 'yt-dlp',
@@ -24,7 +27,6 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
 
         $binaryPath = $this->resolveBinaryPath();
 
-        // Download auto-generated subtitles without downloading the video
         $command = sprintf(
             '%s --write-auto-sub --skip-download --sub-lang en --convert-subs srt '
             . '--sleep-interval 5 --max-sleep-interval 30 --sleep-requests 1 '
@@ -34,14 +36,9 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
             escapeshellarg($youtubeUrl),
         );
 
-        exec($command, $output, $exitCode);
+        $output = $this->runYtDlp($command);
 
-        if ($exitCode !== 0) {
-            Log::info('yt-dlp subtitle extraction: no subtitles found or command failed', [
-                'url' => $youtubeUrl,
-                'exitCode' => $exitCode,
-            ]);
-
+        if ($output === null) {
             return null;
         }
 
@@ -76,16 +73,15 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
     {
         $binaryPath = $this->resolveBinaryPath();
 
-        // --print title writes to stdout; stderr (warnings) is discarded
         $command = sprintf(
             '%s --print title --skip-download --sleep-interval 5 --max-sleep-interval 30 --sleep-requests 1 %s 2>/dev/null',
             escapeshellcmd($binaryPath),
             escapeshellarg($youtubeUrl),
         );
 
-        exec($command, $output, $exitCode);
+        $output = $this->runYtDlp($command);
 
-        if ($exitCode !== 0 || $output === []) {
+        if ($output === null || $output === []) {
             return null;
         }
 
@@ -121,9 +117,9 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
             escapeshellarg($youtubeUrl),
         );
 
-        exec($command, $output, $exitCode);
+        $output = $this->runYtDlp($command);
 
-        if ($exitCode !== 0 || $output === []) {
+        if ($output === null || $output === []) {
             return null;
         }
 
@@ -161,5 +157,58 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
         }
 
         return $this->binaryPath;
+    }
+
+    /**
+     * Run a yt-dlp command with rate-limit retry logic.
+     *
+     * @return array<int, string>|null Command output lines, or null on non-retryable failure.
+     */
+    private function runYtDlp(string $command): ?array
+    {
+        for ($attempt = 0; $attempt <= self::MAX_RATE_LIMIT_RETRIES; $attempt++) {
+            exec($command, $output, $exitCode);
+
+            if ($exitCode === 0) {
+                return $output;
+            }
+
+            $errorOutput = implode("\n", $output);
+
+            // Rate limit — cooldown and retry
+            if (str_contains($errorOutput, 'HTTP Error 429') || str_contains($errorOutput, 'Too Many Requests')) {
+                if ($attempt < self::MAX_RATE_LIMIT_RETRIES) {
+                    $cooldown = self::RATE_LIMIT_COOLDOWN_SEC * ($attempt + 1);
+                    Log::info('yt-dlp rate limited, cooling down', [
+                        'attempt' => $attempt + 1,
+                        'cooldown_sec' => $cooldown,
+                        'command' => $command,
+                    ]);
+                    sleep($cooldown);
+                    continue;
+                }
+
+                Log::warning('yt-dlp rate limited after all retries', [
+                    'retries' => self::MAX_RATE_LIMIT_RETRIES + 1,
+                    'command' => $command,
+                ]);
+
+                return null;
+            }
+
+            // Bot detection — not retryable
+            if (str_contains($errorOutput, 'Sign in to confirm')) {
+                Log::warning('yt-dlp bot detection triggered', [
+                    'command' => $command,
+                ]);
+
+                return null;
+            }
+
+            // Other errors — not retryable (no subtitles, video unavailable, etc.)
+            return null;
+        }
+
+        return null;
     }
 }
