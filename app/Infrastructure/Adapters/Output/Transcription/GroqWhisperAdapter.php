@@ -167,12 +167,13 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
             return $statusCode >= 400 && $statusCode < 500;
         }
 
-        // Permanent failures: invalid API key, file too large, compression failure.
+        // Permanent failures: invalid API key, file too large, compression failure, missing file.
         $nonRetryablePatterns = [
             'not configured',
             'too large',
             'compress',
             'unexpected response',
+            'not found',
         ];
 
         foreach ($nonRetryablePatterns as $pattern) {
