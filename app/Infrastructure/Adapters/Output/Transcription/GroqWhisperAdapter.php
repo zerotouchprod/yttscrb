@@ -14,6 +14,9 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
 {
     private const API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 
+    /** @var int Maximum file size in bytes before compression (24 MB — Groq limit is 25 MB) */
+    private const MAX_FILE_SIZE = 24 * 1024 * 1024;
+
     public function transcribe(AudioFile $audioFile): TranscriptionResult
     {
         $apiKey = config('services.groq.api_key');
@@ -22,12 +25,19 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
             throw new RuntimeException('GROQ_API_KEY is not configured.');
         }
 
+        $audioPath = $audioFile->path();
+        $fileSize = @filesize($audioPath);
+
+        if ($fileSize !== false && $fileSize > self::MAX_FILE_SIZE) {
+            $audioPath = $this->compressAudio($audioPath);
+        }
+
         $ch = curl_init();
 
         $postFields = [
             'model' => 'whisper-large-v3-turbo',
             'response_format' => 'verbose_json',
-            'file' => new \CURLFile($audioFile->path()),
+            'file' => new \CURLFile($audioPath),
         ];
 
         curl_setopt_array($ch, [
@@ -75,6 +85,37 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
             new TranscriptionText($transcript),
             (int) round($duration),
         );
+    }
+
+    /**
+     * Compress audio file to mono 32kbps MP3 for Groq's 25MB limit.
+     *
+     * Returns path to compressed file (temporary, cleaned up after transcription).
+     */
+    private function compressAudio(string $sourcePath): string
+    {
+        $destPath = $sourcePath . '.compressed.mp3';
+
+        $command = sprintf(
+            'ffmpeg -y -i %s -ac 1 -b:a 32k -f mp3 %s 2>/dev/null',
+            escapeshellarg($sourcePath),
+            escapeshellarg($destPath),
+        );
+
+        $exitCode = 0;
+        shell_exec($command);
+
+        if (! file_exists($destPath) || filesize($destPath) === 0) {
+            $originalSize = filesize($sourcePath) ?: 0;
+            throw new RuntimeException(
+                sprintf(
+                    'Failed to compress audio file for Groq API (original size: %d bytes).',
+                    $originalSize,
+                ),
+            );
+        }
+
+        return $destPath;
     }
 
     /**

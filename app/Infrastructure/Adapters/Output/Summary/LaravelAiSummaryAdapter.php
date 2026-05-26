@@ -53,8 +53,11 @@ final class LaravelAiSummaryAdapter implements SummaryProviderInterface
 
             /** @var array<string, mixed> $data */
             $data = $response->toArray();
-            Assert::keyExists($data, 'introduction', 'Missing key: introduction.');
-            Assert::string($data['introduction'], 'introduction must be a string.');
+
+            // introduction is required by schema but AI may omit it on rare occasions
+            if (! isset($data['introduction']) || ! is_string($data['introduction'])) {
+                $data['introduction'] = '';
+            }
             Assert::keyExists($data, 'key_points', 'Missing key: key_points.');
             Assert::isArray($data['key_points'], 'key_points must be an array.');
 
