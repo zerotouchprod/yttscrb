@@ -12,8 +12,8 @@ use Workflow\Activity;
 
 final class GroqTranscriberActivity extends Activity
 {
-    /** @var int */
-    public $timeout = 300;
+    /** @var int 960s = 15 min curl timeout (900s) + 60s buffer for upload/compression */
+    public $timeout = 960;
 
     public function execute(string $audioPath): WorkflowTranscriptionResult
     {

@@ -180,30 +180,59 @@ kubectl logs -n prod deployment/yttscrb-horizon --tail=20 | grep -ci error || tr
 
 ### Sentry Post-Deploy Check
 
-After every deploy, verify Sentry is not receiving new errors from the new code:
+After every deploy, verify Sentry is not receiving new errors from the new code.
+
+**Preferred: sentry-cli (no JSON parsing needed)**
 
 ```bash
-# Quick check: unresolved issues in last 1h
+export SENTRY_AUTH_TOKEN="sntryu_..."
+
+# Quick check: unresolved issues
+sentry-cli issues list \
+  --org 4510580181827584 \
+  --project 4510580205879376 \
+  --status unresolved | head -15
+
+# Check specific issue (e.g., the one you just fixed)
+sentry-cli issues list \
+  --org 4510580181827584 \
+  --project 4510580205879376 \
+  --id 122148401
+```
+
+**Resolve fixed issues (requires `issue:write` scope on token):**
+
+```bash
+# After confirming the fix stopped new events, resolve the issue
+sentry-cli issues resolve \
+  --org 4510580181827584 \
+  --project 4510580205879376 \
+  --id 122148401
+```
+
+**Fallback: curl (when sentry-cli is unavailable)**
+
+```bash
 TOKEN="${SENTRY_AUTH_TOKEN}"
 ORG="4510580181827584"
 PROJ="4510580205879376"
 BASE="https://sentry.io/api/0"
 
 curl -s -H "Authorization: Bearer $TOKEN" \
-  "$BASE/projects/$ORG/$PROJ/issues/?limit=10&query=is:unresolved&statsPeriod=1h" | \
+  "$BASE/projects/$ORG/$PROJ/issues/?limit=10&query=is:unresolved&statsPeriod=24h" | \
   python3 -c "
 import sys,json
 issues = json.load(sys.stdin)
 if not issues:
     print('✓ Sentry: no new issues')
 else:
-    print(f'⚠ Sentry: {len(issues)} unresolved issues in last hour:')
+    print(f'⚠ Sentry: {len(issues)} unresolved issues in last 24h:')
     for i in issues[:5]:
         print(f'  [{i[\"status\"]}] events={i[\"count\"]} {i[\"title\"][:120]}')
 "
 ```
 
-If `SENTRY_AUTH_TOKEN` is not available locally, fall back to checking pod logs directly:
+**Fallback: pod logs (no Sentry token available)**
 
 ```bash
 ssh root@154.47.146.43 '

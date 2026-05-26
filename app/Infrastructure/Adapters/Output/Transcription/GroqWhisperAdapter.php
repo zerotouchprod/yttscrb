@@ -14,12 +14,17 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
 {
     private const API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 
-    /** @var int Maximum file size in bytes before compression (24 MB — Groq limit is 25 MB) */
     /** @var int Maximum file size in bytes (25 MB — Groq hard limit) */
     private const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
     /** @var int Compress any file above this threshold (5 MB) to speed up upload */
     private const COMPRESS_THRESHOLD = 5 * 1024 * 1024;
+
+    /** @var int Maximum number of retries for transient failures */
+    private const MAX_RETRIES = 3;
+
+    /** @var int Base delay in seconds between retries (exponential backoff) */
+    private const RETRY_BASE_DELAY_SEC = 5;
 
     public function transcribe(AudioFile $audioFile): TranscriptionResult
     {
@@ -47,6 +52,34 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
             $audioPath = $this->compressAudio($audioPath);
         }
 
+        $lastException = null;
+
+        for ($attempt = 1; $attempt <= self::MAX_RETRIES; $attempt++) {
+            try {
+                return $this->doRequest($apiKey, $audioPath);
+            } catch (RuntimeException $e) {
+                $lastException = $e;
+
+                // Do not retry on client errors (4xx) or permanent failures.
+                if ($this->isNonRetryable($e)) {
+                    throw $e;
+                }
+
+                if ($attempt < self::MAX_RETRIES) {
+                    $delay = self::RETRY_BASE_DELAY_SEC * (2 ** ($attempt - 1));
+                    sleep($delay);
+                }
+            }
+        }
+
+        throw $lastException;
+    }
+
+    /**
+     * Execute a single Groq API transcription request.
+     */
+    private function doRequest(string $apiKey, string $audioPath): TranscriptionResult
+    {
         $ch = curl_init();
 
         $postFields = [
@@ -65,6 +98,9 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
             ],
             CURLOPT_TIMEOUT => 900, // 15 minutes — large files need time to upload + transcribe
             CURLOPT_CONNECTTIMEOUT => 30,
+            // Prevent PHP signals (SIGALRM, SIGTERM) from aborting the curl transfer.
+            // Without this, signals cause CURLE_ABORTED_BY_CALLBACK (HTTP 0).
+            CURLOPT_NOSIGNAL => true,
         ]);
 
         $response = curl_exec($ch);
@@ -101,6 +137,37 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
             new TranscriptionText($transcript),
             (int) round($duration),
         );
+    }
+
+    /**
+     * Determine whether an exception is non-retryable (client error or permanent failure).
+     */
+    private function isNonRetryable(RuntimeException $e): bool
+    {
+        $message = $e->getMessage();
+
+        // HTTP 4xx errors are client errors — do not retry.
+        if (preg_match('/HTTP (\d+)/', $message, $matches) === 1) {
+            $statusCode = (int) $matches[1];
+
+            return $statusCode >= 400 && $statusCode < 500;
+        }
+
+        // Permanent failures: invalid API key, file too large, compression failure.
+        $nonRetryablePatterns = [
+            'not configured',
+            'too large',
+            'compress',
+            'unexpected response',
+        ];
+
+        foreach ($nonRetryablePatterns as $pattern) {
+            if (stripos($message, $pattern) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

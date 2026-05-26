@@ -24,6 +24,8 @@ Scope: project:read, event:read, issue:read, member:read
 
 Create new tokens at: `https://sentry.io/settings/account/api/auth-tokens/`
 
+The token is available in `.env` as `SENTRY_TOKEN` (used by `sentry-cli` via `SENTRY_AUTH_TOKEN` env var).
+
 ### Quick Reference
 
 ```bash
@@ -31,7 +33,70 @@ TOKEN="sntryu_..."
 ORG="4510580181827584"
 PROJ="4510580205879376"
 BASE="https://sentry.io/api/0"
+
+# For sentry-cli (preferred when available):
+export SENTRY_AUTH_TOKEN="$TOKEN"
 ```
+
+## sentry-cli (Preferred Tool)
+
+`sentry-cli` is the official Sentry CLI tool — available locally and on the server. It provides structured output without manual JSON parsing.
+
+### Authentication
+
+```bash
+export SENTRY_AUTH_TOKEN="sntryu_..."
+# Verify:
+sentry-cli info
+```
+
+Required scopes: `project:read`, `event:read`, `issue:read`. For resolving issues: add `issue:write`.
+
+### Common Commands
+
+```bash
+# List all unresolved issues (table format, no parsing needed)
+sentry-cli issues list \
+  --org 4510580181827584 \
+  --project 4510580205879376 \
+  --status unresolved
+
+# Filter by query
+sentry-cli issues list \
+  --org 4510580181827584 \
+  --project 4510580205879376 \
+  --query "Groq+API"
+
+# Get specific issue by ID
+sentry-cli issues list \
+  --org 4510580181827584 \
+  --project 4510580205879376 \
+  --id 122148401
+
+# Resolve an issue (requires issue:write scope)
+sentry-cli issues resolve \
+  --org 4510580181827584 \
+  --project 4510580205879376 \
+  --id 122148401
+
+# List recent events (last 10)
+sentry-cli events list \
+  --org 4510580181827584 \
+  --project 4510580205879376
+```
+
+### sentry-cli vs curl
+
+| Task | sentry-cli | curl + python |
+|------|-----------|---------------|
+| List issues | `sentry-cli issues list` | `curl ... \| python3 -c "..."` |
+| Output format | Table (human-readable) | JSON (needs parsing) |
+| Filtering | `--query`, `--status`, `--id` | URL query params |
+| Resolve | `sentry-cli issues resolve` | REST API (needs issue:write) |
+| Auth | `SENTRY_AUTH_TOKEN` env var | `Authorization: Bearer` header |
+| Available on server | ✅ (`sentry-cli`) | ✅ (curl) |
+
+**Rule:** Prefer `sentry-cli` for interactive debugging and issue management. Fall back to `curl` only when sentry-cli is unavailable or when you need programmatic JSON output.
 
 ## Command Recipes
 
@@ -137,11 +202,13 @@ print(f\"By level: {dict(levels)}\")
 Sentry alert / user report
 │
 ├─ Step 1: Pull issues from Sentry
-│   curl Sentry API → list unresolved issues
+│   sentry-cli issues list --status unresolved (preferred)
+│   OR: curl Sentry API → list unresolved issues
 │   Identify: title, count, first/last seen, culprit file
 │
 ├─ Step 2: Get stacktrace from Sentry
-│   curl Sentry API → event details
+│   sentry-cli events list (for latest events)
+│   OR: curl Sentry API → event details
 │   Extract: exception type, message, file:line, function
 │
 ├─ Step 3: Correlate with Kubernetes logs
@@ -157,8 +224,9 @@ Sentry alert / user report
 │   Write fix → composer check → commit → push → deploy
 │
 └─ Step 6: Verify
-    curl Sentry API → confirm issue count stops growing
+    sentry-cli issues list --id <ISSUE_ID> → confirm count stops growing
     curl tubesum.app → test fixed endpoint
+    sentry-cli issues resolve --id <ISSUE_ID> (after confirming fix)
 ```
 
 ## Common Sentry Queries for tubesum.app
@@ -221,8 +289,9 @@ Minimum for debug workflow: `project:read`, `issue:read`, `event:read`
 
 ## Tips
 
-1. **Always use `python3 -m json.tool` or inline parser** — Sentry returns large JSON, pipe through Python for readability
-2. **Combine with `kubectl logs`** — Sentry shows stacktrace, but Kubernetes logs show the actual error message with data values
-3. **Check `statsPeriod`** — default issue list shows all time, add `?statsPeriod=24h` for recent
-4. **Issue ID is stable** — same issue type gets same ID, use for tracking fix progress (count should stop growing after fix)
-5. **Token in env** — store token in shell variable, never commit to repo
+1. **Prefer `sentry-cli` over `curl`** — it gives human-readable tables without JSON parsing, works on server and locally.
+2. **Combine with `kubectl logs`** — Sentry shows stacktrace, but Kubernetes logs show the actual error message with data values.
+3. **Check `statsPeriod`** — default issue list shows all time; sentry-cli shows all by default, use `--query` to narrow.
+4. **Issue ID is stable** — same issue type gets same ID, use for tracking fix progress (count should stop growing after fix).
+5. **Token in env** — store token in `SENTRY_AUTH_TOKEN` env var (from `.env` `SENTRY_TOKEN`), never commit to repo.
+6. **Resolve after deploy** — after confirming fix, resolve the issue: `sentry-cli issues resolve --org ... --project ... --id <ID>`. This prevents alert fatigue and makes new regressions visible.
