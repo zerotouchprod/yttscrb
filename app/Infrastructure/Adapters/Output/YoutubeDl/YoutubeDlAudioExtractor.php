@@ -30,7 +30,7 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
         }
 
         $command = sprintf(
-            '%s -x --audio-format mp3 -o %s --no-playlist %s 2>&1',
+            '%s -x --audio-format mp3 -o %s --no-playlist --sleep-interval 5 --max-sleep-interval 30 --sleep-requests 1 %s 2>&1',
             escapeshellcmd($this->binaryPath),
             escapeshellarg($this->outputDir . '/' . self::OUTPUT_TEMPLATE),
             escapeshellarg($youtubeUrl->value()),
@@ -75,6 +75,18 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
 
         if ($exitCode !== 0) {
             $errorOutput = $stderr ?: $stdout;
+
+            if (str_contains($errorOutput, 'HTTP Error 429') || str_contains($errorOutput, 'Too Many Requests')) {
+                throw new RuntimeException(
+                    'YouTube rate limited. Cooling down for 60 seconds before retry.'
+                );
+            }
+
+            if (str_contains($errorOutput, 'Sign in to confirm')) {
+                throw new RuntimeException(
+                    'YouTube bot detection triggered. IP may be temporarily blocked. Try again later.'
+                );
+            }
 
             if (str_contains($errorOutput, 'Video unavailable')) {
                 // Extract the reason from YouTube's error message
