@@ -9,12 +9,11 @@ use App\Application\Ports\Output\SummaryProviderInterface;
 use App\Domain\ValueObjects\SummaryOptions;
 use App\Domain\ValueObjects\TranscriptionText;
 use Illuminate\Container\Container;
-use RuntimeException;
 use Workflow\Activity;
 
 final class AiSummaryActivity extends Activity
 {
-    public function execute(string $taskId): string
+    public function execute(string $taskId): ?string
     {
         /** @var MediaTaskRepositoryInterface $repository */
         $repository = Container::getInstance()->make(MediaTaskRepositoryInterface::class);
@@ -22,11 +21,8 @@ final class AiSummaryActivity extends Activity
         $transcript = $repository->getTranscript($taskId);
 
         if ($transcript === null || trim($transcript) === '') {
-            throw new RuntimeException(
-                $transcript === null
-                    ? "Transcript not found for task: {$taskId}"
-                    : "Transcript is empty for task: {$taskId}"
-            );
+            // PersistResultActivity will handle missing/empty transcript via $task->fail().
+            return null;
         }
 
         $task = $repository->findById($taskId);
