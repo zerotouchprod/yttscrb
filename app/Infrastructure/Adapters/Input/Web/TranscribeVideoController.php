@@ -286,7 +286,7 @@ final class TranscribeVideoController extends Controller
         $page = max(1, (int) $request->query('page', '1'));
         $perPage = 20;
 
-        $paginator = $this->handler->listHistory(null, $perPage, $page);
+        $paginator = $this->handler->listPublicCompleted($perPage, $page);
 
         return view('history', [
             'tasks'     => $paginator->getCollection(),
