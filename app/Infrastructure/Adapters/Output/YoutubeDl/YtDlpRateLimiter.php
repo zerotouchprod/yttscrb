@@ -18,17 +18,16 @@ final class YtDlpRateLimiter
     private const LOCK_KEY = 'ytdlp:global-lock';
     private const LOCK_TTL_SEC = 120;    // Max time a single yt-dlp call can take
     private const MIN_GAP_SEC = 15;       // Minimum gap between calls
-    private const MAX_WAIT_SEC = 300;     // Maximum time to wait for lock
     private const POLL_INTERVAL_MS = 500; // Check every 500ms
 
     /**
-     * Acquire the global yt-dlp lock, waiting if necessary.
+     * Try to acquire the global yt-dlp lock, waiting up to $maxWaitSec.
      *
-     * @throws RuntimeException if lock cannot be acquired within MAX_WAIT_SEC.
+     * @return bool true if lock acquired, false on timeout.
      */
-    public function acquire(): void
+    public function tryAcquire(int $maxWaitSec = 30): bool
     {
-        $deadline = time() + self::MAX_WAIT_SEC;
+        $deadline = time() + $maxWaitSec;
         $lastGapKey = 'ytdlp:last-call';
 
         while (time() < $deadline) {
@@ -45,17 +44,29 @@ final class YtDlpRateLimiter
             $acquired = Redis::set(self::LOCK_KEY, (string) time(), 'EX', self::LOCK_TTL_SEC, 'NX');
 
             if ($acquired) {
-                return;
+                return true;
             }
 
             // Lock held by another process — wait and retry
             usleep(self::POLL_INTERVAL_MS * 1_000);
         }
 
-        throw new RuntimeException(sprintf(
-            'Could not acquire yt-dlp global lock within %d seconds. Too many concurrent downloads.',
-            self::MAX_WAIT_SEC,
-        ));
+        return false;
+    }
+
+    /**
+     * Acquire the global yt-dlp lock, waiting up to $maxWaitSec.
+     *
+     * @throws RuntimeException if lock cannot be acquired.
+     */
+    public function acquire(int $maxWaitSec = 300): void
+    {
+        if (! $this->tryAcquire($maxWaitSec)) {
+            throw new RuntimeException(sprintf(
+                'Could not acquire yt-dlp global lock within %d seconds. Too many concurrent downloads.',
+                $maxWaitSec,
+            ));
+        }
     }
 
     /**

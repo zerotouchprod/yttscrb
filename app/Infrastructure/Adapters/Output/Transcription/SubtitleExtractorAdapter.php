@@ -12,6 +12,11 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
 {
     private const MAX_RATE_LIMIT_RETRIES = 2;
     private const RATE_LIMIT_COOLDOWN_SEC = 90;
+    private const LOCK_WAIT_SEC = 30;
+
+    /** @var array{subtitles: string|null, title: string|null, duration_sec: int|null}|null */
+    private ?array $cachedMetadata = null;
+    private bool $metadataFetched = false;
 
     public function __construct(
         private readonly SrtParser $srtParser = new SrtParser(),
@@ -22,6 +27,42 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
 
     public function extract(string $youtubeUrl): ?string
     {
+        $this->fetchMetadata($youtubeUrl);
+
+        return $this->cachedMetadata['subtitles'] ?? null;
+    }
+
+    public function extractTitle(string $youtubeUrl): ?string
+    {
+        $this->fetchMetadata($youtubeUrl);
+
+        return $this->cachedMetadata['title'] ?? null;
+    }
+
+    public function extractDuration(string $youtubeUrl): ?int
+    {
+        $this->fetchMetadata($youtubeUrl);
+
+        return $this->cachedMetadata['duration_sec'] ?? null;
+    }
+
+    /**
+     * Fetch subtitles, title, and duration in a single yt-dlp invocation.
+     * Results are cached so extract/extractTitle/extractDuration don't re-fetch.
+     */
+    private function fetchMetadata(string $youtubeUrl): void
+    {
+        if ($this->metadataFetched) {
+            return;
+        }
+
+        $this->metadataFetched = true;
+        $this->cachedMetadata = [
+            'subtitles' => null,
+            'title' => null,
+            'duration_sec' => null,
+        ];
+
         $outputDir = storage_path('app/temp/subs');
         if (! is_dir($outputDir)) {
             mkdir($outputDir, 0755, true);
@@ -29,8 +70,10 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
 
         $binaryPath = $this->resolveBinaryPath();
 
+        // Single yt-dlp call: print title + duration to stdout, download subs to file
         $command = sprintf(
             '%s --write-auto-sub --skip-download --sub-lang en --convert-subs srt '
+            . '--print title --print duration '
             . '--sleep-interval 5 --max-sleep-interval 30 --sleep-requests 1 '
             . '--output %s %s 2>&1',
             escapeshellcmd($binaryPath),
@@ -41,91 +84,57 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
         $output = $this->runYtDlp($command);
 
         if ($output === null) {
-            return null;
+            return;
+        }
+
+        // Parse title and duration from stdout lines
+        // yt-dlp prints: title\n (possibly multiple lines), then duration\n
+        $lines = array_map('trim', $output);
+        $lines = array_values(array_filter($lines, fn (string $l) => $l !== ''));
+
+        // Duration is the last numeric line
+        for ($i = count($lines) - 1; $i >= 0; $i--) {
+            if (is_numeric($lines[$i])) {
+                $this->cachedMetadata['duration_sec'] = (int) floor((float) $lines[$i]);
+                // Title is everything before the numeric line
+                $titleLines = array_slice($lines, 0, $i);
+                $title = implode(' ', $titleLines);
+                if ($title !== '') {
+                    if (mb_strlen($title) > 500) {
+                        $title = mb_substr($title, 0, 497) . '...';
+                    }
+                    $this->cachedMetadata['title'] = $title;
+                }
+                break;
+            }
+        }
+
+        // If no numeric line found, all non-empty lines are the title
+        if ($this->cachedMetadata['title'] === null && $lines !== []) {
+            $title = implode(' ', $lines);
+            if ($title !== '' && mb_strlen($title) <= 500) {
+                $this->cachedMetadata['title'] = $title;
+            }
         }
 
         // Look for the downloaded subtitle file
         $files = glob($outputDir . '/subs*.en.srt') ?: glob($outputDir . '/subs*.en.vtt') ?: [];
 
         if ($files === []) {
-            // Try without language suffix
             $files = glob($outputDir . '/subs*.srt') ?: glob($outputDir . '/subs*.vtt') ?: [];
         }
 
-        if ($files === []) {
-            return null;
-        }
+        if ($files !== []) {
+            $content = file_get_contents($files[0]);
 
-        $content = file_get_contents($files[0]);
+            foreach ($files as $file) {
+                unlink($file);
+            }
 
-        // Cleanup
-        foreach ($files as $file) {
-            unlink($file);
-        }
-
-        if ($content === false || trim($content) === '') {
-            return null;
-        }
-
-        // Parse SRT into timecoded transcript: "[MM:SS] text" lines
-        return $this->srtParser->parse($content);
-    }
-
-    public function extractTitle(string $youtubeUrl): ?string
-    {
-        $binaryPath = $this->resolveBinaryPath();
-
-        $command = sprintf(
-            '%s --print title --skip-download --sleep-interval 5 --max-sleep-interval 30 --sleep-requests 1 %s 2>/dev/null',
-            escapeshellcmd($binaryPath),
-            escapeshellarg($youtubeUrl),
-        );
-
-        $output = $this->runYtDlp($command);
-
-        if ($output === null || $output === []) {
-            return null;
-        }
-
-        // Take only the last non-empty line — the actual title
-        $title = '';
-        for ($i = count($output) - 1; $i >= 0; $i--) {
-            $line = trim($output[$i]);
-            if ($line !== '') {
-                $title = $line;
-                break;
+            if ($content !== false && trim($content) !== '') {
+                $this->cachedMetadata['subtitles'] = $this->srtParser->parse($content);
             }
         }
-
-        if ($title === '') {
-            return null;
-        }
-
-        // Truncate to 500 chars max (safe for DB column)
-        if (mb_strlen($title) > 500) {
-            $title = mb_substr($title, 0, 497) . '...';
-        }
-
-        return $title;
-    }
-
-    public function extractDuration(string $youtubeUrl): ?int
-    {
-        $binaryPath = $this->resolveBinaryPath();
-
-        $command = sprintf(
-            '%s --print duration --skip-download --sleep-interval 5 --max-sleep-interval 30 --sleep-requests 1 %s 2>/dev/null',
-            escapeshellcmd($binaryPath),
-            escapeshellarg($youtubeUrl),
-        );
-
-        $output = $this->runYtDlp($command);
-
-        if ($output === null || $output === []) {
-            return null;
-        }
-
-        return $this->parseDurationOutput($output);
     }
 
     /**
@@ -135,7 +144,6 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
      */
     public function parseDurationOutput(array $output): ?int
     {
-        // Take only the last non-empty line
         $duration = '';
         for ($i = count($output) - 1; $i >= 0; $i--) {
             $line = trim($output[$i]);
@@ -163,13 +171,17 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
 
     /**
      * Run a yt-dlp command with rate-limit retry logic.
+     * Gracefully returns null if the global lock cannot be acquired.
      *
-     * @return array<int, string>|null Command output lines, or null on non-retryable failure.
+     * @return array<int, string>|null Command output lines, or null on failure.
      */
     private function runYtDlp(string $command): ?array
     {
-        // Acquire global lock — only one yt-dlp process across all workers
-        $this->rateLimiter->acquire();
+        if (! $this->rateLimiter->tryAcquire(self::LOCK_WAIT_SEC)) {
+            Log::info('yt-dlp global lock busy, skipping subtitle extraction');
+
+            return null;
+        }
 
         try {
             for ($attempt = 0; $attempt <= self::MAX_RATE_LIMIT_RETRIES; $attempt++) {
@@ -181,7 +193,6 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
 
                 $errorOutput = implode("\n", $output);
 
-                // Rate limit — cooldown and retry
                 if (str_contains($errorOutput, 'HTTP Error 429') || str_contains($errorOutput, 'Too Many Requests')) {
                     if ($attempt < self::MAX_RATE_LIMIT_RETRIES) {
                         $cooldown = self::RATE_LIMIT_COOLDOWN_SEC * ($attempt + 1);
@@ -198,14 +209,12 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
                     return null;
                 }
 
-                // Bot detection — not retryable
                 if (str_contains($errorOutput, 'Sign in to confirm')) {
                     Log::warning('yt-dlp bot detection triggered');
 
                     return null;
                 }
 
-                // Other errors — not retryable (no subtitles, video unavailable, etc.)
                 return null;
             }
 
