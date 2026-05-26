@@ -130,4 +130,10 @@ interface MediaTaskRepositoryInterface
      * @return MediaTask[]
      */
     public function findByIds(array $ids): array;
+
+    /**
+     * Count all public completed tasks (status=completed, DMCA not removed, title present).
+     * Used for the public counter on the homepage ("X videos summarized").
+     */
+    public function countPublicCompleted(): int;
 }

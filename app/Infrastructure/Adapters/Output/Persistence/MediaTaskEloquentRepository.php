@@ -393,6 +393,15 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
         return $result;
     }
 
+    public function countPublicCompleted(): int
+    {
+        return MediaTaskModel::query()
+            ->where('status', TranscriptionStatus::Completed->value)
+            ->whereNotNull('title')
+            ->whereNull('dmca_removed_at')
+            ->count();
+    }
+
     private function generateUniqueSlug(string $title, string $taskId): string
     {
         $base = Str::slug($title);

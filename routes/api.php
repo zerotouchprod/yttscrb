@@ -50,6 +50,15 @@ Route::get('/docs/openapi.json', function () {
     ])->header('Access-Control-Allow-Origin', '*');
 })->name('api.openapi');
 
+// Public stats (total summarized videos counter)
+Route::get('/stats', function () {
+    $repo = app(\App\Application\Ports\Output\MediaTaskRepositoryInterface::class);
+
+    return response()->json([
+        'total_summarized' => $repo->countPublicCompleted(),
+    ]);
+});
+
 Route::get('/topics/popular', function () {
     $repo = app(\App\Application\Ports\Output\TaxonomyRepositoryInterface::class);
     $topics = $repo->paginateByType(\App\Domain\ValueObjects\TaxonomyType::Topic, 1, 8);

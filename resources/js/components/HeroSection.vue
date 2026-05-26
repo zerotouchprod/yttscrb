@@ -6,7 +6,14 @@
     <p class="text-gray-400 text-lg max-w-2xl mx-auto">
       Paste a YouTube link and get a smart summary with timecoded transcript in seconds.
     </p>
-    <div class="flex flex-wrap justify-center gap-3 text-xs font-medium mt-6">
+    <div v-if="totalSummarized !== null" class="mt-6">
+      <span class="inline-flex items-center gap-2 bg-gradient-to-r from-amber-900/40 to-orange-900/40 text-amber-300 px-4 py-2 rounded-full border border-amber-700/50 text-sm font-semibold">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+        <span>{{ totalSummarized.toLocaleString() }}</span>
+        <span class="text-amber-400/70">videos summarized</span>
+      </span>
+    </div>
+    <div class="flex flex-wrap justify-center gap-3 text-xs font-medium mt-4">
       <span class="inline-flex items-center gap-1.5 bg-gray-800/50 text-green-400 px-3 py-1.5 rounded-full border border-gray-700">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         No Signup
@@ -22,3 +29,20 @@
     </div>
   </header>
 </template>
+<script setup>
+import { ref, onMounted } from 'vue';
+
+const totalSummarized = ref(null);
+
+onMounted(async () => {
+  try {
+    const res = await fetch('/api/stats');
+    if (res.ok) {
+      const data = await res.json();
+      totalSummarized.value = data.total_summarized;
+    }
+  } catch {
+    // Silently ignore — counter is non-critical.
+  }
+});
+</script>
