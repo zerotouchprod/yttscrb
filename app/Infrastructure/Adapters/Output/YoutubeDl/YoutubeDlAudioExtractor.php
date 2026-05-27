@@ -51,8 +51,13 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
             escapeshellarg($youtubeUrl->value()),
         );
 
-        // Acquire global rate limit lock before calling yt-dlp
-        $this->rateLimiter->acquire(maxWaitSec: 120);
+        // Try to acquire global rate limit lock before calling yt-dlp.
+        // If lock is busy, throw immediately so the Activity can release back to queue.
+        if (! $this->rateLimiter->tryAcquire(maxWaitSec: 5)) {
+            throw new RuntimeException(
+                'yt-dlp global lock is busy. Release back to queue for retry.'
+            );
+        }
 
         try {
             $this->executeCommand($command, $youtubeUrl->value());
