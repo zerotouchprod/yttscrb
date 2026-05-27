@@ -114,6 +114,14 @@ final class SeedSearchContent extends Command
 
     public function handle(): int
     {
+        // Circuit breaker: stop creating new tasks when queue is overloaded
+        $processing = \App\Infrastructure\Adapters\Output\Persistence\MediaTaskModel::query()
+            ->where('status', 'processing')->count();
+        if ($processing >= 50) {
+            $this->info("Circuit breaker: {$processing} tasks processing. Skipping.");
+            return self::SUCCESS;
+        }
+
         $query = self::QUERIES[array_rand(self::QUERIES)];
         $this->line("Search query: \"{$query}\"");
 
