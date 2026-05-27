@@ -52,7 +52,7 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
         );
 
         // Acquire global rate limit lock before calling yt-dlp
-        $this->rateLimiter->acquire();
+        $this->rateLimiter->acquire(maxWaitSec: 120);
 
         try {
             $this->executeCommand($command, $youtubeUrl->value());
