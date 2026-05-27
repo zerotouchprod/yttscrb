@@ -32,6 +32,13 @@ interface MediaTaskRepositoryInterface
     public function findCompletedByVideoId(VideoId $videoId): ?MediaTask;
 
     /**
+     * Find a processing (non-terminal) task by video ID.
+     * Used for duplicate submission prevention — returns the in-progress
+     * task so the caller can avoid creating a second workflow for the same video.
+     */
+    public function findProcessingByVideoId(VideoId $videoId): ?MediaTask;
+
+    /**
      * @return LengthAwarePaginator<int, MediaTask>
      */
     public function findAllPaginated(?string $status, int $perPage, int $page): LengthAwarePaginator;

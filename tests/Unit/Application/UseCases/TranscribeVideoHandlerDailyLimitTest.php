@@ -47,6 +47,10 @@ final class TranscribeVideoHandlerDailyLimitTest extends TestCase
             {
                 return null;
             }
+            public function findProcessingByVideoId(\App\Domain\ValueObjects\VideoId $videoId): ?MediaTask
+            {
+                return null;
+            }
             public function findAllPaginated(?string $status, int $perPage, int $page): LengthAwarePaginator
             {
                 return new LengthAwarePaginator(collect(), 0, 15, 1);

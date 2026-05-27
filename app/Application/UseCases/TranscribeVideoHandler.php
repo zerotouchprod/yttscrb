@@ -19,10 +19,21 @@ final readonly class TranscribeVideoHandler
 
     public function handle(MediaTask $task): MediaTask
     {
+        // Return already-completed task immediately (zero-cost dedup).
         $existing = $this->repository->findCompletedByVideoId($task->youtubeUrl()->videoId());
 
         if ($existing !== null) {
             return $existing;
+        }
+
+        // If a processing task already exists for this video, return it instead of
+        // creating a second workflow that will only be discarded at persist time.
+        // This prevents wasting Groq transcription and AI summary API costs on
+        // duplicate submissions.
+        $processing = $this->repository->findProcessingByVideoId($task->youtubeUrl()->videoId());
+
+        if ($processing !== null) {
+            return $processing;
         }
 
         $this->repository->save($task);

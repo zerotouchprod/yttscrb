@@ -22,24 +22,34 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
 {
     public function save(MediaTask $mediaTask): void
     {
-        // Prevent duplicate completed records for the same video
-        // (partial unique index idx_media_tasks_video_completed enforces one completed row per video_id)
+        // Safety net — the handler already prevents duplicate submissions for the same video,
+        // but a race condition between concurrent requests could still produce a second completed
+        // row.  The partial unique index idx_media_tasks_video_completed enforces one completed
+        // row per video_id at the database level, so we demote the duplicate to 'failed' here
+        // instead of silently discarding it (which would leave a "processing" zombie row that
+        // wastes API costs on every workflow replay).
+        $duplicateCompleted = false;
+
         if ($mediaTask->status() === TranscriptionStatus::Completed) {
-            $existingCompleted = MediaTaskModel::query()
+            $duplicateCompleted = MediaTaskModel::query()
                 ->where('video_id', $mediaTask->youtubeUrl()->videoId()->value())
                 ->where('status', TranscriptionStatus::Completed->value)
                 ->where('id', '!=', $mediaTask->id())
                 ->exists();
-
-            if ($existingCompleted) {
-                return;
-            }
         }
 
         $data = $this->toArray($mediaTask);
 
-        // Auto-generate slug when task completes and has a title but no slug yet.
-        if (
+        if ($duplicateCompleted) {
+            // Can't call $mediaTask->fail() because the entity is already in Completed state
+            // and Completed → Failed is not a valid transition.  Override the array directly.
+            $data['status']        = TranscriptionStatus::Failed->value;
+            $data['completed_at']  = null;
+            $data['failed_at']     = new \DateTimeImmutable();
+            $data['error_message'] = 'Duplicate submission — a completed summary already exists for this video.';
+            $data['summary']       = null;
+            $data['slug']          = $mediaTask->slug();
+        } elseif (
             $mediaTask->status() === TranscriptionStatus::Completed
             && $mediaTask->title() !== null
             && $mediaTask->slug() === null
@@ -116,6 +126,17 @@ final class MediaTaskEloquentRepository implements MediaTaskRepositoryInterface
             ->where('video_id', $videoId->value())
             ->where('status', 'completed')
             ->whereNull('dmca_removed_at')
+            ->first();
+
+        return $model ? $this->toEntity($model) : null;
+    }
+
+    public function findProcessingByVideoId(VideoId $videoId): ?MediaTask
+    {
+        /** @var MediaTaskModel|null $model */
+        $model = MediaTaskModel::query()
+            ->where('video_id', $videoId->value())
+            ->whereIn('status', ['pending', 'processing'])
             ->first();
 
         return $model ? $this->toEntity($model) : null;

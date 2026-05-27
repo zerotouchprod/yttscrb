@@ -65,6 +65,10 @@ final class TranscribeVideoHandlerSearchTest extends TestCase
             {
                 return null;
             }
+            public function findProcessingByVideoId(\App\Domain\ValueObjects\VideoId $videoId): ?MediaTask
+            {
+                return null;
+            }
             public function findAllPaginated(?string $status, int $perPage, int $page): LengthAwarePaginator
             {
                 return new LengthAwarePaginator(collect(), 0, 15, 1);
@@ -191,6 +195,10 @@ final class TranscribeVideoHandlerSearchTest extends TestCase
                 return null;
             }
             public function findCompletedByVideoId(\App\Domain\ValueObjects\VideoId $videoId): ?MediaTask
+            {
+                return null;
+            }
+            public function findProcessingByVideoId(\App\Domain\ValueObjects\VideoId $videoId): ?MediaTask
             {
                 return null;
             }

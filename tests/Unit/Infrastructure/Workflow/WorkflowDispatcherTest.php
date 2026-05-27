@@ -62,6 +62,11 @@ it('starts durable workflow and stores returned workflow id', function (): void 
             return null;
         }
 
+        public function findProcessingByVideoId(VideoId $videoId): ?MediaTask
+        {
+            return null;
+        }
+
         /**
          * @return LengthAwarePaginator<int, MediaTask>
          */
