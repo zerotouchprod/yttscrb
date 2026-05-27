@@ -112,26 +112,50 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
             CURLOPT_HTTPHEADER => [
                 'Authorization: Bearer ' . $apiKey,
             ],
-            CURLOPT_TIMEOUT => 900, // 15 minutes — large files need time to upload + transcribe
+            CURLOPT_TIMEOUT => 900,
             CURLOPT_CONNECTTIMEOUT => 30,
+            CURLOPT_HEADER => true, // Include headers in output for Retry-After parsing
         ]);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         $curlErrno = curl_errno($ch);
         $error = curl_error($ch);
         curl_close($ch);
 
-        if (! is_string($response) || $httpCode !== 200) {
+        if (! is_string($response)) {
             throw new RuntimeException(
-                sprintf(
-                    'Groq API request failed (HTTP %d, errno %d): %s',
-                    $httpCode,
-                    $curlErrno,
-                    $error ?: $response,
-                ),
+                sprintf('Groq API request failed (HTTP %d, errno %d): %s', $httpCode, $curlErrno, $error),
             );
         }
+
+        if ($httpCode !== 200) {
+            $headers = substr($response, 0, $headerSize);
+            $body = substr($response, $headerSize);
+
+            // Parse Retry-After for 429
+            $retryAfter = null;
+            if ($httpCode === 429 && preg_match('/Retry-After:\s*(\d+)/i', $headers, $m)) {
+                $retryAfter = (int) $m[1];
+            }
+
+            $message = sprintf(
+                'Groq API request failed (HTTP %d, errno %d): %s',
+                $httpCode,
+                $curlErrno,
+                $error ?: $body,
+            );
+
+            if ($retryAfter !== null) {
+                $message .= sprintf(' (retry after %ds)', $retryAfter);
+            }
+
+            throw new RuntimeException($message);
+        }
+
+        // Strip headers from response body
+        $response = substr($response, $headerSize);
 
         /** @var mixed $data */
         $data = json_decode($response, true);
@@ -165,10 +189,16 @@ final class GroqWhisperAdapter implements TranscriptionProviderInterface
     {
         $message = $e->getMessage();
 
-        // HTTP 4xx errors are client errors — do not retry.
+        // HTTP 429 (rate limit) — retryable, not a permanent failure
         if (preg_match('/HTTP (\d+)/', $message, $matches) === 1) {
             $statusCode = (int) $matches[1];
 
+            // 429 Too Many Requests — should be retried
+            if ($statusCode === 429) {
+                return false;
+            }
+
+            // Other 4xx errors are client errors — do not retry.
             return $statusCode >= 400 && $statusCode < 500;
         }
 
