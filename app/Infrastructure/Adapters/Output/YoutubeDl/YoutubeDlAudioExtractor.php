@@ -49,7 +49,7 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
         $ipv6Args = $this->ipv6Rotator->buildYtDlpArgs($this->ipv6Prefix);
         $sourceAddr = $ipv6Args !== [] ? implode(' ', $ipv6Args) . ' ' : '';
         $cookies = $this->buildCookiesArg();
-        $extractorArgs = '--extractor-args "youtube:player_client=android_vr" ';
+        $extractorArgs = '--extractor-args "youtube:player_client=android" ';
 
         $command = sprintf(
             '%s %s%s%s-x --audio-format mp3 -o %s --no-playlist --sleep-interval 5 --max-sleep-interval 15 --sleep-requests 2 %s 2>&1',
