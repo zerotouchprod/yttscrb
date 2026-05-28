@@ -14,6 +14,9 @@ use Workflow\Activity;
 
 final class GroqTranscriberActivity extends Activity
 {
+    /** @var int */
+    public $tries = 3;
+
     /** @var int 960s = 15 min curl timeout (900s) + 60s buffer for upload/compression + re-download */
     public $timeout = 1020;
 

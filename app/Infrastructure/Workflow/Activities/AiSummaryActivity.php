@@ -13,6 +13,9 @@ use Workflow\Activity;
 
 final class AiSummaryActivity extends Activity
 {
+    /** @var int */
+    public $tries = 3;
+
     public function execute(string $taskId): ?string
     {
         /** @var MediaTaskRepositoryInterface $repository */

@@ -10,6 +10,9 @@ use Workflow\Activity;
 
 final class SubtitleExtractorActivity extends Activity
 {
+    /** @var int */
+    public $tries = 3;
+
     /**
      * @return array{subtitles: string|null, title: string|null, duration_sec: int|null}
      */

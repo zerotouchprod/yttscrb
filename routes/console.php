@@ -37,3 +37,6 @@ Schedule::command(\App\Infrastructure\Console\Commands\SeedScienceContent::class
 // Seed Search content (yt-dlp ytsearch): 1-3 videos per run, every 5 min
 Schedule::command(\App\Infrastructure\Console\Commands\SeedSearchContent::class)->everyFiveMinutes();
 
+// Clean up old workflow data to prevent Redis/PostgreSQL bloat. Runs daily at 04:00 UTC.
+Schedule::command(\App\Infrastructure\Console\Commands\CleanupOldWorkflowsCommand::class)->dailyAt('04:00');
+

@@ -12,6 +12,9 @@ use Workflow\Activity;
 
 final class PersistResultActivity extends Activity
 {
+    /** @var int */
+    public $tries = 3;
+
     public function execute(string $taskId, ?string $summary, int $durationSec): void
     {
         /** @var MediaTaskRepositoryInterface $repository */
