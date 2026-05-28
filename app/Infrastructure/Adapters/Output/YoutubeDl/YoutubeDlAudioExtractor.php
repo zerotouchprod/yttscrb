@@ -17,9 +17,6 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
     private const MAX_RATE_LIMIT_RETRIES = 2;
     private const RATE_LIMIT_COOLDOWN_SEC = 90;
 
-    /** @var string|null Path to a temporary cookies file created from YT_DLP_COOKIES env var. */
-    private ?string $tempCookiesFile = null;
-
     public function __construct(
         private readonly string $binaryPath = 'yt-dlp',
         private readonly string $outputDir = '/tmp',
@@ -28,13 +25,6 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
         private readonly Ipv6Rotator $ipv6Rotator = new Ipv6Rotator(),
         private readonly ?string $cookiesPath = null,
     ) {
-    }
-
-    public function __destruct()
-    {
-        if ($this->tempCookiesFile !== null && file_exists($this->tempCookiesFile)) {
-            @unlink($this->tempCookiesFile);
-        }
     }
 
     public function extract(YouTubeUrl $youtubeUrl): AudioFile
@@ -48,11 +38,13 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
 
         $ipv6Args = $this->ipv6Rotator->buildYtDlpArgs($this->ipv6Prefix);
         $sourceAddr = $ipv6Args !== [] ? implode(' ', $ipv6Args) . ' ' : '';
-        $cookies = $this->buildCookiesArg();
-        $extractorArgs = '--extractor-args "youtube:player_client=android" ';
+        $cookies = $this->cookiesPath !== null && $this->cookiesPath !== '' && file_exists($this->cookiesPath)
+            ? sprintf('--cookies %s ', escapeshellarg($this->cookiesPath))
+            : '';
+        $extractorArgs = '--extractor-args "youtube:player_client=android_vr" ';
 
         $command = sprintf(
-            '%s %s%s%s-x --audio-format mp3 -o %s --no-playlist --sleep-interval 5 --max-sleep-interval 15 --sleep-requests 2 %s 2>&1',
+            '%s %s%s%s-f "bestaudio[ext=m4a]/bestaudio" -x --audio-format mp3 -o %s --no-playlist --sleep-interval 5 --max-sleep-interval 15 --sleep-requests 2 %s 2>&1',
             escapeshellcmd($this->binaryPath),
             $sourceAddr,
             $cookies,
@@ -84,41 +76,6 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
             $youtubeUrl->value(),
             $outputPath,
         ));
-    }
-
-    /**
-     * Build the --cookies argument for yt-dlp.
-     *
-     * Priority:
-     * 1. YT_DLP_COOKIES env var (base64-encoded Netscape cookies) — written to temp file
-     * 2. cookiesPath from config (explicit file path, e.g. mounted from secret)
-     */
-    private function buildCookiesArg(): string
-    {
-        // Check YT_DLP_COOKIES env var (base64-encoded Netscape format cookies)
-        $cookiesBase64 = getenv('YT_DLP_COOKIES');
-        if (is_string($cookiesBase64) && $cookiesBase64 !== '') {
-            if ($this->tempCookiesFile === null) {
-                $cookiesContent = base64_decode($cookiesBase64, true);
-                if ($cookiesContent === false) {
-                    error_log('[yt-dlp] YT_DLP_COOKIES is not valid base64, ignoring.');
-                } else {
-                    $this->tempCookiesFile = $this->outputDir . '/cookies_' . bin2hex(random_bytes(8)) . '.txt';
-                    file_put_contents($this->tempCookiesFile, $cookiesContent);
-                }
-            }
-
-            if ($this->tempCookiesFile !== null && file_exists($this->tempCookiesFile)) {
-                return sprintf('--cookies %s ', escapeshellarg($this->tempCookiesFile));
-            }
-        }
-
-        // Fallback to cookies file path from config
-        if ($this->cookiesPath !== null && $this->cookiesPath !== '' && file_exists($this->cookiesPath)) {
-            return sprintf('--cookies %s ', escapeshellarg($this->cookiesPath));
-        }
-
-        return '';
     }
 
     private function executeCommand(string $command, string $youtubeUrl): string
