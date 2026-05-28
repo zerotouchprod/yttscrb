@@ -110,6 +110,18 @@ redis:
     tag: 7.4.3-debian-12-r0
   auth:
     enabled: false
+  master:
+    resources:
+      limits:
+        memory: 2Gi
+      requests:
+        memory: 512Mi
+  replica:
+    resources:
+      limits:
+        memory: 2Gi
+      requests:
+        memory: 512Mi
 
 hpa:
   enabled: true
