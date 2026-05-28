@@ -41,7 +41,7 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
         $cookies = $this->cookiesPath !== null && $this->cookiesPath !== '' && file_exists($this->cookiesPath)
             ? sprintf('--cookies %s ', escapeshellarg($this->cookiesPath))
             : '';
-        $extractorArgs = '--extractor-args "youtube:player_client=android_vr" ';
+        $extractorArgs = '--extractor-args "youtube:player_client=android,ios,web" ';
 
         $command = sprintf(
             '%s %s%s%s-f "bestaudio[ext=m4a]/bestaudio" -x --audio-format mp3 -o %s --no-playlist --sleep-interval 5 --max-sleep-interval 15 --sleep-requests 2 %s 2>&1',
@@ -54,8 +54,8 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
         );
 
         // Try to acquire global rate limit lock before calling yt-dlp.
-        // If lock is busy, throw immediately so the Activity can release back to queue.
-        if (! $this->rateLimiter->tryAcquire(maxWaitSec: 5)) {
+        // Use same wait time as SubtitleExtractorAdapter (30s) for consistency.
+        if (! $this->rateLimiter->tryAcquire(maxWaitSec: 30)) {
             throw new RuntimeException(
                 'yt-dlp global lock is busy. Release back to queue for retry.'
             );
