@@ -19,6 +19,7 @@ test('extract delegates to policy and returns AudioFile on success', function ()
 
         $policy->shouldReceive('attempt')
             ->once()
+            ->with('audio', Mockery::type('string'), $outputDir, '%(id)s.%(ext)s', ['-x', '--audio-format', 'mp3'])
             ->andReturnUsing(function () use ($outputFile, $successResult) {
                 // Simulate yt-dlp creating the output file
                 file_put_contents($outputFile, 'fake audio data');
@@ -75,6 +76,7 @@ test('extract throws when policy fails and no output file', function () {
 
     $policy->shouldReceive('attempt')
         ->once()
+        ->with('audio', Mockery::type('string'), $outputDir, '%(id)s.%(ext)s', ['-x', '--audio-format', 'mp3'])
         ->andReturn($successResult);
 
     $extractor = new YoutubeDlAudioExtractor(

@@ -75,6 +75,7 @@ test('extract returns subtitles when policy succeeds and srt file exists', funct
 
     $policy->shouldReceive('attempt')
         ->once()
+        ->with('subtitle', Mockery::type('string'), Mockery::type('string'), 'subs', Mockery::type('array'))
         ->andReturn($successResult);
 
     $adapter = new SubtitleExtractorAdapter(
@@ -101,6 +102,7 @@ test('extract returns null when policy fails', function () {
 
     $policy->shouldReceive('attempt')
         ->once()
+        ->with('subtitle', Mockery::type('string'), Mockery::type('string'), 'subs', Mockery::type('array'))
         ->andThrow(new RuntimeException('Video unavailable'));
 
     $adapter = new SubtitleExtractorAdapter(
@@ -129,6 +131,7 @@ test('extractTitle returns title from policy stdout', function () {
 
     $policy->shouldReceive('attempt')
         ->once()
+        ->with('subtitle', Mockery::type('string'), Mockery::type('string'), 'subs', Mockery::type('array'))
         ->andReturn($successResult);
 
     $adapter = new SubtitleExtractorAdapter(
@@ -157,6 +160,7 @@ test('extractDuration returns duration from policy stdout', function () {
 
     $policy->shouldReceive('attempt')
         ->once()
+        ->with('subtitle', Mockery::type('string'), Mockery::type('string'), 'subs', Mockery::type('array'))
         ->andReturn($successResult);
 
     $adapter = new SubtitleExtractorAdapter(

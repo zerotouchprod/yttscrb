@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Infrastructure\Adapters\Output\YoutubeDl\StrategyCooldownStore;
 use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeAntiBotExtractionPolicy;
 use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeExtractionAttemptResult;
+use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeExtractionContext;
 use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeExtractionStrategyInterface;
 use Illuminate\Support\Facades\Redis;
 use Tests\TestCase;
@@ -31,7 +32,7 @@ test('policy returns success from first strategy', function () {
         cooldownStore: $store,
     );
 
-    $result = $policy->attempt('https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []);
+    $result = $policy->attempt(YouTubeExtractionContext::AUDIO, 'https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []);
 
     expect($result->isSuccess())->toBeTrue();
     expect($result->strategyName)->toBe('primary');
@@ -72,7 +73,7 @@ test('policy switches to next strategy on bot detection', function () {
         cooldownStore: $store,
     );
 
-    $result = $policy->attempt('https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []);
+    $result = $policy->attempt(YouTubeExtractionContext::AUDIO, 'https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []);
 
     expect($result->isSuccess())->toBeTrue();
     expect($result->strategyName)->toBe('cookies');
@@ -99,7 +100,7 @@ test('policy retries same strategy on rate limit', function () {
         retryCooldownSec: 0,
     );
 
-    $result = $policy->attempt('https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []);
+    $result = $policy->attempt(YouTubeExtractionContext::AUDIO, 'https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []);
 
     expect($result->isSuccess())->toBeTrue();
 });
@@ -122,7 +123,7 @@ test('policy throws on permanent failure', function () {
         cooldownStore: new StrategyCooldownStore(),
     );
 
-    expect(fn () => $policy->attempt('https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []))
+    expect(fn () => $policy->attempt(YouTubeExtractionContext::AUDIO, 'https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []))
         ->toThrow(\RuntimeException::class, 'Video unavailable');
 });
 
@@ -159,7 +160,7 @@ test('policy skips quarantined strategy', function () {
         cooldownStore: $store,
     );
 
-    $result = $policy->attempt('https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []);
+    $result = $policy->attempt(YouTubeExtractionContext::AUDIO, 'https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []);
 
     expect($result->isSuccess())->toBeTrue();
     expect($result->strategyName)->toBe('cookies');
@@ -186,7 +187,7 @@ test('policy throws when all strategies exhausted', function () {
         cooldownStore: new StrategyCooldownStore(),
     );
 
-    expect(fn () => $policy->attempt('https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []))
+    expect(fn () => $policy->attempt(YouTubeExtractionContext::AUDIO, 'https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []))
         ->toThrow(\RuntimeException::class);
 });
 
@@ -213,7 +214,7 @@ test('policy skips unavailable strategies', function () {
         cooldownStore: new StrategyCooldownStore(),
     );
 
-    $result = $policy->attempt('https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []);
+    $result = $policy->attempt(YouTubeExtractionContext::AUDIO, 'https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []);
 
     expect($result->strategyName)->toBe('ipv6');
 });

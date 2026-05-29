@@ -35,6 +35,7 @@ class YouTubeAntiBotExtractionPolicy
      * @throws RuntimeException When all strategies are exhausted or permanent failure.
      */
     public function attempt(
+        string $context,
         string $url,
         string $outputDir,
         string $outputTemplate,
@@ -57,6 +58,7 @@ class YouTubeAntiBotExtractionPolicy
 
             $result = $this->executeWithRetries(
                 $strategy,
+                $context,
                 $url,
                 $outputDir,
                 $outputTemplate,
@@ -105,6 +107,7 @@ class YouTubeAntiBotExtractionPolicy
      */
     private function executeWithRetries(
         YouTubeExtractionStrategyInterface $strategy,
+        string $context,
         string $url,
         string $outputDir,
         string $outputTemplate,
@@ -113,7 +116,7 @@ class YouTubeAntiBotExtractionPolicy
         $lastResult = null;
 
         for ($attempt = 0; $attempt <= $this->maxRetriesPerStrategy; $attempt++) {
-            $result = $strategy->execute($url, $outputDir, $outputTemplate, $extraArgs);
+            $result = $strategy->execute($context, $url, $outputDir, $outputTemplate, $extraArgs);
 
             // Log structured attempt info
             Log::info('YouTube extraction attempt', [

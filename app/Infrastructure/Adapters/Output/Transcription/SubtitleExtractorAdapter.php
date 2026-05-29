@@ -6,6 +6,7 @@ namespace App\Infrastructure\Adapters\Output\Transcription;
 
 use App\Application\Ports\Output\SubtitleProviderInterface;
 use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeAntiBotExtractionPolicy;
+use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeExtractionContext;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
@@ -99,6 +100,7 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
 
         try {
             $result = $this->policy->attempt(
+                YouTubeExtractionContext::SUBTITLE,
                 $youtubeUrl,
                 $outputDir,
                 'subs',

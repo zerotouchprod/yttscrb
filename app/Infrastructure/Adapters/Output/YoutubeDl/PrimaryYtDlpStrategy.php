@@ -9,8 +9,6 @@ final class PrimaryYtDlpStrategy implements YouTubeExtractionStrategyInterface
     private const SLEEP_INTERVAL = 5;
     private const MAX_SLEEP_INTERVAL = 15;
     private const SLEEP_REQUESTS = 2;
-    private const AUDIO_OUTPUT_TEMPLATE = '%(id)s.%(ext)s';
-
     public function __construct(
         private readonly YtDlpProcessRunner $runner,
         private readonly YouTubeExtractionErrorClassifier $classifier,
@@ -29,11 +27,11 @@ final class PrimaryYtDlpStrategy implements YouTubeExtractionStrategyInterface
         return true;
     }
 
-    public function execute(string $url, string $outputDir, string $outputTemplate, array $extraArgs): YouTubeExtractionAttemptResult
+    public function execute(string $context, string $url, string $outputDir, string $outputTemplate, array $extraArgs): YouTubeExtractionAttemptResult
     {
         $extraArgsStr = implode(' ', array_map('escapeshellarg', $extraArgs));
         $extractorArgs = '--extractor-args "youtube:player_client=android,ios,web" ';
-        $formatArg = $this->buildFormatArg($outputTemplate);
+        $formatArg = $this->buildFormatArg($context);
         $outputArg = sprintf('-o %s', escapeshellarg($outputDir . '/' . $outputTemplate));
 
         $command = sprintf(
@@ -76,9 +74,9 @@ final class PrimaryYtDlpStrategy implements YouTubeExtractionStrategyInterface
         );
     }
 
-    private function buildFormatArg(string $outputTemplate): string
+    private function buildFormatArg(string $context): string
     {
-        if ($outputTemplate !== self::AUDIO_OUTPUT_TEMPLATE) {
+        if (! YouTubeExtractionContext::isAudio($context)) {
             return '';
         }
 

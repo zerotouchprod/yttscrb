@@ -35,6 +35,7 @@ final class YoutubeDlAudioExtractor implements AudioExtractorInterface
         ];
 
         $this->policy->attempt(
+            YouTubeExtractionContext::AUDIO,
             $youtubeUrl->value(),
             $this->outputDir,
             self::OUTPUT_TEMPLATE,

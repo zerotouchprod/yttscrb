@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Infrastructure\Adapters\Output\YoutubeDl\PrimaryYtDlpStrategy;
 use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeExtractionErrorClassifier;
+use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeExtractionContext;
 use App\Infrastructure\Adapters\Output\YoutubeDl\YtDlpProcessRunner;
 use App\Infrastructure\Adapters\Output\YoutubeDl\YtDlpRateLimiter;
 use Illuminate\Support\Facades\Redis;
@@ -56,6 +57,7 @@ test('primary strategy builds command with player_client args', function () {
         );
 
         $result = $strategy->execute(
+            YouTubeExtractionContext::AUDIO,
             'https://youtube.com/watch?v=abc123',
             '/tmp',
             '%(id)s.%(ext)s',
@@ -85,6 +87,7 @@ test('primary strategy does not force audio format for subtitle extraction', fun
         );
 
         $result = $strategy->execute(
+            YouTubeExtractionContext::SUBTITLE,
             'https://youtube.com/watch?v=abc123',
             '/tmp',
             'subs',
@@ -113,6 +116,7 @@ test('primary strategy keeps stderr out of stdout for successful runs', function
         );
 
         $result = $strategy->execute(
+            YouTubeExtractionContext::SUBTITLE,
             'https://youtube.com/watch?v=abc123',
             '/tmp',
             'subs',
