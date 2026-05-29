@@ -1,0 +1,19 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Parameter \$policy of class App\\Infrastructure\\Adapters\\Output\\Transcription\\SubtitleExtractorAdapter constructor expects App\\Infrastructure\\Adapters\\Output\\YoutubeDl\\YouTubeAntiBotExtractionPolicy, Mockery\\MockInterface given\.$#'
+			identifier: argument.type
+			count: 10
+			path: tests/Unit/Infrastructure/Adapters/Output/Transcription/SubtitleExtractorAdapterTest.php
+
+		-
+			message: '#^Parameter \$strategies of class App\\Infrastructure\\Adapters\\Output\\YoutubeDl\\YouTubeAntiBotExtractionPolicy constructor expects array\<App\\Infrastructure\\Adapters\\Output\\YoutubeDl\\YouTubeExtractionStrategyInterface\>, array\<int, Mockery\\MockInterface\> given\.$#'
+			identifier: argument.type
+			count: 7
+			path: tests/Unit/Infrastructure/Adapters/Output/YoutubeDl/YouTubeAntiBotExtractionPolicyTest.php
+
+		-
+			message: '#^Parameter \$policy of class App\\Infrastructure\\Adapters\\Output\\YoutubeDl\\YoutubeDlAudioExtractor constructor expects App\\Infrastructure\\Adapters\\Output\\YoutubeDl\\YouTubeAntiBotExtractionPolicy, Mockery\\MockInterface given\.$#'
+			identifier: argument.type
+			count: 3
+			path: tests/Unit/Infrastructure/Adapters/Output/YoutubeDl/YoutubeDlAudioExtractorTest.php

@@ -21,7 +21,16 @@ use App\Infrastructure\Adapters\Output\Transcription\GroqWhisperAdapter;
 use App\Infrastructure\Adapters\Output\Transcription\SubtitleExtractorAdapter;
 use App\Infrastructure\Adapters\Output\Views\RedisViewTracker;
 use App\Infrastructure\Adapters\Output\Workflow\WorkflowDispatcher;
+use App\Infrastructure\Adapters\Output\YoutubeDl\CookiesYtDlpStrategy;
+use App\Infrastructure\Adapters\Output\YoutubeDl\Ipv6RotatedYtDlpStrategy;
+use App\Infrastructure\Adapters\Output\YoutubeDl\Ipv6Rotator;
+use App\Infrastructure\Adapters\Output\YoutubeDl\PrimaryYtDlpStrategy;
+use App\Infrastructure\Adapters\Output\YoutubeDl\StrategyCooldownStore;
+use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeAntiBotExtractionPolicy;
+use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeExtractionErrorClassifier;
 use App\Infrastructure\Adapters\Output\YoutubeDl\YoutubeDlAudioExtractor;
+use App\Infrastructure\Adapters\Output\YoutubeDl\YtDlpProcessRunner;
+use App\Infrastructure\Adapters\Output\YoutubeDl\YtDlpRateLimiter;
 use App\Infrastructure\Workflow\WorkflowStarter;
 use App\Infrastructure\Workflow\DurableWorkflowStarter;
 use Illuminate\Support\ServiceProvider;
@@ -30,28 +39,86 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(AudioExtractorInterface::class, function ($app) {
+        // Shared dependencies for anti-bot policy
+        $this->app->singleton(YtDlpProcessRunner::class, function () {
+            return new YtDlpProcessRunner(
+                timeoutSec: (int) config('services.youtube.yt_dlp_timeout', 300),
+            );
+        });
+
+        $this->app->singleton(YouTubeExtractionErrorClassifier::class);
+
+        $this->app->singleton(YtDlpRateLimiter::class);
+
+        $this->app->singleton(Ipv6Rotator::class);
+
+        $this->app->singleton(StrategyCooldownStore::class, function () {
+            return new StrategyCooldownStore(
+                failureThreshold: (int) config('services.youtube.cooldown_failure_threshold', 3),
+                cooldownDurationSec: (int) config('services.youtube.cooldown_duration_sec', 600),
+                failureWindowSec: (int) config('services.youtube.cooldown_failure_window_sec', 120),
+            );
+        });
+
+        // Build the strategy chain
+        $this->app->singleton(YouTubeAntiBotExtractionPolicy::class, function ($app) {
             $ytDlpBinary = config('services.yt_dlp_binary', 'yt-dlp');
-            $ipv6Prefix = config('services.youtube.ipv6_prefix');
-            $cookiesPath = config('services.youtube.cookies_path');
+            $binaryPath = is_string($ytDlpBinary) && $ytDlpBinary !== '' ? $ytDlpBinary : 'yt-dlp';
 
+            $ipv6Prefix = config('services.youtube.ipv6_prefix');
+            $ipv6Prefix = is_string($ipv6Prefix) && $ipv6Prefix !== '' ? $ipv6Prefix : null;
+
+            $cookiesPath = config('services.youtube.cookies_path');
+            $cookiesPath = is_string($cookiesPath) && $cookiesPath !== '' && file_exists($cookiesPath) ? $cookiesPath : null;
+
+            $strategies = [
+                $app->make(PrimaryYtDlpStrategy::class, [
+                    'binaryPath' => $binaryPath,
+                ]),
+            ];
+
+            // Add cookies strategy only if configured
+            if ($cookiesPath !== null) {
+                $strategies[] = $app->make(CookiesYtDlpStrategy::class, [
+                    'binaryPath' => $binaryPath,
+                    'cookiesPath' => $cookiesPath,
+                ]);
+            }
+
+            // Add IPv6 strategy only if configured
+            if ($ipv6Prefix !== null) {
+                $strategies[] = $app->make(Ipv6RotatedYtDlpStrategy::class, [
+                    'binaryPath' => $binaryPath,
+                    'ipv6Prefix' => $ipv6Prefix,
+                ]);
+            }
+
+            return new YouTubeAntiBotExtractionPolicy(
+                strategies: $strategies,
+                cooldownStore: $app->make(StrategyCooldownStore::class),
+                maxRetriesPerStrategy: (int) config('services.youtube.retry_max_per_strategy', 2),
+                retryCooldownSec: (int) config('services.youtube.retry_cooldown_sec', 90),
+                transientRetryCooldownSec: (int) config('services.youtube.transient_retry_cooldown_sec', 10),
+            );
+        });
+
+        // Audio extractor — now thin wrapper around policy
+        $this->app->bind(AudioExtractorInterface::class, function ($app) {
             return new YoutubeDlAudioExtractor(
-                binaryPath: is_string($ytDlpBinary) && $ytDlpBinary !== '' ? $ytDlpBinary : 'yt-dlp',
+                policy: $app->make(YouTubeAntiBotExtractionPolicy::class),
                 outputDir: storage_path('app/temp'),
-                ipv6Prefix: is_string($ipv6Prefix) && $ipv6Prefix !== '' ? $ipv6Prefix : null,
-                cookiesPath: is_string($cookiesPath) && $cookiesPath !== '' && file_exists($cookiesPath) ? $cookiesPath : null,
             );
         });
-        $this->app->bind(MediaTaskRepositoryInterface::class, MediaTaskEloquentRepository::class);
-        $this->app->bind(SubtitleProviderInterface::class, function ($app) {
-            $ipv6Prefix = config('services.youtube.ipv6_prefix');
-            $cookiesPath = config('services.youtube.cookies_path');
 
+        // Subtitle extractor — now thin wrapper around policy
+        $this->app->bind(SubtitleProviderInterface::class, function ($app) {
             return new SubtitleExtractorAdapter(
-                ipv6Prefix: is_string($ipv6Prefix) && $ipv6Prefix !== '' ? $ipv6Prefix : null,
-                cookiesPath: is_string($cookiesPath) && $cookiesPath !== '' && file_exists($cookiesPath) ? $cookiesPath : null,
+                policy: $app->make(YouTubeAntiBotExtractionPolicy::class),
+                outputDir: storage_path('app/temp/subs'),
             );
         });
+
+        $this->app->bind(MediaTaskRepositoryInterface::class, MediaTaskEloquentRepository::class);
         $this->app->bind(TranscriptionProviderInterface::class, GroqWhisperAdapter::class);
         $this->app->bind(SummaryProviderInterface::class, LaravelAiSummaryAdapter::class);
         $this->app->bind(WorkflowDispatcherInterface::class, WorkflowDispatcher::class);

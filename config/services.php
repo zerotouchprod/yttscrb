@@ -36,6 +36,13 @@ return [
     'youtube' => [
         'ipv6_prefix' => env('SERVICES_YOUTUBE_IPV6_PREFIX'),
         'cookies_path' => env('YT_DLP_COOKIES_PATH'),
+        'yt_dlp_timeout' => (int) env('YT_DLP_TIMEOUT_SEC', 300),
+        'cooldown_failure_threshold' => (int) env('YT_DLP_COOLDOWN_FAILURE_THRESHOLD', 3),
+        'cooldown_duration_sec' => (int) env('YT_DLP_COOLDOWN_DURATION_SEC', 600),
+        'cooldown_failure_window_sec' => (int) env('YT_DLP_COOLDOWN_FAILURE_WINDOW_SEC', 120),
+        'retry_max_per_strategy' => (int) env('YT_DLP_RETRY_MAX_PER_STRATEGY', 2),
+        'retry_cooldown_sec' => (int) env('YT_DLP_RETRY_COOLDOWN_SEC', 90),
+        'transient_retry_cooldown_sec' => (int) env('YT_DLP_TRANSIENT_RETRY_COOLDOWN_SEC', 10),
     ],
 
     'max_video_duration_sec' => (int) env('MAX_VIDEO_DURATION_SEC', 7200),

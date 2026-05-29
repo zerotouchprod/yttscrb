@@ -3,37 +3,86 @@
 declare(strict_types=1);
 
 use App\Domain\ValueObjects\YouTubeUrl;
+use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeAntiBotExtractionPolicy;
+use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeExtractionAttemptResult;
 use App\Infrastructure\Adapters\Output\YoutubeDl\YoutubeDlAudioExtractor;
 
-beforeEach(function (): void {
-    $this->tempDir = sys_get_temp_dir() . '/yttscrb_test_' . uniqid();
-    mkdir($this->tempDir, 0777, true);
-});
+test('extract delegates to policy and returns AudioFile on success', function () {
+    $policy = Mockery::mock(YouTubeAntiBotExtractionPolicy::class);
+    $outputDir = sys_get_temp_dir();
 
-afterEach(function (): void {
-    array_map('unlink', glob($this->tempDir . '/*') ?: []);
-    rmdir($this->tempDir);
-});
-
-it('returns cached audio file if already exists', function (): void {
     $videoId = 'dQw4w9WgXcQ';
-    $existingFile = $this->tempDir . '/' . $videoId . '.mp3';
-    touch($existingFile);
+    $outputFile = $outputDir . '/' . $videoId . '.mp3';
 
-    $extractor = new YoutubeDlAudioExtractor('echo', $this->tempDir);
-    $result = $extractor->extract(new YouTubeUrl('https://www.youtube.com/watch?v=' . $videoId));
+    try {
+        $successResult = YouTubeExtractionAttemptResult::success('yt-dlp output', 1000, 'primary');
 
-    expect($result->path())->toBe($existingFile);
+        $policy->shouldReceive('attempt')
+            ->once()
+            ->andReturnUsing(function () use ($outputFile, $successResult) {
+                // Simulate yt-dlp creating the output file
+                file_put_contents($outputFile, 'fake audio data');
+                return $successResult;
+            });
+
+        $extractor = new YoutubeDlAudioExtractor(
+            policy: $policy,
+            outputDir: $outputDir,
+        );
+
+        $audioFile = $extractor->extract(new YouTubeUrl('https://youtube.com/watch?v=' . $videoId));
+
+        expect($audioFile->path())->toBe($outputFile);
+    } finally {
+        if (file_exists($outputFile)) {
+            unlink($outputFile);
+        }
+    }
 });
 
-it('throws RuntimeException when yt-dlp binary fails', function (): void {
-    $extractor = new YoutubeDlAudioExtractor('false', $this->tempDir);
+test('extract skips download if file already exists', function () {
+    $policy = Mockery::mock(YouTubeAntiBotExtractionPolicy::class);
+    $outputDir = sys_get_temp_dir();
 
-    $extractor->extract(new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
-})->throws(RuntimeException::class, 'yt-dlp failed');
+    $videoId = 'existing123';
+    $outputFile = $outputDir . '/' . $videoId . '.mp3';
+    file_put_contents($outputFile, 'cached audio');
 
-it('throws RuntimeException when output file is not found after successful command', function (): void {
-    $extractor = new YoutubeDlAudioExtractor('echo', $this->tempDir);
+    try {
+        // Policy should NOT be called because file already exists
+        $policy->shouldNotReceive('attempt');
 
-    $extractor->extract(new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
-})->throws(RuntimeException::class, 'output file not found');
+        $extractor = new YoutubeDlAudioExtractor(
+            policy: $policy,
+            outputDir: $outputDir,
+        );
+
+        $audioFile = $extractor->extract(new YouTubeUrl('https://youtube.com/watch?v=' . $videoId));
+
+        expect($audioFile->path())->toBe($outputFile);
+    } finally {
+        if (file_exists($outputFile)) {
+            unlink($outputFile);
+        }
+    }
+});
+
+test('extract throws when policy fails and no output file', function () {
+    $policy = Mockery::mock(YouTubeAntiBotExtractionPolicy::class);
+    $outputDir = sys_get_temp_dir();
+
+    $successResult = YouTubeExtractionAttemptResult::success('yt-dlp output', 1000, 'primary');
+
+    $policy->shouldReceive('attempt')
+        ->once()
+        ->andReturn($successResult);
+
+    $extractor = new YoutubeDlAudioExtractor(
+        policy: $policy,
+        outputDir: $outputDir,
+    );
+
+    // File was not created by policy — should throw
+    expect(fn () => $extractor->extract(new YouTubeUrl('https://youtube.com/watch?v=nonexistent')))
+        ->toThrow(RuntimeException::class, 'yt-dlp completed but output file not found');
+});

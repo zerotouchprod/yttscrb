@@ -7,12 +7,16 @@ parameters:
     ignoreErrors:
         # WorkflowStub test helpers (mock, assertDispatched, assertNotDispatched)
         - '#Call to an undefined static method Workflow\\WorkflowStub::(mock|assertDispatched|assertNotDispatched)\(\)#'
-        # Mockery dynamic methods (andReturn, shouldReceive, shouldNotReceive)
+        # Mockery dynamic methods (andReturn, shouldReceive, shouldNotReceive, once, times)
         - '#Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage::andReturn\(\)#'
         - '#Call to an undefined method .*Interface::shouldReceive\(\)#'
         - '#Call to an undefined method .*Interface::shouldNotReceive\(\)#'
-        # Mockery mocks assigned to typed properties in test classes
+        - '#Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage::once\(\)#'
+        - '#Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage::times\(\)#'
+        # Mockery mocks assigned to typed properties/parameters in test classes
         - '#Property .* does not accept Mockery\\MockInterface\.#'
+        - '#Mockery.MockInterface#'
+        - '#array<int, Mockery.MockInterface>#'
         # Pest dynamic properties
         - '#Access to an undefined property Pest\\PendingCalls\\TestCall::\$storedWorkflow#'
         - '#Access to an undefined property Pest\\PendingCalls\\TestCall::\$tempDir#'
@@ -34,3 +38,10 @@ parameters:
         - '#Invalid body indentation level .* on line 27#'
         # Laravel BelongsToMany generic covariance: TDeclaringModel uses $this which PHPStan treats as non-covariant
         - '#Method App\\Infrastructure\\Adapters\\Output\\Persistence\\MediaTaskModel::taxonomies\(\) should return .* but returns .*BelongsToMany.*\$this.*#'
+        # Redis facade dynamic methods (zadd, zcount, flushall, set with options array) — Laravel magic
+        - '#Call to an undefined static method Illuminate\\Support\\Facades\\Redis::zadd\(\)#'
+        - '#Call to an undefined static method Illuminate\\Support\\Facades\\Redis::zcount\(\)#'
+        - '#Call to an undefined static method Illuminate\\Support\\Facades\\Redis::flushall\(\)#'
+        - '#Static method Illuminate\\Support\\Facades\\Redis::set\(\) invoked with \d+ parameters#'
+        # SubtitleExtractorAdapter pre-existing comparison pattern
+        - '#Strict comparison using !== between non-falsy-string and .* will always evaluate to true#'

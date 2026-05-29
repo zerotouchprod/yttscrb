@@ -2,75 +2,174 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Infrastructure\Adapters\Output\Transcription;
-
+use App\Infrastructure\Adapters\Output\Transcription\SrtParser;
 use App\Infrastructure\Adapters\Output\Transcription\SubtitleExtractorAdapter;
-use PHPUnit\Framework\TestCase;
+use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeAntiBotExtractionPolicy;
+use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeExtractionAttemptResult;
+use Tests\TestCase;
 
-final class SubtitleExtractorAdapterTest extends TestCase
-{
-    public function testParseDurationOutputReturnsNullForEmptyArray(): void
-    {
-        $adapter = new SubtitleExtractorAdapter();
+uses(TestCase::class);
 
-        $result = $adapter->parseDurationOutput([]);
+test('parseDurationOutput returns null for empty array', function () {
+    $adapter = new SubtitleExtractorAdapter(
+        policy: Mockery::mock(YouTubeAntiBotExtractionPolicy::class),
+    );
 
-        $this->assertNull($result);
+    expect($adapter->parseDurationOutput([]))->toBeNull();
+});
+
+test('parseDurationOutput returns null for empty string', function () {
+    $adapter = new SubtitleExtractorAdapter(
+        policy: Mockery::mock(YouTubeAntiBotExtractionPolicy::class),
+    );
+
+    expect($adapter->parseDurationOutput(['']))->toBeNull();
+});
+
+test('parseDurationOutput returns null for non-numeric', function () {
+    $adapter = new SubtitleExtractorAdapter(
+        policy: Mockery::mock(YouTubeAntiBotExtractionPolicy::class),
+    );
+
+    expect($adapter->parseDurationOutput(['not-a-number']))->toBeNull();
+});
+
+test('parseDurationOutput parses integer', function () {
+    $adapter = new SubtitleExtractorAdapter(
+        policy: Mockery::mock(YouTubeAntiBotExtractionPolicy::class),
+    );
+
+    expect($adapter->parseDurationOutput(['212']))->toBe(212);
+});
+
+test('parseDurationOutput parses float', function () {
+    $adapter = new SubtitleExtractorAdapter(
+        policy: Mockery::mock(YouTubeAntiBotExtractionPolicy::class),
+    );
+
+    expect($adapter->parseDurationOutput(['212.5']))->toBe(212);
+});
+
+test('parseDurationOutput takes last non-empty line', function () {
+    $adapter = new SubtitleExtractorAdapter(
+        policy: Mockery::mock(YouTubeAntiBotExtractionPolicy::class),
+    );
+
+    expect($adapter->parseDurationOutput(['warning: something', '212']))->toBe(212);
+});
+
+test('extract returns subtitles when policy succeeds and srt file exists', function () {
+    $policy = Mockery::mock(YouTubeAntiBotExtractionPolicy::class);
+    $srtParser = new SrtParser();
+
+    $outputDir = sys_get_temp_dir() . '/subs-test-' . uniqid();
+    mkdir($outputDir, 0755, true);
+
+    // Create a fake SRT file that the adapter would find
+    $srtContent = "1\n00:00:01,000 --> 00:00:04,000\nHello world\n";
+    file_put_contents($outputDir . '/subs.en.srt', $srtContent);
+
+    // Policy returns success with title and duration in stdout
+    $stdout = "Test Video Title\n123.456\n";
+    $successResult = YouTubeExtractionAttemptResult::success($stdout, 800, 'primary');
+
+    $policy->shouldReceive('attempt')
+        ->once()
+        ->andReturn($successResult);
+
+    $adapter = new SubtitleExtractorAdapter(
+        policy: $policy,
+        srtParser: $srtParser,
+        outputDir: $outputDir,
+    );
+
+    try {
+        $subtitles = $adapter->extract('https://youtube.com/watch?v=abc123');
+
+        expect($subtitles)->toContain('Hello world');
+    } finally {
+        array_map('unlink', glob($outputDir . '/*') ?: []);
+        rmdir($outputDir);
     }
+});
 
-    public function testParseDurationOutputReturnsNullForEmptyString(): void
-    {
-        $adapter = new SubtitleExtractorAdapter();
+test('extract returns null when policy fails', function () {
+    $policy = Mockery::mock(YouTubeAntiBotExtractionPolicy::class);
+    $srtParser = new SrtParser();
+    $outputDir = sys_get_temp_dir() . '/subs-test-' . uniqid();
+    mkdir($outputDir, 0755, true);
 
-        $result = $adapter->parseDurationOutput(['']);
+    $policy->shouldReceive('attempt')
+        ->once()
+        ->andThrow(new RuntimeException('Video unavailable'));
 
-        $this->assertNull($result);
+    $adapter = new SubtitleExtractorAdapter(
+        policy: $policy,
+        srtParser: $srtParser,
+        outputDir: $outputDir,
+    );
+
+    try {
+        $subtitles = $adapter->extract('https://youtube.com/watch?v=abc123');
+
+        expect($subtitles)->toBeNull();
+    } finally {
+        rmdir($outputDir);
     }
+});
 
-    public function testParseDurationOutputReturnsNullForNonNumeric(): void
-    {
-        $adapter = new SubtitleExtractorAdapter();
+test('extractTitle returns title from policy stdout', function () {
+    $policy = Mockery::mock(YouTubeAntiBotExtractionPolicy::class);
+    $srtParser = new SrtParser();
+    $outputDir = sys_get_temp_dir() . '/subs-test-' . uniqid();
+    mkdir($outputDir, 0755, true);
 
-        $result = $adapter->parseDurationOutput(['not-a-number']);
+    $stdout = "My Amazing Title\n\n\n3600\n";
+    $successResult = YouTubeExtractionAttemptResult::success($stdout, 800, 'primary');
 
-        $this->assertNull($result);
+    $policy->shouldReceive('attempt')
+        ->once()
+        ->andReturn($successResult);
+
+    $adapter = new SubtitleExtractorAdapter(
+        policy: $policy,
+        srtParser: $srtParser,
+        outputDir: $outputDir,
+    );
+
+    try {
+        $title = $adapter->extractTitle('https://youtube.com/watch?v=abc123');
+
+        expect($title)->toBe('My Amazing Title');
+    } finally {
+        rmdir($outputDir);
     }
+});
 
-    public function testParseDurationOutputParsesInteger(): void
-    {
-        $adapter = new SubtitleExtractorAdapter();
+test('extractDuration returns duration from policy stdout', function () {
+    $policy = Mockery::mock(YouTubeAntiBotExtractionPolicy::class);
+    $srtParser = new SrtParser();
+    $outputDir = sys_get_temp_dir() . '/subs-test-' . uniqid();
+    mkdir($outputDir, 0755, true);
 
-        $result = $adapter->parseDurationOutput(['212']);
+    $stdout = "Title\n3600\n";
+    $successResult = YouTubeExtractionAttemptResult::success($stdout, 800, 'primary');
 
-        $this->assertSame(212, $result);
+    $policy->shouldReceive('attempt')
+        ->once()
+        ->andReturn($successResult);
+
+    $adapter = new SubtitleExtractorAdapter(
+        policy: $policy,
+        srtParser: $srtParser,
+        outputDir: $outputDir,
+    );
+
+    try {
+        $duration = $adapter->extractDuration('https://youtube.com/watch?v=abc123');
+
+        expect($duration)->toBe(3600);
+    } finally {
+        rmdir($outputDir);
     }
-
-    public function testParseDurationOutputParsesFloat(): void
-    {
-        $adapter = new SubtitleExtractorAdapter();
-
-        $result = $adapter->parseDurationOutput(['212.5']);
-
-        $this->assertSame(212, $result);
-    }
-
-    public function testParseDurationOutputTakesLastNonEmptyLine(): void
-    {
-        $adapter = new SubtitleExtractorAdapter();
-
-        $result = $adapter->parseDurationOutput(['warning: something', '212']);
-
-        $this->assertSame(212, $result);
-    }
-
-    public function testExtractDurationReturnsNullWhenYtDlpFails(): void
-    {
-        $adapter = new SubtitleExtractorAdapter(
-            binaryPath: '/usr/bin/false',
-        );
-
-        $duration = $adapter->extractDuration('https://youtube.com/watch?v=dQw4w9WgXcQ');
-
-        $this->assertNull($duration);
-    }
-}
+});
