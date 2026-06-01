@@ -21,10 +21,21 @@ final class SubtitleExtractorActivity extends Activity
         /** @var SubtitleProviderInterface $provider */
         $provider = Container::getInstance()->make(SubtitleProviderInterface::class);
 
-        return [
-            'subtitles' => $provider->extract($youtubeUrl),
-            'title' => $provider->extractTitle($youtubeUrl),
-            'duration_sec' => $provider->extractDuration($youtubeUrl),
-        ];
+        try {
+            return [
+                'subtitles' => $provider->extract($youtubeUrl),
+                'title' => $provider->extractTitle($youtubeUrl),
+                'duration_sec' => $provider->extractDuration($youtubeUrl),
+            ];
+        } catch (\Throwable $e) {
+            // Subtitle extraction is best-effort. If the provider crashes
+            // (e.g. stream_select interrupted by signal), fall through to
+            // the audio extraction path instead of failing the workflow.
+            return [
+                'subtitles' => null,
+                'title' => null,
+                'duration_sec' => null,
+            ];
+        }
     }
 }

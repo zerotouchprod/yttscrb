@@ -55,7 +55,16 @@ final class YtDlpProcessRunner
             $write = null;
             $except = null;
 
-            if (stream_select($read, $write, $except, 1) > 0) {
+            // Suppress EINTR warnings — stream_select can be interrupted
+            // by signals in containerised PHP processes (e.g. Horizon).
+            $result = @stream_select($read, $write, $except, 1);
+
+            if ($result === false) {
+                // EINTR or other transient error — retry on next loop iteration.
+                continue;
+            }
+
+            if ($result > 0) {
                 foreach ($read as $pipe) {
                     $data = stream_get_contents($pipe);
                     if ($data !== false) {
