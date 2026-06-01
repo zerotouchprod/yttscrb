@@ -87,7 +87,7 @@ audioWorker:
       do echo 'waiting for postgres'; sleep 3; done;
       until php -r "exit((int)!@fsockopen(getenv('REDIS_HOST'), (int)getenv('REDIS_PORT')));";
       do echo 'waiting for redis'; sleep 3; done;
-      php artisan queue:work redis --queue=default --sleep=1 --tries=3 --timeout=0
+      php artisan queue:work redis --queue=audio --sleep=1 --tries=3 --timeout=0
 
 service:
   port: 80
