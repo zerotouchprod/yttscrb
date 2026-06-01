@@ -86,6 +86,8 @@ final class SubtitleExtractorAdapter implements SubtitleProviderInterface
         }
 
         $extraArgs = [
+            '--socket-timeout',
+            '30',
             '--write-auto-sub',
             '--skip-download',
             '--sub-lang',
