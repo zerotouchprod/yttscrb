@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yttscrb.fullname" . }}-audio-worker
+spec:
+  replicas: {{ .Values.audioWorker.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "yttscrb.fullname" . }}-audio-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "yttscrb.fullname" . }}-audio-worker
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: audio-worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command:
+            - /bin/sh
+            - -lc
+          args:
+            - >-
+              until php -r "exit((int)!@fsockopen(getenv('DB_HOST'), (int)getenv('DB_PORT')));";
+              do echo 'waiting for postgres'; sleep 3; done;
+              until php -r "exit((int)!@fsockopen(getenv('REDIS_HOST'), (int)getenv('REDIS_PORT')));";
+              do echo 'waiting for redis'; sleep 3; done;
+              php artisan queue:work redis --queue=audio --sleep=1 --tries=3 --timeout=0
+          envFrom:
+            - configMapRef:
+                name: {{ include "yttscrb.fullname" . }}-config
+            - secretRef:
+                name: {{ .Values.app.secrets.existingSecret }}
+          resources:
+            requests:
+              memory: "128Mi"
+            limits:
+              memory: "512Mi"
+          volumeMounts:
+            - name: cookies
+              mountPath: /app/cookies
+              readOnly: true
+      volumes:
+        - name: cookies
+          secret:
+            secretName: {{ .Values.app.secrets.existingSecret }}
+            items:
+              - key: YT_DLP_COOKIES
+                path: cookies.txt
+            optional: true

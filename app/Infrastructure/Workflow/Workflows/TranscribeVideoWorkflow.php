@@ -6,13 +6,9 @@ namespace App\Infrastructure\Workflow\Workflows;
 
 use App\Application\Ports\Output\MediaTaskRepositoryInterface;
 use App\Infrastructure\Workflow\Activities\AiSummaryActivity;
-use App\Infrastructure\Workflow\Activities\AudioDownloaderActivity;
-use App\Infrastructure\Workflow\Activities\CleanupActivity;
-use App\Infrastructure\Workflow\Activities\GroqTranscriberActivity;
 use App\Infrastructure\Workflow\Activities\PersistResultActivity;
 use App\Infrastructure\Workflow\Activities\SubtitleExtractorActivity;
 use App\Infrastructure\Workflow\Activities\TaxonomyTaggingActivity;
-use App\Infrastructure\Workflow\DTO\DownloadedAudioResult;
 use App\Infrastructure\Workflow\DTO\WorkflowTranscriptionResult;
 use Generator;
 use Illuminate\Container\Container;
@@ -20,6 +16,7 @@ use Throwable;
 use Workflow\Workflow;
 
 use function Workflow\activity;
+use function Workflow\child;
 use function Workflow\sideEffect;
 
 final class TranscribeVideoWorkflow extends Workflow
@@ -39,20 +36,15 @@ final class TranscribeVideoWorkflow extends Workflow
             return yield from $this->summariseAndPersist($taskId, $durationSec);
         }
 
+        // Audio path: delegate to a child workflow on the isolated 'audio' queue.
+        // This keeps the default worker free for subtitle-only tasks and prevents
+        // slow/bot-detected audio downloads from blocking other workflows.
         try {
-            /** @var DownloadedAudioResult $audio */
-            $audio = yield activity(AudioDownloaderActivity::class, $taskId, $youtubeUrl);
-
-            $this->addCompensation(
-                fn () => activity(CleanupActivity::class, $audio->path),
-            );
-
             /** @var WorkflowTranscriptionResult $transcription */
-            $transcription = yield activity(GroqTranscriberActivity::class, $audio->path, $youtubeUrl);
+            $transcription = yield child(AudioTranscribeWorkflow::class, $taskId, $youtubeUrl);
 
             $durationSec = $transcription->durationSec;
         } catch (Throwable $th) {
-            yield from $this->compensate();
             yield sideEffect(fn () => $this->failTask($taskId, $th->getMessage()));
             throw $th;
         }

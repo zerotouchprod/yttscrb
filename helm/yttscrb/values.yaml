@@ -76,6 +76,8 @@ horizon:
 
 worker:
   replicas: 1
+audioWorker:
+  replicas: 1
   command:
     - /bin/sh
     - -lc
