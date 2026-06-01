@@ -62,6 +62,7 @@ class YouTubeAntiBotExtractionPolicy
         );
 
         $allInCooldown = true;
+        $hadBotDetection = false;
 
         foreach ($availableStrategies as $strategy) {
             // Skip quarantined strategies
@@ -95,6 +96,7 @@ class YouTubeAntiBotExtractionPolicy
 
             // Bot detection — record failure for cooldown and try next strategy
             if ($result->isBotDetected()) {
+                $hadBotDetection = true;
                 $this->cooldownStore->recordFailure($strategy->name());
                 Log::warning('YouTube extraction: bot detected, switching strategy', [
                     'failed_strategy' => $strategy->name(),
@@ -111,13 +113,15 @@ class YouTubeAntiBotExtractionPolicy
             ]);
         }
 
-        // Last resort: if all strategies were skipped due to cooldown, try primary strategy anyway
-        if ($allInCooldown && $availableStrategies !== []) {
+        // Last resort: all strategies were either skipped (cooldown) or tried and returned bot_detected.
+        // Try the primary strategy one more time as a final attempt.
+        if (($allInCooldown || $hadBotDetection) && $availableStrategies !== []) {
             $primaryStrategy = reset($availableStrategies);
-            Log::warning('YouTube extraction: all strategies in cooldown, attempting primary as last resort', [
+            Log::warning('YouTube extraction: all strategies exhausted or quarantined, attempting primary as last resort', [
                 'strategy' => $primaryStrategy->name(),
                 'url' => $url,
                 'context' => $context,
+                'reason' => $allInCooldown ? 'all_in_cooldown' : 'bot_detected_on_all',
             ]);
 
             $result = $this->executeWithRetries(
@@ -135,6 +139,15 @@ class YouTubeAntiBotExtractionPolicy
 
             if ($result->isPermanent()) {
                 throw new RuntimeException($result->stderr);
+            }
+
+            // If last resort also fails with bot detection, record it for cooldown tracking
+            if ($result->isBotDetected()) {
+                $this->cooldownStore->recordFailure($primaryStrategy->name());
+                Log::warning('YouTube extraction: last resort also returned bot detection', [
+                    'strategy' => $primaryStrategy->name(),
+                    'url' => $url,
+                ]);
             }
         }
 

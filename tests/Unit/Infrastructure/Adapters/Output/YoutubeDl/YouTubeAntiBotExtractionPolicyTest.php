@@ -166,21 +166,35 @@ test('policy skips quarantined strategy', function () {
     expect($result->strategyName)->toBe('cookies');
 });
 
-test('policy throws when all strategies exhausted', function () {
+test('policy throws when all strategies exhausted after last resort', function () {
+    // Both first attempt and last resort return bot_detected → should throw
     $botResult = YouTubeExtractionAttemptResult::botDetected('bot', 500, 'primary');
 
     $primary = \Mockery::mock(YouTubeExtractionStrategyInterface::class);
     $primary->shouldReceive('name')->andReturn('primary');
     $primary->shouldReceive('isAvailable')->andReturn(true);
-    $primary->shouldReceive('execute')->once()->andReturn($botResult);
+    // executeWithRetries does NOT retry bot_detected, so first call = 1 attempt
+    // Then last resort calls executeWithRetries again = 1 more attempt
+    $primary->shouldReceive('execute')->times(2)->andReturn($botResult, $botResult);
 
+    // First strategy check (not in cooldown)
     Redis::shouldReceive('get')
         ->once()
         ->with('youtube-extractor:strategy:primary:cooldown_until')
         ->andReturn(null);
+    // recordFailure after first bot detection
     Redis::shouldReceive('zadd')->once();
     Redis::shouldReceive('expire')->once();
     Redis::shouldReceive('zcount')->once()->andReturn(1);
+    // Last resort: check cooldown again before retry
+    Redis::shouldReceive('get')
+        ->once()
+        ->with('youtube-extractor:strategy:primary:cooldown_until')
+        ->andReturn(null);
+    // recordFailure after last resort bot detection
+    Redis::shouldReceive('zadd')->once();
+    Redis::shouldReceive('expire')->once();
+    Redis::shouldReceive('zcount')->once()->andReturn(2);
 
     $policy = new YouTubeAntiBotExtractionPolicy(
         strategies: [$primary],
@@ -188,7 +202,43 @@ test('policy throws when all strategies exhausted', function () {
     );
 
     expect(fn () => $policy->attempt(YouTubeExtractionContext::AUDIO, 'https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []))
-        ->toThrow(\RuntimeException::class);
+        ->toThrow(\RuntimeException::class, 'All YouTube extraction strategies exhausted');
+});
+
+test('policy succeeds on last resort after bot detected on single strategy', function () {
+    $botResult = YouTubeExtractionAttemptResult::botDetected('bot', 500, 'primary');
+    $successResult = YouTubeExtractionAttemptResult::success('output', 800, 'primary');
+
+    $primary = \Mockery::mock(YouTubeExtractionStrategyInterface::class);
+    $primary->shouldReceive('name')->andReturn('primary');
+    $primary->shouldReceive('isAvailable')->andReturn(true);
+    // First call = botDetected, second call (last resort) = success
+    $primary->shouldReceive('execute')->times(2)->andReturn($botResult, $successResult);
+
+    // First strategy check (not in cooldown)
+    Redis::shouldReceive('get')
+        ->once()
+        ->with('youtube-extractor:strategy:primary:cooldown_until')
+        ->andReturn(null);
+    // recordFailure after first bot detection
+    Redis::shouldReceive('zadd')->once();
+    Redis::shouldReceive('expire')->once();
+    Redis::shouldReceive('zcount')->once()->andReturn(1);
+    // Last resort: check cooldown again before retry
+    Redis::shouldReceive('get')
+        ->once()
+        ->with('youtube-extractor:strategy:primary:cooldown_until')
+        ->andReturn(null);
+
+    $policy = new YouTubeAntiBotExtractionPolicy(
+        strategies: [$primary],
+        cooldownStore: new StrategyCooldownStore(),
+    );
+
+    $result = $policy->attempt(YouTubeExtractionContext::AUDIO, 'https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []);
+
+    expect($result->isSuccess())->toBeTrue();
+    expect($result->strategyName)->toBe('primary');
 });
 
 test('policy skips unavailable strategies', function () {
