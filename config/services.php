@@ -36,6 +36,7 @@ return [
     'youtube' => [
         'ipv6_prefix' => env('SERVICES_YOUTUBE_IPV6_PREFIX'),
         'cookies_path' => env('YT_DLP_COOKIES_PATH'),
+        'proxy_url' => env('YTDLP_PROXY_URL'),
         'yt_dlp_timeout' => (int) env('YT_DLP_TIMEOUT_SEC', 300),
         'cooldown_failure_threshold' => (int) env('YT_DLP_COOLDOWN_FAILURE_THRESHOLD', 3),
         'cooldown_duration_sec' => (int) env('YT_DLP_COOLDOWN_DURATION_SEC', 600),

@@ -26,6 +26,7 @@ use App\Infrastructure\Adapters\Output\YoutubeDl\CookiesYtDlpStrategy;
 use App\Infrastructure\Adapters\Output\YoutubeDl\Ipv6RotatedYtDlpStrategy;
 use App\Infrastructure\Adapters\Output\YoutubeDl\Ipv6Rotator;
 use App\Infrastructure\Adapters\Output\YoutubeDl\PrimaryYtDlpStrategy;
+use App\Infrastructure\Adapters\Output\YoutubeDl\ProxyYtDlpStrategy;
 use App\Infrastructure\Adapters\Output\YoutubeDl\StrategyCooldownAvailabilityChecker;
 use App\Infrastructure\Adapters\Output\YoutubeDl\StrategyCooldownStore;
 use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeAntiBotExtractionPolicy;
@@ -78,6 +79,17 @@ class AppServiceProvider extends ServiceProvider
                     'binaryPath' => $binaryPath,
                 ]),
             ];
+
+            // Add proxy strategy only if configured
+            $proxyUrl = config('services.youtube.proxy_url');
+            $proxyUrl = is_string($proxyUrl) && $proxyUrl !== '' ? $proxyUrl : null;
+
+            if ($proxyUrl !== null) {
+                $strategies[] = $app->make(ProxyYtDlpStrategy::class, [
+                    'binaryPath' => $binaryPath,
+                    'proxyUrl' => $proxyUrl,
+                ]);
+            }
 
             // Add cookies strategy only if configured
             if ($cookiesPath !== null) {

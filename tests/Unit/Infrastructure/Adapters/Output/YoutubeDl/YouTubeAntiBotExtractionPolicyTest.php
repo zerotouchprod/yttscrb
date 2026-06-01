@@ -268,3 +268,43 @@ test('policy skips unavailable strategies', function () {
 
     expect($result->strategyName)->toBe('ipv6');
 });
+
+test('policy falls back to proxy strategy after primary bot detected', function () {
+    $botResult = YouTubeExtractionAttemptResult::botDetected('bot', 500, 'primary');
+    $successResult = YouTubeExtractionAttemptResult::success('output', 800, 'proxy');
+
+    $primary = Mockery::mock(YouTubeExtractionStrategyInterface::class);
+    $primary->shouldReceive('name')->andReturn('primary');
+    $primary->shouldReceive('isAvailable')->andReturn(true);
+    $primary->shouldReceive('execute')->once()->andReturn($botResult);
+
+    $proxy = Mockery::mock(YouTubeExtractionStrategyInterface::class);
+    $proxy->shouldReceive('name')->andReturn('proxy');
+    $proxy->shouldReceive('isAvailable')->andReturn(true);
+    $proxy->shouldReceive('execute')->once()->andReturn($successResult);
+
+    // primary: not in cooldown
+    Redis::shouldReceive('get')
+        ->once()
+        ->with('youtube-extractor:strategy:primary:cooldown_until')
+        ->andReturn(null);
+    // recordFailure for primary
+    Redis::shouldReceive('zadd')->once();
+    Redis::shouldReceive('expire')->once();
+    Redis::shouldReceive('zcount')->once()->andReturn(1);
+    // proxy: not in cooldown
+    Redis::shouldReceive('get')
+        ->once()
+        ->with('youtube-extractor:strategy:proxy:cooldown_until')
+        ->andReturn(null);
+
+    $policy = new YouTubeAntiBotExtractionPolicy(
+        strategies: [$primary, $proxy],
+        cooldownStore: new StrategyCooldownStore(failureThreshold: 3),
+    );
+
+    $result = $policy->attempt(YouTubeExtractionContext::AUDIO, 'https://youtube.com/watch?v=abc123', '/tmp', '%(id)s.%(ext)s', []);
+
+    expect($result->isSuccess())->toBeTrue();
+    expect($result->strategyName)->toBe('proxy');
+});
