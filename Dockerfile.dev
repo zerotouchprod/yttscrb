@@ -18,7 +18,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install yt-dlp via pip (more up-to-date than apt)
-RUN pip3 install --break-system-packages yt-dlp
+RUN pip3 install --break-system-packages yt-dlp yt-dlp-get-pot
 
 # Install Node.js 22 LTS for frontend builds
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
