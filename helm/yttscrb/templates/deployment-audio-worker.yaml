@@ -43,6 +43,17 @@ spec:
             - name: cookies
               mountPath: /app/cookies
               readOnly: true
+        {{- if .Values.app.env.YTDLP_POTOKEN_URL }}
+        - name: potoken-provider
+          image: docker.io/brainicism/bgutil-ytdlp-pot-provider:latest
+          ports:
+            - containerPort: 4416
+          resources:
+            requests:
+              memory: "256Mi"
+            limits:
+              memory: "512Mi"
+        {{- end }}
       volumes:
         - name: cookies
           secret:
