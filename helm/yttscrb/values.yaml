@@ -53,7 +53,7 @@ app:
     YT_DLP_COOKIES_PATH: "/app/cookies/cookies.txt"
     YT_DLP_COOLDOWN_FAILURE_THRESHOLD: "5"
     YT_DLP_COOLDOWN_DURATION_SEC: "300"
-    YTDLP_PROXY_URL: ""
+    YTDLP_PROXY_URL: "http://2RcZWXjdPLLM6SK9:RmtWfTA2gxmGZ1bl@geo.iproyal.com:12321"
     YTDLP_POTOKEN_URL: "http://127.0.0.1:4416"
   secrets:
     existingSecret: yttscrb-secrets
