@@ -26,7 +26,21 @@ final class PotokenYtDlpStrategy implements YouTubeExtractionStrategyInterface
 
     public function isAvailable(): bool
     {
-        return $this->serviceUrl !== null && $this->serviceUrl !== '';
+        if ($this->serviceUrl === null || $this->serviceUrl === '') {
+            return false;
+        }
+
+        $parts = parse_url($this->serviceUrl);
+        $host = $parts['host'] ?? '127.0.0.1';
+        $port = $parts['port'] ?? 80;
+
+        $fp = @fsockopen($host, (int) $port, $errno, $errstr, 2.0);
+        if ($fp) {
+            fclose($fp);
+            return true;
+        }
+
+        return false;
     }
 
     public function execute(string $context, string $url, string $outputDir, string $outputTemplate, array $extraArgs): YouTubeExtractionAttemptResult

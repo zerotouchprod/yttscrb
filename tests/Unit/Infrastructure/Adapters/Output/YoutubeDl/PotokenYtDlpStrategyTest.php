@@ -29,7 +29,9 @@ test('potoken strategy is unavailable when serviceUrl is null', function () {
     expect($strategy->isAvailable())->toBeFalse();
 });
 
-test('potoken strategy is available when serviceUrl is set', function () {
+test('potoken strategy is unavailable when sidecar not reachable', function () {
+    // 127.0.0.1:4416 is not listening in test environment,
+    // so isAvailable() returns false after connectivity check.
     $strategy = new PotokenYtDlpStrategy(
         runner: new YtDlpProcessRunner(),
         classifier: new YouTubeExtractionErrorClassifier(),
@@ -37,7 +39,7 @@ test('potoken strategy is available when serviceUrl is set', function () {
         serviceUrl: 'http://127.0.0.1:4416',
     );
 
-    expect($strategy->isAvailable())->toBeTrue();
+    expect($strategy->isAvailable())->toBeFalse();
     expect($strategy->name())->toBe('potoken');
 });
 
