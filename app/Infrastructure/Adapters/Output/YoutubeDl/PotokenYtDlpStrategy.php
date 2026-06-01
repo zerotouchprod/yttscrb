@@ -32,10 +32,12 @@ final class PotokenYtDlpStrategy implements YouTubeExtractionStrategyInterface
     public function execute(string $context, string $url, string $outputDir, string $outputTemplate, array $extraArgs): YouTubeExtractionAttemptResult
     {
         $extraArgsStr = implode(' ', array_map('escapeshellarg', $extraArgs));
-        // Pass POT server URL directly to yt-dlp — it handles token fetching internally
+        // Pass POT server URL directly to yt-dlp — it handles token fetching internally.
+        // URL is inside double-quoted --extractor-args value, no escaping needed
+        // (only contains http://host:port, no shell-special characters).
         $extractorArgs = sprintf(
             '--extractor-args "youtube:player_client=android,ios,web;pot_server_url=%s" ',
-            escapeshellcmd((string) $this->serviceUrl),
+            (string) $this->serviceUrl,
         );
         $formatArg = $this->buildFormatArg($context);
         $outputArg = sprintf('-o %s', escapeshellarg($outputDir . '/' . $outputTemplate));
