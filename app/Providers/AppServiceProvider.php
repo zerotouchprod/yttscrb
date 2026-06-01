@@ -25,6 +25,7 @@ use App\Infrastructure\Adapters\Output\Workflow\WorkflowDispatcher;
 use App\Infrastructure\Adapters\Output\YoutubeDl\CookiesYtDlpStrategy;
 use App\Infrastructure\Adapters\Output\YoutubeDl\Ipv6RotatedYtDlpStrategy;
 use App\Infrastructure\Adapters\Output\YoutubeDl\Ipv6Rotator;
+use App\Infrastructure\Adapters\Output\YoutubeDl\PotokenYtDlpStrategy;
 use App\Infrastructure\Adapters\Output\YoutubeDl\PrimaryYtDlpStrategy;
 use App\Infrastructure\Adapters\Output\YoutubeDl\ProxyYtDlpStrategy;
 use App\Infrastructure\Adapters\Output\YoutubeDl\StrategyCooldownAvailabilityChecker;
@@ -74,11 +75,23 @@ class AppServiceProvider extends ServiceProvider
             $cookiesPath = config('services.youtube.cookies_path');
             $cookiesPath = is_string($cookiesPath) && $cookiesPath !== '' && file_exists($cookiesPath) ? $cookiesPath : null;
 
-            $strategies = [
-                $app->make(PrimaryYtDlpStrategy::class, [
+            $strategies = [];
+
+            // Add potoken strategy first (best option when sidecar is available)
+            $potokenUrl = config('services.youtube.potoken_service_url');
+            $potokenUrl = is_string($potokenUrl) && $potokenUrl !== '' ? $potokenUrl : null;
+
+            if ($potokenUrl !== null) {
+                $strategies[] = $app->make(PotokenYtDlpStrategy::class, [
                     'binaryPath' => $binaryPath,
-                ]),
-            ];
+                    'serviceUrl' => $potokenUrl,
+                ]);
+            }
+
+            // Primary is the always-available fallback
+            $strategies[] = $app->make(PrimaryYtDlpStrategy::class, [
+                'binaryPath' => $binaryPath,
+            ]);
 
             // Add proxy strategy only if configured
             $proxyUrl = config('services.youtube.proxy_url');

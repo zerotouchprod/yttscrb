@@ -54,6 +54,7 @@ app:
     YT_DLP_COOLDOWN_FAILURE_THRESHOLD: "5"
     YT_DLP_COOLDOWN_DURATION_SEC: "300"
     YTDLP_PROXY_URL: ""
+    YTDLP_POTOKEN_URL: ""
   secrets:
     existingSecret: yttscrb-secrets
 
