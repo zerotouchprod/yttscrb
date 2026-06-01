@@ -40,7 +40,7 @@ spec:
         # Image: https://github.com/Brainicism/bgutil-ytdlp-pot-provider
         {{- if .Values.app.env.YTDLP_POTOKEN_URL }}
         - name: potoken-provider
-          image: ghcr.io/brainicism/bgutil-ytdlp-pot-provider:latest
+          image: docker.io/brainicism/bgutil-ytdlp-pot-provider:latest
           ports:
             - containerPort: 4416
           resources:
