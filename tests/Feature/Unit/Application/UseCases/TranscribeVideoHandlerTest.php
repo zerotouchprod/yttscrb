@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Unit\Application\UseCases;
 
 use App\Domain\ValueObjects\SummaryResult;
+use App\Application\Ports\Output\ExtractionAvailabilityCheckerInterface;
 use App\Application\Ports\Output\MediaTaskRepositoryInterface;
 use App\Application\Ports\Output\WorkflowDispatcherInterface;
 use App\Application\UseCases\TranscribeVideoHandler;
@@ -152,7 +153,14 @@ final class TranscribeVideoHandlerTest extends TestCase
             }
         };
 
-        $handler = new TranscribeVideoHandler($repository, $dispatcher);
+
+        $availabilityChecker = new class () implements ExtractionAvailabilityCheckerInterface {
+            public function isAnyStrategyAvailable(): bool
+            {
+                return true;
+            }
+        };
+        $handler = new TranscribeVideoHandler($repository, $dispatcher, $availabilityChecker);
 
         $result = $handler->handle(
             MediaTask::create('new-task', new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'))
@@ -287,7 +295,14 @@ final class TranscribeVideoHandlerTest extends TestCase
             }
         };
 
-        $handler = new TranscribeVideoHandler($repository, $dispatcher);
+
+        $availabilityChecker = new class () implements ExtractionAvailabilityCheckerInterface {
+            public function isAnyStrategyAvailable(): bool
+            {
+                return true;
+            }
+        };
+        $handler = new TranscribeVideoHandler($repository, $dispatcher, $availabilityChecker);
         $task = MediaTask::create('new-task', new YouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'));
 
         $result = $handler->handle($task);
@@ -412,7 +427,14 @@ final class TranscribeVideoHandlerTest extends TestCase
             }
         };
 
-        $handler = new TranscribeVideoHandler($repository, $dispatcher);
+
+        $availabilityChecker = new class () implements ExtractionAvailabilityCheckerInterface {
+            public function isAnyStrategyAvailable(): bool
+            {
+                return true;
+            }
+        };
+        $handler = new TranscribeVideoHandler($repository, $dispatcher, $availabilityChecker);
         $paginator = $handler->listPublicCompleted(10, 1);
 
         self::assertSame(1, $paginator->total());

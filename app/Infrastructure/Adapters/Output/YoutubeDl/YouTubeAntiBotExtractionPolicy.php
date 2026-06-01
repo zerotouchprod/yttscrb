@@ -25,6 +25,21 @@ class YouTubeAntiBotExtractionPolicy
     }
 
     /**
+     * Check whether at least one strategy is available (configured, not disabled,
+     * and not in cooldown). Used for early rejection before dispatching workflows.
+     */
+    public function hasAvailableStrategy(): bool
+    {
+        foreach ($this->strategies as $strategy) {
+            if ($strategy->isAvailable() && ! $this->cooldownStore->isInCooldown($strategy->name())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Attempt extraction through the strategy chain.
      *
      * @param string $url YouTube URL.
@@ -46,6 +61,8 @@ class YouTubeAntiBotExtractionPolicy
             fn (YouTubeExtractionStrategyInterface $s) => $s->isAvailable(),
         );
 
+        $allInCooldown = true;
+
         foreach ($availableStrategies as $strategy) {
             // Skip quarantined strategies
             if ($this->cooldownStore->isInCooldown($strategy->name())) {
@@ -55,6 +72,8 @@ class YouTubeAntiBotExtractionPolicy
                 ]);
                 continue;
             }
+
+            $allInCooldown = false;
 
             $result = $this->executeWithRetries(
                 $strategy,
@@ -90,6 +109,33 @@ class YouTubeAntiBotExtractionPolicy
                 'result_type' => $result->resultType,
                 'url' => $url,
             ]);
+        }
+
+        // Last resort: if all strategies were skipped due to cooldown, try primary strategy anyway
+        if ($allInCooldown && $availableStrategies !== []) {
+            $primaryStrategy = reset($availableStrategies);
+            Log::warning('YouTube extraction: all strategies in cooldown, attempting primary as last resort', [
+                'strategy' => $primaryStrategy->name(),
+                'url' => $url,
+                'context' => $context,
+            ]);
+
+            $result = $this->executeWithRetries(
+                $primaryStrategy,
+                $context,
+                $url,
+                $outputDir,
+                $outputTemplate,
+                $extraArgs,
+            );
+
+            if ($result->isSuccess()) {
+                return $result;
+            }
+
+            if ($result->isPermanent()) {
+                throw new RuntimeException($result->stderr);
+            }
         }
 
         throw new RuntimeException(

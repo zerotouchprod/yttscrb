@@ -26,3 +26,15 @@ spec:
                 name: {{ include "yttscrb.fullname" . }}-config
             - secretRef:
                 name: {{ .Values.app.secrets.existingSecret }}
+          volumeMounts:
+            - name: cookies
+              mountPath: /app/cookies
+              readOnly: true
+      volumes:
+        - name: cookies
+          secret:
+            secretName: {{ .Values.app.secrets.existingSecret }}
+            items:
+              - key: YT_DLP_COOKIES
+                path: cookies.txt
+            optional: true

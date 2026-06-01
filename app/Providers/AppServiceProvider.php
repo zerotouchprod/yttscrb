@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Application\Ports\Output\AudioExtractorInterface;
+use App\Application\Ports\Output\ExtractionAvailabilityCheckerInterface;
 use App\Application\Ports\Output\MediaTaskRepositoryInterface;
 use App\Application\Ports\Output\SubtitleProviderInterface;
 use App\Application\Ports\Output\SummaryProviderInterface;
@@ -25,6 +26,7 @@ use App\Infrastructure\Adapters\Output\YoutubeDl\CookiesYtDlpStrategy;
 use App\Infrastructure\Adapters\Output\YoutubeDl\Ipv6RotatedYtDlpStrategy;
 use App\Infrastructure\Adapters\Output\YoutubeDl\Ipv6Rotator;
 use App\Infrastructure\Adapters\Output\YoutubeDl\PrimaryYtDlpStrategy;
+use App\Infrastructure\Adapters\Output\YoutubeDl\StrategyCooldownAvailabilityChecker;
 use App\Infrastructure\Adapters\Output\YoutubeDl\StrategyCooldownStore;
 use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeAntiBotExtractionPolicy;
 use App\Infrastructure\Adapters\Output\YoutubeDl\YouTubeExtractionErrorClassifier;
@@ -121,6 +123,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(MediaTaskRepositoryInterface::class, MediaTaskEloquentRepository::class);
         $this->app->bind(TranscriptionProviderInterface::class, GroqWhisperAdapter::class);
         $this->app->bind(SummaryProviderInterface::class, LaravelAiSummaryAdapter::class);
+        $this->app->bind(ExtractionAvailabilityCheckerInterface::class, StrategyCooldownAvailabilityChecker::class);
         $this->app->bind(WorkflowDispatcherInterface::class, WorkflowDispatcher::class);
         $this->app->bind(WorkflowStarter::class, DurableWorkflowStarter::class);
         $this->app->bind(FeedbackNotifierInterface::class, TelegramFeedbackNotifier::class);

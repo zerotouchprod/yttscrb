@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Application\UseCases;
 
 use App\Domain\ValueObjects\SummaryResult;
+use App\Application\Ports\Output\ExtractionAvailabilityCheckerInterface;
 use App\Application\Ports\Output\MediaTaskRepositoryInterface;
 use App\Application\Ports\Output\WorkflowDispatcherInterface;
 use App\Application\UseCases\TranscribeVideoHandler;
@@ -142,7 +143,14 @@ final class TranscribeVideoHandlerSearchTest extends TestCase
             }
         };
 
-        $handler = new TranscribeVideoHandler($repository, $dispatcher);
+
+        $availabilityChecker = new class () implements ExtractionAvailabilityCheckerInterface {
+            public function isAnyStrategyAvailable(): bool
+            {
+                return true;
+            }
+        };
+        $handler = new TranscribeVideoHandler($repository, $dispatcher, $availabilityChecker);
 
         $result = $handler->searchByTitle('rick astley', 10, 2);
 
@@ -275,7 +283,14 @@ final class TranscribeVideoHandlerSearchTest extends TestCase
             }
         };
 
-        $handler = new TranscribeVideoHandler($repository, $dispatcher);
+
+        $availabilityChecker = new class () implements ExtractionAvailabilityCheckerInterface {
+            public function isAnyStrategyAvailable(): bool
+            {
+                return true;
+            }
+        };
+        $handler = new TranscribeVideoHandler($repository, $dispatcher, $availabilityChecker);
 
         $result = $handler->searchByTitle('rick', 15, 1);
 

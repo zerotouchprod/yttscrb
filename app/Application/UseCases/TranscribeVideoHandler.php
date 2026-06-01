@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\UseCases;
 
+use App\Application\Ports\Output\ExtractionAvailabilityCheckerInterface;
 use App\Application\Ports\Output\MediaTaskRepositoryInterface;
 use App\Application\Ports\Output\WorkflowDispatcherInterface;
 use App\Domain\Entities\MediaTask;
@@ -14,6 +15,7 @@ final readonly class TranscribeVideoHandler
     public function __construct(
         private MediaTaskRepositoryInterface $repository,
         private WorkflowDispatcherInterface $dispatcher,
+        private ExtractionAvailabilityCheckerInterface $availabilityChecker,
     ) {
     }
 
@@ -34,6 +36,16 @@ final readonly class TranscribeVideoHandler
 
         if ($processing !== null) {
             return $processing;
+        }
+
+        // Early rejection: if all extraction strategies are in cooldown/quarantine,
+        // fail immediately with a bot_detection error instead of dispatching a workflow
+        // that would immediately fail and flood the queue with exceptions.
+        if (! $this->availabilityChecker->isAnyStrategyAvailable()) {
+            $task->fail('bot_detection: All extraction strategies are in cooldown/quarantine');
+            $this->repository->save($task);
+
+            return $task;
         }
 
         $this->repository->save($task);
