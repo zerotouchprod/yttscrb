@@ -45,7 +45,9 @@ final class TranscribeVideoWorkflow extends Workflow
 
             $durationSec = $transcription->durationSec;
         } catch (Throwable $th) {
-            yield sideEffect(fn () => $this->failTask($taskId, $th->getMessage()));
+            // Direct call (not sideEffect) — durable-workflow does not guarantee
+            // sideEffect execution when exception comes from a child workflow.
+            $this->failTask($taskId, $th->getMessage());
             throw $th;
         }
 
@@ -99,9 +101,13 @@ final class TranscribeVideoWorkflow extends Workflow
         $repository = Container::getInstance()->make(MediaTaskRepositoryInterface::class);
         $task = $repository->findById($taskId);
 
-        if ($task !== null) {
-            $task->fail($errorMessage);
-            $repository->save($task);
+        // Guard against replay: if the task is already in a terminal state,
+        // fail() would throw LogicException (e.g. Failed → Failed).
+        if ($task === null || $task->status()->isTerminal()) {
+            return;
         }
+
+        $task->fail($errorMessage);
+        $repository->save($task);
     }
 }

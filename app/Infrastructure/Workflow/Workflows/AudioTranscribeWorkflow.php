@@ -28,9 +28,14 @@ final class AudioTranscribeWorkflow extends Workflow
             fn () => activity(CleanupActivity::class, $audio->path),
         );
 
-        /** @var WorkflowTranscriptionResult $transcription */
-        $transcription = yield activity(GroqTranscriberActivity::class, $audio->path, $youtubeUrl);
+        try {
+            /** @var WorkflowTranscriptionResult $transcription */
+            $transcription = yield activity(GroqTranscriberActivity::class, $audio->path, $youtubeUrl);
 
-        return $transcription;
+            return $transcription;
+        } catch (\Throwable $th) {
+            yield from $this->compensate();
+            throw $th;
+        }
     }
 }
